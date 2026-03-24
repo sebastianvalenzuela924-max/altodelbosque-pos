@@ -10,15 +10,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, FileSpreadsheet, Edit3, AlertTriangle, Plus, Trash2, Package, Scan, Loader2, Check, X, ArrowUpDown, Filter, Tag } from "lucide-react";
+import { Search, FileSpreadsheet, Edit3, AlertTriangle, Plus, Trash2, Package, Scan, Loader2, Check, X, ArrowUpDown, Filter, Tag, ArrowUp, ArrowDown } from "lucide-react";
 import { exportToExcel } from "@/lib/export";
 import { useToast } from "@/hooks/use-toast";
 import { ProductDialog } from "@/components/inventory/ProductDialog";
 import { ScannerComponent } from "@/components/pos/ScannerComponent";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
 
-type SortOption = "name" | "stock-asc" | "stock-desc" | "status-critical";
+type SortOption = "name" | "stock-asc" | "stock-desc" | "status-critical" | "price-asc" | "price-desc";
 
 export default function InventoryPage() {
   const firestore = useFirestore();
@@ -59,6 +60,10 @@ export default function InventoryPage() {
           return a.stock - b.stock;
         case "stock-desc":
           return b.stock - a.stock;
+        case "price-asc":
+          return a.price - b.price;
+        case "price-desc":
+          return b.price - a.price;
         case "status-critical":
           const aCritical = a.stock < 5 ? 0 : 1;
           const bCritical = b.stock < 5 ? 0 : 1;
@@ -119,6 +124,18 @@ export default function InventoryPage() {
     deleteDocumentNonBlocking(docRef);
     toast({ title: "Eliminado", description: "Producto eliminado correctamente." });
     setProductToDelete(null);
+  };
+
+  const toggleSort = (type: 'name' | 'stock' | 'price' | 'status') => {
+    if (type === 'name') {
+      setSortBy('name');
+    } else if (type === 'stock') {
+      setSortBy(sortBy === 'stock-asc' ? 'stock-desc' : 'stock-asc');
+    } else if (type === 'price') {
+      setSortBy(sortBy === 'price-asc' ? 'price-desc' : 'price-asc');
+    } else if (type === 'status') {
+      setSortBy('status-critical');
+    }
   };
 
   return (
@@ -188,6 +205,8 @@ export default function InventoryPage() {
                     <SelectItem value="status-critical">Stock Bajo Primero ⚠️</SelectItem>
                     <SelectItem value="stock-asc">Stock (Menor a Mayor)</SelectItem>
                     <SelectItem value="stock-desc">Stock (Mayor a Menor)</SelectItem>
+                    <SelectItem value="price-asc">Precio (Menor a Mayor)</SelectItem>
+                    <SelectItem value="price-desc">Precio (Mayor a Menor)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -200,11 +219,51 @@ export default function InventoryPage() {
               <TableHeader className="bg-slate-50/30">
                 <TableRow className="border-none hover:bg-transparent">
                   <TableHead className="font-black py-4 uppercase text-[10px] tracking-widest px-6">Código</TableHead>
-                  <TableHead className="font-black py-4 uppercase text-[10px] tracking-widest px-6">Nombre del Producto</TableHead>
+                  
+                  <TableHead 
+                    className="font-black py-4 uppercase text-[10px] tracking-widest px-6 cursor-pointer hover:text-primary transition-colors group"
+                    onClick={() => toggleSort('name')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Nombre del Producto
+                      {sortBy === 'name' && <ArrowDown className="w-3 h-3" />}
+                    </div>
+                  </TableHead>
+
                   <TableHead className="font-black py-4 uppercase text-[10px] tracking-widest px-6">Categoría</TableHead>
-                  <TableHead className="font-black py-4 uppercase text-[10px] tracking-widest px-6">Precio</TableHead>
-                  <TableHead className="font-black py-4 uppercase text-[10px] tracking-widest px-6 text-center">Stock</TableHead>
-                  <TableHead className="font-black py-4 uppercase text-[10px] tracking-widest px-6">Estado</TableHead>
+                  
+                  <TableHead 
+                    className="font-black py-4 uppercase text-[10px] tracking-widest px-6 cursor-pointer hover:text-primary transition-colors"
+                    onClick={() => toggleSort('price')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Precio
+                      {sortBy === 'price-asc' && <ArrowUp className="w-3 h-3" />}
+                      {sortBy === 'price-desc' && <ArrowDown className="w-3 h-3" />}
+                    </div>
+                  </TableHead>
+
+                  <TableHead 
+                    className="font-black py-4 uppercase text-[10px] tracking-widest px-6 text-center cursor-pointer hover:text-primary transition-colors"
+                    onClick={() => toggleSort('stock')}
+                  >
+                    <div className="flex items-center justify-center gap-1">
+                      Stock
+                      {sortBy === 'stock-asc' && <ArrowUp className="w-3 h-3" />}
+                      {sortBy === 'stock-desc' && <ArrowDown className="w-3 h-3" />}
+                    </div>
+                  </TableHead>
+
+                  <TableHead 
+                    className="font-black py-4 uppercase text-[10px] tracking-widest px-6 cursor-pointer hover:text-primary transition-colors"
+                    onClick={() => toggleSort('status')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Estado
+                      {sortBy === 'status-critical' && <AlertTriangle className="w-3 h-3" />}
+                    </div>
+                  </TableHead>
+
                   <TableHead className="font-black py-4 uppercase text-[10px] tracking-widest px-6 text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
@@ -229,7 +288,7 @@ export default function InventoryPage() {
                   </TableRow>
                 ) : (
                   processedProducts.map((p) => (
-                    <TableRow key={p.id} className={p.stock < 5 ? "bg-destructive/5 hover:bg-destructive/10" : "hover:bg-slate-50"}>
+                    <TableRow key={p.id} className={cn("transition-colors", p.stock < 5 ? "bg-destructive/5 hover:bg-destructive/10" : "hover:bg-slate-50")}>
                       <TableCell className="font-mono text-xs font-black text-primary px-6">{p.id}</TableCell>
                       <TableCell className="font-bold px-6">{p.name}</TableCell>
                       <TableCell className="px-6">
