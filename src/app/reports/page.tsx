@@ -5,7 +5,7 @@ import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import { collection, query, orderBy } from "firebase/firestore";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { PieChart, Pie, Tooltip, ResponsiveContainer, Cell, Legend } from "recharts";
-import { DollarSign, Package, TrendingUp, Calendar, ShoppingBag, ArrowUpRight, Loader2, ListFilter, Table as TableIcon, ChevronRight } from "lucide-react";
+import { DollarSign, Package, TrendingUp, Calendar, ShoppingBag, ArrowUpRight, Loader2, ListFilter, Table as TableIcon, CalendarDays, ChevronRight } from "lucide-react";
 import { useMemo, useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -60,7 +60,7 @@ export default function ReportsPage() {
     };
   }, [sales, mounted]);
 
-  // Agrupación de ventas por día para el desglose detallado
+  // Agrupación de ventas por día
   const dailyBreakdown = useMemo(() => {
     if (!sales || !mounted) return [];
     
@@ -89,7 +89,35 @@ export default function ReportsPage() {
     return Object.values(groups).sort((a, b) => b.date.getTime() - a.date.getTime());
   }, [sales, mounted]);
 
-  // Ranking completo de productos (sin límite de 10)
+  // Agrupación de ventas por mes
+  const monthlyBreakdown = useMemo(() => {
+    if (!sales || !mounted) return [];
+    
+    const groups: Record<string, { monthYear: string, date: Date, products: Record<string, { name: string, quantity: number, total: number }> }> = {};
+    
+    sales.forEach(sale => {
+      const d = sale.saleDateTime?.toDate?.() || new Date();
+      const monthKey = d.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+      
+      if (!groups[monthKey]) {
+        groups[monthKey] = { monthYear: monthKey, date: d, products: {} };
+      }
+      
+      if (sale.itemsSummary) {
+        sale.itemsSummary.forEach((item: any) => {
+          const prodKey = item.id === 'manual' ? `Manual: ${item.name}` : item.name;
+          if (!groups[monthKey].products[prodKey]) {
+            groups[monthKey].products[prodKey] = { name: prodKey, quantity: 0, total: 0 };
+          }
+          groups[monthKey].products[prodKey].quantity += item.quantity || 0;
+          groups[monthKey].products[prodKey].total += Math.round(item.price * item.quantity) || 0;
+        });
+      }
+    });
+
+    return Object.values(groups).sort((a, b) => b.date.getTime() - a.date.getTime());
+  }, [sales, mounted]);
+
   const allProductsRanking = useMemo(() => {
     if (!sales || !mounted) return [];
     const productStats: Record<string, { name: string, quantity: number, total: number }> = {};
@@ -125,15 +153,15 @@ export default function ReportsPage() {
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-black text-primary">Reportes de Venta</h1>
-          <p className="text-muted-foreground">Desglose detallado de qué y cuánto vendes cada día.</p>
+          <h1 className="text-3xl font-black text-primary">Análisis de Negocio</h1>
+          <p className="text-muted-foreground">Revisa el detalle completo de tus ventas históricas.</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card className="border-none shadow-lg bg-primary text-white">
           <CardHeader className="pb-2">
-            <CardDescription className="text-primary-foreground/70 font-black uppercase text-[10px] tracking-widest">Hoy</CardDescription>
+            <CardDescription className="text-primary-foreground/70 font-black uppercase text-[10px] tracking-widest">Recaudación Hoy</CardDescription>
             <CardTitle className="text-3xl font-black flex items-center justify-between">
               ${Math.round(stats.daily).toLocaleString('es-CL')}
               <DollarSign className="w-8 h-8 opacity-20" />
@@ -141,14 +169,14 @@ export default function ReportsPage() {
           </CardHeader>
           <CardContent>
             <div className="flex items-center text-xs text-primary-foreground/80 mt-2">
-              <ArrowUpRight className="w-4 h-4 mr-1" /> Ingresos de hoy
+              <ArrowUpRight className="w-4 h-4 mr-1" /> Ingresos del día actual
             </div>
           </CardContent>
         </Card>
 
         <Card className="border-none shadow-lg bg-accent text-white">
           <CardHeader className="pb-2">
-            <CardDescription className="text-accent-foreground/70 font-black uppercase text-[10px] tracking-widest">Este Mes</CardDescription>
+            <CardDescription className="text-accent-foreground/70 font-black uppercase text-[10px] tracking-widest">Recaudación Mes</CardDescription>
             <CardTitle className="text-3xl font-black flex items-center justify-between">
               ${Math.round(stats.monthly).toLocaleString('es-CL')}
               <TrendingUp className="w-8 h-8 opacity-20" />
@@ -156,14 +184,14 @@ export default function ReportsPage() {
           </CardHeader>
           <CardContent>
             <div className="flex items-center text-xs text-accent-foreground/80 mt-2">
-              <Calendar className="w-4 h-4 mr-1" /> Acumulado mensual
+              <Calendar className="w-4 h-4 mr-1" /> Acumulado del mes en curso
             </div>
           </CardContent>
         </Card>
 
         <Card className="border-none shadow-lg bg-white">
           <CardHeader className="pb-2">
-            <CardDescription className="text-muted-foreground font-black uppercase text-[10px] tracking-widest">Boletas</CardDescription>
+            <CardDescription className="text-muted-foreground font-black uppercase text-[10px] tracking-widest">Total Boletas</CardDescription>
             <CardTitle className="text-3xl font-black flex items-center justify-between text-primary">
               {stats.totalSales}
               <ShoppingBag className="w-8 h-8 text-primary/10" />
@@ -171,14 +199,14 @@ export default function ReportsPage() {
           </CardHeader>
           <CardContent>
             <div className="flex items-center text-xs text-slate-400 mt-2">
-              Total de ventas realizadas
+              Ventas totales en el sistema
             </div>
           </CardContent>
         </Card>
 
         <Card className="border-none shadow-lg bg-white">
           <CardHeader className="pb-2">
-            <CardDescription className="text-muted-foreground font-black uppercase text-[10px] tracking-widest">Unidades</CardDescription>
+            <CardDescription className="text-muted-foreground font-black uppercase text-[10px] tracking-widest">Artículos Vendidos</CardDescription>
             <CardTitle className="text-3xl font-black flex items-center justify-between text-accent">
               {stats.unitsSold}
               <Package className="w-8 h-8 text-accent/10" />
@@ -186,57 +214,63 @@ export default function ReportsPage() {
           </CardHeader>
           <CardContent>
             <div className="flex items-center text-xs text-slate-400 mt-2">
-              Artículos totales vendidos
+              Suma de todas las cantidades
             </div>
           </CardContent>
         </Card>
       </div>
 
       <Tabs defaultValue="diario" className="w-full">
-        <TabsList className="bg-white border p-1 rounded-2xl h-14 w-full md:w-auto grid grid-cols-2 md:inline-flex mb-6">
+        <TabsList className="bg-white border p-1 rounded-2xl h-14 w-full md:w-auto grid grid-cols-3 md:inline-flex mb-6 gap-2">
           <TabsTrigger value="diario" className="rounded-xl font-bold data-[state=active]:bg-primary data-[state=active]:text-white">
-            <TableIcon className="w-4 h-4 mr-2" /> Ventas por Día
+            <TableIcon className="w-4 h-4 mr-2" /> Diario
+          </TabsTrigger>
+          <TabsTrigger value="mensual" className="rounded-xl font-bold data-[state=active]:bg-primary data-[state=active]:text-white">
+            <CalendarDays className="w-4 h-4 mr-2" /> Mensual
           </TabsTrigger>
           <TabsTrigger value="ranking" className="rounded-xl font-bold data-[state=active]:bg-primary data-[state=active]:text-white">
-            <ListFilter className="w-4 h-4 mr-2" /> Ranking Completo
+            <ListFilter className="w-4 h-4 mr-2" /> Ranking
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="diario" className="animate-in slide-in-from-bottom-4 duration-500">
           <div className="space-y-4">
+            <div className="flex items-center justify-between px-2 mb-2">
+               <h2 className="text-xs font-black uppercase text-slate-400 tracking-[0.2em]">Desglose por Fecha</h2>
+            </div>
             {dailyBreakdown.length > 0 ? (
               dailyBreakdown.map((day, dayIdx) => (
-                <Card key={dayIdx} className="border-none shadow-md overflow-hidden rounded-2xl">
+                <Card key={dayIdx} className="border-none shadow-md overflow-hidden rounded-2xl transition-all hover:shadow-lg">
                   <Accordion type="single" collapsible className="w-full">
                     <AccordionItem value="day-detail" className="border-none">
-                      <AccordionTrigger className="hover:no-underline px-6 py-4 bg-slate-50/50">
+                      <AccordionTrigger className="hover:no-underline px-6 py-5 bg-slate-50/50">
                         <div className="flex items-center gap-4 text-left w-full">
-                          <div className="bg-primary/10 p-3 rounded-xl text-primary">
+                          <div className="bg-primary/10 p-3 rounded-xl text-primary shrink-0">
                             <Calendar className="w-5 h-5" />
                           </div>
-                          <div className="flex-1">
-                            <h3 className="font-black text-slate-800 uppercase tracking-tighter">
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-black text-slate-800 uppercase tracking-tighter truncate">
                               {day.date.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}
                             </h3>
                             <p className="text-xs text-muted-foreground font-bold">
-                              {Object.values(day.products).length} productos distintos vendidos
+                              {Object.values(day.products).length} productos distintos
                             </p>
                           </div>
-                          <div className="text-right mr-4">
-                            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Recaudado</p>
-                            <p className="text-lg font-black text-primary font-mono">
+                          <div className="text-right mr-4 shrink-0">
+                            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Día</p>
+                            <p className="text-xl font-black text-primary font-mono tracking-tighter">
                               ${Object.values(day.products).reduce((sum, p) => sum + p.total, 0).toLocaleString('es-CL')}
                             </p>
                           </div>
                         </div>
                       </AccordionTrigger>
-                      <AccordionContent className="p-0 border-t border-slate-100">
+                      <AccordionContent className="p-0 border-t border-slate-100 bg-white">
                         <div className="divide-y divide-slate-50">
                           {Object.values(day.products).sort((a, b) => b.quantity - a.quantity).map((prod, pIdx) => (
-                            <div key={pIdx} className="flex justify-between items-center p-4 px-8 hover:bg-slate-50 transition-colors">
+                            <div key={pIdx} className="flex justify-between items-center p-4 px-8 hover:bg-slate-50/50 transition-colors">
                               <div className="flex flex-col">
                                 <span className="font-bold text-slate-700">{prod.name}</span>
-                                <span className="text-[10px] font-black text-primary uppercase">Unidades: {prod.quantity}</span>
+                                <span className="text-[10px] font-black text-primary uppercase">Cantidad: {prod.quantity} uds.</span>
                               </div>
                               <div className="text-right font-black font-mono text-slate-600">
                                 ${prod.total.toLocaleString('es-CL')}
@@ -258,19 +292,78 @@ export default function ReportsPage() {
           </div>
         </TabsContent>
 
+        <TabsContent value="mensual" className="animate-in slide-in-from-bottom-4 duration-500">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between px-2 mb-2">
+               <h2 className="text-xs font-black uppercase text-slate-400 tracking-[0.2em]">Resumen por Mes</h2>
+            </div>
+            {monthlyBreakdown.length > 0 ? (
+              monthlyBreakdown.map((month, mIdx) => (
+                <Card key={mIdx} className="border-none shadow-md overflow-hidden rounded-2xl transition-all hover:shadow-lg">
+                  <Accordion type="single" collapsible className="w-full">
+                    <AccordionItem value="month-detail" className="border-none">
+                      <AccordionTrigger className="hover:no-underline px-6 py-6 bg-accent/5">
+                        <div className="flex items-center gap-4 text-left w-full">
+                          <div className="bg-accent/10 p-3 rounded-xl text-accent shrink-0">
+                            <CalendarDays className="w-5 h-5" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-black text-slate-800 uppercase tracking-tighter truncate text-lg">
+                              {month.monthYear}
+                            </h3>
+                            <p className="text-xs text-muted-foreground font-bold">
+                              Acumulado de todos los productos del mes
+                            </p>
+                          </div>
+                          <div className="text-right mr-4 shrink-0">
+                            <p className="text-[10px] font-black uppercase text-accent tracking-widest">Mensual</p>
+                            <p className="text-2xl font-black text-accent font-mono tracking-tighter">
+                              ${Object.values(month.products).reduce((sum, p) => sum + p.total, 0).toLocaleString('es-CL')}
+                            </p>
+                          </div>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="p-0 border-t border-slate-100 bg-white">
+                        <div className="divide-y divide-slate-50">
+                          {Object.values(month.products).sort((a, b) => b.quantity - a.quantity).map((prod, pIdx) => (
+                            <div key={pIdx} className="flex justify-between items-center p-4 px-8 hover:bg-slate-50/50 transition-colors">
+                              <div className="flex flex-col">
+                                <span className="font-bold text-slate-700">{prod.name}</span>
+                                <span className="text-[10px] font-black text-accent uppercase">Total Mes: {prod.quantity} uds.</span>
+                              </div>
+                              <div className="text-right font-black font-mono text-slate-600">
+                                ${prod.total.toLocaleString('es-CL')}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
+                </Card>
+              ))
+            ) : (
+              <div className="text-center py-20 bg-white rounded-3xl border-2 border-dashed">
+                <CalendarDays className="w-12 h-12 mx-auto mb-2 text-slate-200" />
+                <p className="text-slate-400 font-bold">No hay datos mensuales.</p>
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
         <TabsContent value="ranking" className="animate-in slide-in-from-bottom-4 duration-500">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <Card className="lg:col-span-7 border-none shadow-xl bg-white rounded-3xl">
-              <CardHeader className="p-8">
-                <CardTitle className="text-2xl font-black text-slate-800">Ranking General de Ventas</CardTitle>
-                <CardDescription>Lista completa de todos los productos vendidos, ordenados por unidades.</CardDescription>
+              <CardHeader className="p-8 pb-4">
+                <CardTitle className="text-2xl font-black text-slate-800">Ranking General</CardTitle>
+                <CardDescription>Productos con mayor rotación en el inventario.</CardDescription>
               </CardHeader>
               <CardContent className="px-8 pb-8">
                 <div className="space-y-4">
                   {allProductsRanking.length > 0 ? (
                     allProductsRanking.map((product, idx) => (
                       <div key={idx} className="flex items-center gap-4 group">
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-white shrink-0`} style={{ backgroundColor: COLORS[idx % COLORS.length] }}>
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-white shrink-0 shadow-sm`} style={{ backgroundColor: COLORS[idx % COLORS.length] }}>
                           {idx + 1}
                         </div>
                         <div className="flex-1 min-w-0">
@@ -293,7 +386,7 @@ export default function ReportsPage() {
                   ) : (
                     <div className="text-center py-20 opacity-30">
                       <Package className="w-12 h-12 mx-auto mb-2" />
-                      <p>No hay datos disponibles.</p>
+                      <p>Sin datos de venta aún.</p>
                     </div>
                   )}
                 </div>
@@ -301,9 +394,9 @@ export default function ReportsPage() {
             </Card>
 
             <Card className="lg:col-span-5 border-none shadow-xl bg-white rounded-3xl">
-              <CardHeader className="p-8">
-                <CardTitle className="text-2xl font-black text-slate-800">Distribución Monetaria</CardTitle>
-                <CardDescription>Aporte al ingreso total por producto (Top 10).</CardDescription>
+              <CardHeader className="p-8 pb-4">
+                <CardTitle className="text-2xl font-black text-slate-800">Aporte al Ingreso</CardTitle>
+                <CardDescription>Top 10 productos por recaudación monetaria.</CardDescription>
               </CardHeader>
               <CardContent className="h-[400px] flex flex-col items-center justify-center p-8">
                 {allProductsRanking.length > 0 ? (
@@ -332,7 +425,7 @@ export default function ReportsPage() {
                 ) : (
                   <div className="text-center text-muted-foreground p-8">
                     <Package className="w-12 h-12 mx-auto mb-2 opacity-20" />
-                    Sin datos suficientes.
+                    No hay suficientes ventas.
                   </div>
                 )}
               </CardContent>
