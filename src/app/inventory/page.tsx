@@ -10,7 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, FileSpreadsheet, Edit3, AlertTriangle, Plus, Trash2, Package, Scan, Loader2, Check, X, ArrowUpDown, Filter, Tag, ArrowUp, ArrowDown } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Search, FileSpreadsheet, Edit3, AlertTriangle, Plus, Trash2, Package, Scan, Loader2, Check, X, ArrowUpDown, Filter, Tag, ArrowUp, ArrowDown, ChevronDown, ListFilter } from "lucide-react";
 import { exportToExcel } from "@/lib/export";
 import { useToast } from "@/hooks/use-toast";
 import { ProductDialog } from "@/components/inventory/ProductDialog";
@@ -130,20 +131,6 @@ export default function InventoryPage() {
     setProductToDelete(null);
   };
 
-  const toggleSort = (type: 'name' | 'stock' | 'price' | 'status' | 'category') => {
-    if (type === 'name') {
-      setSortBy('name');
-    } else if (type === 'stock') {
-      setSortBy(sortBy === 'stock-asc' ? 'stock-desc' : 'stock-asc');
-    } else if (type === 'price') {
-      setSortBy(sortBy === 'price-asc' ? 'price-desc' : 'price-asc');
-    } else if (type === 'category') {
-      setSortBy(sortBy === 'category-asc' ? 'category-desc' : 'category-asc');
-    } else if (type === 'status') {
-      setSortBy('status-critical');
-    }
-  };
-
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -169,56 +156,14 @@ export default function InventoryPage() {
 
       <Card className="border-none shadow-xl rounded-3xl overflow-hidden">
         <CardHeader className="bg-slate-50/50 pb-6 border-b">
-          <div className="flex flex-col lg:flex-row items-center gap-4">
-            <div className="relative flex-1 w-full">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input 
-                className="pl-12 h-12 bg-white border-none shadow-inner rounded-2xl font-bold" 
-                placeholder="Buscar por nombre o código..." 
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-              />
-            </div>
-            
-            <div className="flex flex-col sm:flex-row items-center gap-2 w-full lg:w-auto">
-              <div className="bg-white p-1 rounded-2xl flex items-center border shadow-sm w-full lg:w-auto">
-                <div className="pl-3 text-muted-foreground">
-                  <Tag className="w-4 h-4" />
-                </div>
-                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                  <SelectTrigger className="border-none shadow-none focus:ring-0 w-full lg:w-[180px] font-bold h-10">
-                    <SelectValue placeholder="Categoría" />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-2xl border-none shadow-2xl">
-                    <SelectItem value="all">Todas las categorías</SelectItem>
-                    {categories.map(cat => (
-                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="bg-white p-1 rounded-2xl flex items-center border shadow-sm w-full lg:w-auto">
-                <div className="pl-3 text-muted-foreground">
-                  <ArrowUpDown className="w-4 h-4" />
-                </div>
-                <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
-                  <SelectTrigger className="border-none shadow-none focus:ring-0 w-full lg:w-[180px] font-bold h-10">
-                    <SelectValue placeholder="Ordenar por" />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-2xl border-none shadow-2xl">
-                    <SelectItem value="name">Alfabético (Nombre)</SelectItem>
-                    <SelectItem value="status-critical">Stock Bajo Primero ⚠️</SelectItem>
-                    <SelectItem value="stock-asc">Stock (Menor a Mayor)</SelectItem>
-                    <SelectItem value="stock-desc">Stock (Mayor a Menor)</SelectItem>
-                    <SelectItem value="price-asc">Precio (Menor a Mayor)</SelectItem>
-                    <SelectItem value="price-desc">Precio (Mayor a Menor)</SelectItem>
-                    <SelectItem value="category-asc">Categoría (A-Z)</SelectItem>
-                    <SelectItem value="category-desc">Categoría (Z-A)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+          <div className="relative w-full">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input 
+              className="pl-12 h-12 bg-white border-none shadow-inner rounded-2xl font-bold" 
+              placeholder="Buscar por nombre o código..." 
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+            />
           </div>
         </CardHeader>
         <CardContent className="p-0">
@@ -228,57 +173,105 @@ export default function InventoryPage() {
                 <TableRow className="border-none hover:bg-transparent">
                   <TableHead className="font-black py-4 uppercase text-[10px] tracking-widest px-6">Código</TableHead>
                   
-                  <TableHead 
-                    className="font-black py-4 uppercase text-[10px] tracking-widest px-6 cursor-pointer hover:text-primary transition-colors group"
-                    onClick={() => toggleSort('name')}
-                  >
-                    <div className="flex items-center gap-1">
-                      Nombre del Producto
-                      {sortBy === 'name' && <ArrowDown className="w-3 h-3" />}
-                    </div>
+                  {/* Nombre */}
+                  <TableHead className="px-6">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger className="flex items-center gap-2 font-black uppercase text-[10px] tracking-widest hover:text-primary transition-colors focus:outline-none">
+                        Nombre del Producto
+                        <ChevronDown className="w-3 h-3" />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="rounded-xl border-none shadow-2xl p-1">
+                        <DropdownMenuItem onClick={() => setSortBy("name")} className="rounded-lg font-bold text-xs py-2">
+                          <ArrowUp className="w-3 h-3 mr-2" /> Ordenar A-Z
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setSortBy("name")} className="rounded-lg font-bold text-xs py-2">
+                          <ArrowDown className="w-3 h-3 mr-2" /> Ordenar Z-A
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableHead>
 
-                  <TableHead 
-                    className="font-black py-4 uppercase text-[10px] tracking-widest px-6 cursor-pointer hover:text-primary transition-colors"
-                    onClick={() => toggleSort('category')}
-                  >
-                    <div className="flex items-center gap-1">
-                      Categoría
-                      {sortBy === 'category-asc' && <ArrowUp className="w-3 h-3" />}
-                      {sortBy === 'category-desc' && <ArrowDown className="w-3 h-3" />}
-                    </div>
+                  {/* Categoría */}
+                  <TableHead className="px-6">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger className="flex items-center gap-2 font-black uppercase text-[10px] tracking-widest hover:text-primary transition-colors focus:outline-none">
+                        Categoría
+                        <ChevronDown className="w-3 h-3" />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="rounded-xl border-none shadow-2xl p-1 max-h-64 overflow-y-auto">
+                        <DropdownMenuLabel className="text-[9px] font-black uppercase opacity-40 px-3 py-1.5 tracking-widest">Filtrar por</DropdownMenuLabel>
+                        <DropdownMenuItem onClick={() => setCategoryFilter("all")} className="rounded-lg font-bold text-xs py-2">
+                          <ListFilter className="w-3 h-3 mr-2" /> Todas
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        {categories.map(cat => (
+                          <DropdownMenuItem key={cat} onClick={() => setCategoryFilter(cat)} className="rounded-lg font-bold text-xs py-2">
+                            {cat}
+                          </DropdownMenuItem>
+                        ))}
+                        <DropdownMenuSeparator />
+                        <DropdownMenuLabel className="text-[9px] font-black uppercase opacity-40 px-3 py-1.5 tracking-widest">Ordenar por</DropdownMenuLabel>
+                        <DropdownMenuItem onClick={() => setSortBy("category-asc")} className="rounded-lg font-bold text-xs py-2">
+                          <ArrowUp className="w-3 h-3 mr-2" /> A-Z
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setSortBy("category-desc")} className="rounded-lg font-bold text-xs py-2">
+                          <ArrowDown className="w-3 h-3 mr-2" /> Z-A
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableHead>
                   
-                  <TableHead 
-                    className="font-black py-4 uppercase text-[10px] tracking-widest px-6 cursor-pointer hover:text-primary transition-colors"
-                    onClick={() => toggleSort('price')}
-                  >
-                    <div className="flex items-center gap-1">
-                      Precio
-                      {sortBy === 'price-asc' && <ArrowUp className="w-3 h-3" />}
-                      {sortBy === 'price-desc' && <ArrowDown className="w-3 h-3" />}
+                  {/* Precio */}
+                  <TableHead className="px-6">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger className="flex items-center gap-2 font-black uppercase text-[10px] tracking-widest hover:text-primary transition-colors focus:outline-none">
+                        Precio
+                        <ChevronDown className="w-3 h-3" />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="rounded-xl border-none shadow-2xl p-1">
+                        <DropdownMenuItem onClick={() => setSortBy("price-asc")} className="rounded-lg font-bold text-xs py-2">
+                          <ArrowUp className="w-3 h-3 mr-2" /> Menor a Mayor
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setSortBy("price-desc")} className="rounded-lg font-bold text-xs py-2">
+                          <ArrowDown className="w-3 h-3 mr-2" /> Mayor a Menor
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableHead>
+
+                  {/* Stock */}
+                  <TableHead className="px-6 text-center">
+                    <div className="flex justify-center">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger className="flex items-center gap-2 font-black uppercase text-[10px] tracking-widest hover:text-primary transition-colors focus:outline-none">
+                          Stock
+                          <ChevronDown className="w-3 h-3" />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="center" className="rounded-xl border-none shadow-2xl p-1">
+                          <DropdownMenuItem onClick={() => setSortBy("stock-asc")} className="rounded-lg font-bold text-xs py-2">
+                            <ArrowUp className="w-3 h-3 mr-2" /> Menor Stock
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setSortBy("stock-desc")} className="rounded-lg font-bold text-xs py-2">
+                            <ArrowDown className="w-3 h-3 mr-2" /> Mayor Stock
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </TableHead>
 
-                  <TableHead 
-                    className="font-black py-4 uppercase text-[10px] tracking-widest px-6 text-center cursor-pointer hover:text-primary transition-colors"
-                    onClick={() => toggleSort('stock')}
-                  >
-                    <div className="flex items-center justify-center gap-1">
-                      Stock
-                      {sortBy === 'stock-asc' && <ArrowUp className="w-3 h-3" />}
-                      {sortBy === 'stock-desc' && <ArrowDown className="w-3 h-3" />}
-                    </div>
-                  </TableHead>
-
-                  <TableHead 
-                    className="font-black py-4 uppercase text-[10px] tracking-widest px-6 cursor-pointer hover:text-primary transition-colors"
-                    onClick={() => toggleSort('status')}
-                  >
-                    <div className="flex items-center gap-1">
-                      Estado
-                      {sortBy === 'status-critical' && <AlertTriangle className="w-3 h-3 text-destructive" />}
-                    </div>
+                  {/* Estado */}
+                  <TableHead className="px-6">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger className="flex items-center gap-2 font-black uppercase text-[10px] tracking-widest hover:text-primary transition-colors focus:outline-none">
+                        Estado
+                        <ChevronDown className="w-3 h-3" />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="rounded-xl border-none shadow-2xl p-1">
+                        <DropdownMenuItem onClick={() => setSortBy("status-critical")} className="rounded-lg font-black text-xs py-2 text-destructive hover:text-destructive">
+                          <AlertTriangle className="w-3 h-3 mr-2" /> Ver Críticos Primero
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableHead>
 
                   <TableHead className="font-black py-4 uppercase text-[10px] tracking-widest px-6 text-right">Acciones</TableHead>
