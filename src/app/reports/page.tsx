@@ -6,26 +6,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { PieChart, Pie, Tooltip, ResponsiveContainer, Cell, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import { DollarSign, Package, TrendingUp, Calendar, ShoppingBag, ArrowUpRight, Loader2, ListFilter, Table as TableIcon, CalendarDays, ChevronRight, Clock, Tag, AlertTriangle, Trophy, CheckCircle2, Filter, ChevronDown } from "lucide-react";
 import { useMemo, useState, useEffect } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/tabs-fix"; // Assuming tabs are standard from UI
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-
-// Definición local de Tabs para evitar problemas de importación si no existiera un barril específico
-import * as TabsPrimitive from "@radix-ui/react-tabs"
-
-const TabsRoot = TabsPrimitive.Root
-const TabsList = React.forwardRef<React.ElementRef<typeof TabsPrimitive.List>, React.ComponentPropsWithoutRef<typeof TabsPrimitive.List>>(({ className, ...props }, ref) => (
-  <TabsPrimitive.List ref={ref} className={cn("inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground", className)} {...props} />
-))
-const TabsTrigger = React.forwardRef<React.ElementRef<typeof TabsPrimitive.Trigger>, React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger>>(({ className, ...props }, ref) => (
-  <TabsPrimitive.Trigger ref={ref} className={cn("inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm", className)} {...props} />
-))
-const TabsContent = React.forwardRef<React.ElementRef<typeof TabsPrimitive.Content>, React.ComponentPropsWithoutRef<typeof TabsPrimitive.Content>>(({ className, ...props }, ref) => (
-  <TabsPrimitive.Content ref={ref} className={cn("mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2", className)} {...props} />
-))
-
 import React from 'react';
 
 type DateFilter = "today" | "month" | "all";
@@ -50,7 +35,6 @@ export default function ReportsPage() {
   const { data: allSales, isLoading: isLoadingSales } = useCollection(salesQuery);
   const { data: allProducts, isLoading: isLoadingProducts } = useCollection(productsQuery);
 
-  // Filtrado de ventas por fecha
   const filteredSales = useMemo(() => {
     if (!allSales || !mounted) return [];
     const now = new Date();
@@ -63,7 +47,7 @@ export default function ReportsPage() {
       if (dateFilter === "month") {
         return saleDate.getMonth() === now.getMonth() && saleDate.getFullYear() === now.getFullYear();
       }
-      return true; // "all"
+      return true;
     });
   }, [allSales, dateFilter, mounted]);
 
@@ -98,7 +82,6 @@ export default function ReportsPage() {
       products: any[]
     }> = {};
     
-    // Agrupar productos por categoría para el desglose
     allProducts.forEach(p => {
       const cat = p.category || "General";
       const key = cat.toLowerCase().trim();
@@ -110,8 +93,6 @@ export default function ReportsPage() {
       stats[key].products.push(p);
     });
 
-    // Sumar ventas históricas (o filtradas) por categoría
-    // Aquí usamos filteredSales para que el gráfico de ingresos responda al filtro de fecha
     filteredSales.forEach(sale => {
       sale.itemsSummary?.forEach((item: any) => {
         const cat = item.category || "General";
@@ -215,7 +196,7 @@ export default function ReportsPage() {
         </Card>
       </div>
 
-      <TabsRoot defaultValue="categorias" className="w-full">
+      <Tabs defaultValue="categorias" className="w-full">
         <TabsList className="bg-white border p-1 rounded-2xl h-14 w-full md:w-auto grid grid-cols-2 md:inline-flex mb-8 gap-2 shadow-sm">
           <TabsTrigger value="categorias" className="rounded-xl font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-white">
             <Tag className="w-4 h-4 mr-2" /> Categorías y Desglose
@@ -402,7 +383,7 @@ export default function ReportsPage() {
             </Accordion>
           </div>
         </TabsContent>
-      </TabsRoot>
+      </Tabs>
     </div>
   );
 }
