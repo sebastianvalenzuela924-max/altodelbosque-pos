@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
@@ -5,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/componen
 import { Button } from "@/components/ui/button";
 import { ScannerComponent } from "@/components/pos/ScannerComponent";
 import { CalculatorComponent } from "@/components/pos/CalculatorComponent";
+import { QuickAddDialog } from "@/components/pos/QuickAddDialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Trash2, PlusCircle, MinusCircle, ShoppingCart, CheckCircle2, Scan, Calculator, Loader2, Clock, RotateCcw, Search, Plus, PackageSearch, Check } from "lucide-react";
@@ -53,7 +55,7 @@ function ProductSearchBox({
                 >
                   <div className="text-left">
                     <p className="font-bold text-slate-700 text-sm group-hover:text-primary transition-colors">{p.name}</p>
-                    <p className="text-[9px] font-mono text-slate-400 uppercase tracking-tighter">Stock: {p.stock}</p>
+                    <p className="text-[9px] font-mono text-slate-400 uppercase tracking-tighter">Stock: {p.stock} • {p.category || 'Sin categoría'}</p>
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="text-primary font-black text-sm">${Math.round(p.price).toLocaleString('es-CL')}</span>
@@ -91,6 +93,7 @@ export default function POSPage() {
   const [currentTime, setCurrentTime] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [pendingBarcode, setPendingBarcode] = useState<string | null>(null);
   const lastScanRef = useRef<{ code: string; time: number } | null>(null);
   const { toast } = useToast();
 
@@ -144,7 +147,8 @@ export default function POSPage() {
         id: product.id, 
         name: product.name, 
         price: product.price, 
-        quantity: 1 
+        quantity: 1,
+        category: product.category || "General"
       }];
     });
     
@@ -174,10 +178,11 @@ export default function POSPage() {
       setScanSuccess(true);
       setTimeout(() => setScanSuccess(false), 800);
     } else {
+      setPendingBarcode(cleanBarcode);
       toast({ 
         variant: "destructive",
-        title: "No en Inventario", 
-        description: `El código ${cleanBarcode} no existe.`
+        title: "Nuevo Código", 
+        description: `El código ${cleanBarcode} no está en inventario.`
       });
     }
 
@@ -218,14 +223,16 @@ export default function POSPage() {
           quantity: i.quantity, 
           price: i.price, 
           id: i.id,
-          type: 'product'
+          type: 'product',
+          category: i.category
         })),
         ...currentManualItems.map(m => ({
           name: m.description,
           quantity: 1,
           price: m.amount,
           id: 'manual',
-          type: 'manual'
+          type: 'manual',
+          category: 'Manual'
         }))
       ]
     };
@@ -241,7 +248,8 @@ export default function POSPage() {
         productName: item.name,
         unitPrice: Math.round(item.price),
         quantity: item.quantity,
-        subtotal: Math.round(item.price * item.quantity)
+        subtotal: Math.round(item.price * item.quantity),
+        category: item.category
       });
 
       const productRef = doc(firestore, "products", item.id);
@@ -374,6 +382,7 @@ export default function POSPage() {
                         <p className="font-bold text-sm sm:text-base text-slate-800 truncate">{item.name}</p>
                       </div>
                       <p className="text-primary font-black text-lg sm:text-xl mt-1 font-mono">${Math.round(item.price * item.quantity).toLocaleString('es-CL')}</p>
+                      <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">{item.category}</span>
                     </div>
                     <div className="flex items-center gap-1 sm:gap-4 shrink-0">
                       <div className="flex items-center bg-slate-100 rounded-full p-1 shadow-inner scale-90 sm:scale-100">
@@ -491,6 +500,19 @@ export default function POSPage() {
           </div>
         </section>
       </div>
+
+      {pendingBarcode && (
+        <QuickAddDialog 
+          barcode={pendingBarcode} 
+          open={!!pendingBarcode} 
+          onClose={() => setPendingBarcode(null)}
+          onAdded={(p) => {
+            handleAddItem(p);
+            setScanSuccess(true);
+            setTimeout(() => setScanSuccess(false), 800);
+          }}
+        />
+      )}
     </div>
   );
 }

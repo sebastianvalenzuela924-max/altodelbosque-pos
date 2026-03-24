@@ -1,14 +1,15 @@
+
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { quickProductRegistration } from "@/ai/flows/quick-product-registration";
-import { Sparkles, Loader2, Barcode, Save } from "lucide-react";
-import { useFirestore, setDocumentNonBlocking } from "@/firebase";
-import { doc } from "firebase/firestore";
+import { Sparkles, Loader2, Barcode, Save, Tag } from "lucide-react";
+import { useFirestore, setDocumentNonBlocking, useCollection, useMemoFirebase } from "@/firebase";
+import { doc, collection } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 
 export function QuickAddDialog({ 
@@ -26,16 +27,33 @@ export function QuickAddDialog({
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [stock, setStock] = useState("");
+  const [category, setCategory] = useState("");
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+
+  const productsQuery = useMemoFirebase(() => {
+    return collection(firestore, "products");
+  }, [firestore]);
+  
+  const { data: products } = useCollection(productsQuery);
+
+  const existingCategories = useMemo(() => {
+    if (!products) return [];
+    const cats = new Set(products.map(p => p.category || "General"));
+    return Array.from(cats).sort();
+  }, [products]);
 
   const handleAI = async () => {
     setLoading(true);
     try {
-      const result = await quickProductRegistration({ barcode });
+      const result = await quickProductRegistration({ 
+        barcode,
+        existingProductNames: products?.map(p => p.name).slice(0, 20)
+      });
       setName(result.suggestedName);
       setPrice(Math.round(result.suggestedPrice).toString());
-      toast({ title: "IA: Datos sugeridos", description: "El producto ha sido identificado." });
+      setCategory(result.suggestedCategory);
+      toast({ title: "IA: Datos sugeridos", description: "El producto ha sido identificado con éxito." });
     } catch (e) {
       toast({ title: "IA no disponible", description: "Completa los datos manualmente.", variant: "destructive" });
     } finally {
@@ -55,6 +73,7 @@ export function QuickAddDialog({
       name,
       price: Math.round(parseFloat(price)) || 0,
       stock: parseInt(stock) || 0,
+      category: category.trim() || "General"
     };
 
     setDocumentNonBlocking(docRef, data, { merge: true });
@@ -95,6 +114,28 @@ export function QuickAddDialog({
                 <Label htmlFor="name" className="font-bold text-slate-500">Nombre del Producto</Label>
                 <Input id="name" className="h-12 rounded-xl" value={name} onChange={e => setName(e.target.value)} placeholder="Ej: Coca Cola 350ml" />
             </div>
+
+            <div className="grid gap-2">
+                <Label htmlFor="quick-category" className="font-bold text-slate-500 flex items-center gap-2">
+                  <Tag className="w-3 h-3" /> Categoría
+                </Label>
+                <div className="relative">
+                  <Input 
+                    id="quick-category" 
+                    list="quick-category-suggestions"
+                    value={category} 
+                    className="h-12 rounded-xl"
+                    onChange={e => setCategory(e.target.value)} 
+                    placeholder="Escribe o elige categoría" 
+                  />
+                  <datalist id="quick-category-suggestions">
+                    {existingCategories.map((cat) => (
+                      <option key={cat} value={cat} />
+                    ))}
+                  </datalist>
+                </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
                 <Label htmlFor="price" className="font-bold text-slate-500">Precio ($)</Label>
