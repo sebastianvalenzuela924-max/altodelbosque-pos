@@ -8,7 +8,7 @@ import { ScannerComponent } from "@/components/pos/ScannerComponent";
 import { CalculatorComponent } from "@/components/pos/CalculatorComponent";
 import { QuickAddDialog } from "@/components/pos/QuickAddDialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Trash2, PlusCircle, MinusCircle, ShoppingCart, CheckCircle2, Scan, Calculator } from "lucide-react";
+import { Trash2, PlusCircle, MinusCircle, ShoppingCart, CheckCircle2, Scan, Calculator, Loader2 } from "lucide-react";
 import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { doc, collection, serverTimestamp, increment, query } from "firebase/firestore";
@@ -29,7 +29,7 @@ export default function POSPage() {
     return query(collection(firestore, "products"));
   }, [firestore]);
   
-  const { data: allProducts } = useCollection(productsQuery);
+  const { data: allProducts, isLoading: isLoadingInventory } = useCollection(productsQuery);
 
   useEffect(() => {
     setMounted(true);
@@ -44,6 +44,12 @@ export default function POSPage() {
   const handleScan = (barcode: string) => {
     const cleanBarcode = barcode.trim();
     
+    // Si el inventario aún no carga, evitamos acciones erróneas
+    if (isLoadingInventory) {
+      toast({ title: "Sincronizando...", description: "Espera a que cargue el inventario." });
+      return;
+    }
+
     // 1. Verificar si ya está en el carrito
     const existingInCart = items.find(i => i.id === cleanBarcode);
     if (existingInCart) {
@@ -52,10 +58,11 @@ export default function POSPage() {
       return;
     }
 
-    // 2. Buscar en el inventario cargado
+    // 2. Buscar en el inventario cargado por ID (Barcode)
     const product = allProducts?.find(p => p.id === cleanBarcode);
 
     if (product) {
+      // PRODUCTO ENCONTRADO: Se agrega directamente al carrito
       setItems(prev => [...prev, { 
         id: cleanBarcode, 
         name: product.name, 
@@ -64,7 +71,7 @@ export default function POSPage() {
       }]);
       toast({ title: "Producto Agregado", description: product.name });
     } else {
-      // 3. Si no existe, abrir diálogo de registro rápido
+      // PRODUCTO NO ENCONTRADO: Solo aquí se abre el registro rápido
       setQuickAddBarcode(cleanBarcode);
     }
   };
@@ -114,6 +121,7 @@ export default function POSPage() {
 
     addDocumentNonBlocking(salesRef, saleData);
 
+    // Procesar cada item para registrar detalle y descontar stock
     items.forEach(item => {
       const itemRef = collection(doc(firestore, "sales", saleId), "productSaleItems");
       addDocumentNonBlocking(itemRef, {
@@ -126,6 +134,7 @@ export default function POSPage() {
         subtotal: item.price * item.quantity
       });
 
+      // Descontar del inventario
       const productRef = doc(firestore, "products", item.id);
       updateDocumentNonBlocking(productRef, {
         stock: increment(-item.quantity)
@@ -169,7 +178,16 @@ export default function POSPage() {
             </div>
           </CardHeader>
 
-          <CardContent className="flex-1 p-0 bg-slate-50">
+          <CardContent className="flex-1 p-0 bg-slate-50 relative">
+            {isLoadingInventory && (
+              <div className="absolute inset-0 z-10 bg-white/60 backdrop-blur-sm flex items-center justify-center">
+                <div className="flex flex-col items-center gap-2">
+                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                  <p className="text-xs font-black text-primary uppercase tracking-widest">Cargando Inventario...</p>
+                </div>
+              </div>
+            )}
+            
             <ScrollArea className="h-[450px]">
               <div className="divide-y divide-slate-200">
                 {items.length === 0 && manualProducts.length === 0 && (
@@ -245,7 +263,7 @@ export default function POSPage() {
                 isProcessing ? "bg-slate-400 cursor-not-allowed" : "bg-primary hover:bg-primary/90 shadow-primary/20"
               )}
               onClick={handleFinalize}
-              disabled={(items.length === 0 && manualProducts.length === 0) || isProcessing}
+              disabled={(items.length === 0 && manualProducts.length === 0) || isProcessing || isLoadingInventory}
             >
               <CheckCircle2 className="w-10 h-10" />
               {isProcessing ? "PROCESANDO..." : "FINALIZAR COBRO"}
