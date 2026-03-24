@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useRef, useState } from "react";
@@ -90,8 +91,8 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
           config,
           (decodedText) => {
             const now = Date.now();
-            // Evitar duplicados inmediatos (cooldown de 2 segundos para el mismo código)
-            if (decodedText === lastDetectedText.current && (now - lastDetectedTime.current < 2000)) {
+            // Evitar duplicados inmediatos muy rápidos (cooldown reducido a 1s para mejor respuesta)
+            if (decodedText === lastDetectedText.current && (now - lastDetectedTime.current < 1000)) {
               return;
             }
             lastDetectedText.current = decodedText;
@@ -138,9 +139,9 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
             <Scan className="w-10 h-10 text-primary" />
           </div>
           <div className="space-y-1">
-            <h3 className="text-white font-bold text-lg">Escáner HD con Zoom</h3>
+            <h3 className="text-white font-bold text-lg">Escáner HD</h3>
             <p className="text-slate-400 text-xs px-4">
-              Mantén el código a unos 20-25 cm. <br/> El zoom automático ayudará a enfocar.
+              Mantén el código a unos 20 cm. <br/> Listo para detectar productos.
             </p>
           </div>
           
@@ -179,7 +180,7 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
              </div>
              <div className="absolute bottom-16 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-md px-4 py-2 rounded-full flex items-center gap-2 text-white text-[10px] font-black uppercase tracking-widest border border-white/20">
                 <ZoomIn className="w-3 h-3 text-primary" />
-                Zoom 2x Aplicado
+                Zoom Inteligente
              </div>
           </div>
           
