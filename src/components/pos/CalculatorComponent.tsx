@@ -18,48 +18,48 @@ export function CalculatorComponent({
   onFinalize,
   onClearCart
 }: CalculatorComponentProps) {
+  // El visor de la calculadora (lo que ve el usuario)
   const [display, setDisplay] = useState(Math.round(baseValue).toString());
+  // La ecuación pendiente (ej: "1000 + ")
   const [equation, setEquation] = useState("");
+  // Indica si el próximo número pulsado debe limpiar el visor (después de un operador o resultado)
   const [isReset, setIsReset] = useState(true);
-  const [startedFromBase, setStartedFromBase] = useState(true);
   
+  // Estado para el modo efectivo (vuelto)
   const [isCashMode, setIsCashMode] = useState(false);
   const [cashReceived, setCashReceived] = useState("");
 
-  // Referencia para trackear cambios en el valor base (productos en caja)
-  const prevBaseRef = useRef(baseValue);
+  // Referencia persistente para trackear el valor total de los productos en la caja
+  const lastBaseRef = useRef(Math.round(baseValue));
 
-  // EFECTO DE SINCRONIZACIÓN CRÍTICO:
-  // Si el valor de la caja cambia (se escanea algo nuevo), actualizamos el visor automáticamente
+  /**
+   * SINCRONIZACIÓN CRÍTICA:
+   * Este efecto detecta cuando el total de productos en la caja cambia (escaneo, eliminación, etc.)
+   * y aplica esa misma diferencia al visor de la calculadora de forma reactiva.
+   */
   useEffect(() => {
     const currentBase = Math.round(baseValue);
-    const diff = currentBase - prevBaseRef.current;
+    const diff = currentBase - lastBaseRef.current;
     
     if (diff !== 0) {
       setDisplay(prev => {
         const currentDisplayVal = parseFloat(prev || "0");
+        // Sumamos (o restamos) la diferencia al valor actual que ve el usuario
         const newValue = Math.round(currentDisplayVal + diff);
         return newValue.toString();
       });
       
-      // Si estábamos en medio de una ecuación, la cerramos para que el nuevo total
-      // sea el punto de partida estable.
-      if (equation !== "") {
-        setEquation("");
-        setIsReset(true);
-      }
-      
-      prevBaseRef.current = currentBase;
+      // Si el cambio viene de la caja, solemos querer que el próximo clic numérico sea nuevo
+      setIsReset(true);
+      // Actualizamos la referencia para la siguiente comparación
+      lastBaseRef.current = currentBase;
     }
-  }, [baseValue, equation]);
+  }, [baseValue]);
 
-  // Asegura que el visor inicialice con el valor base si no se ha tocado nada
+  // Al montar, aseguramos que la referencia inicial coincida con el prop
   useEffect(() => {
-    if (isReset && !isCashMode && equation === "" && startedFromBase) {
-      setDisplay(Math.round(baseValue).toString());
-      prevBaseRef.current = Math.round(baseValue);
-    }
-  }, [baseValue, isReset, isCashMode, equation, startedFromBase]);
+    lastBaseRef.current = Math.round(baseValue);
+  }, []);
 
   const calculateResult = (forceEquation?: string) => {
     const currentVal = isReset ? "" : display;
@@ -69,6 +69,7 @@ export function CalculatorComponent({
     
     try {
       let sanitized = eqToEval.trim();
+      // Limpiamos operadores sueltos al final antes de evaluar
       while (sanitized.match(/[+\-×÷]\s*$/)) {
         sanitized = sanitized.replace(/[+\-×÷]\s*$/, "").trim();
       }
@@ -93,7 +94,6 @@ export function CalculatorComponent({
     if (isReset) {
       setDisplay(n);
       setIsReset(false);
-      if (equation === "") setStartedFromBase(false);
     } else {
       setDisplay(display === "0" ? n : display + n);
     }
@@ -103,7 +103,8 @@ export function CalculatorComponent({
     if (isCashMode) return;
     const currentVal = display || "0";
 
-    if (isReset && equation !== "" && !startedFromBase) {
+    if (isReset && equation !== "") {
+      // Si pulsamos un operador justo después de otro, lo cambiamos
       setEquation(prev => {
         const parts = prev.trim().split(" ");
         if (parts.length > 1) {
@@ -123,7 +124,6 @@ export function CalculatorComponent({
     }
     
     setIsReset(true);
-    setStartedFromBase(false);
   };
 
   const handleCalculate = () => {
@@ -132,7 +132,6 @@ export function CalculatorComponent({
     setDisplay(result.toString());
     setEquation("");
     setIsReset(true);
-    setStartedFromBase(false);
   };
 
   const clear = () => {
@@ -144,21 +143,20 @@ export function CalculatorComponent({
     setDisplay(currentBase.toString());
     setEquation("");
     setIsReset(true);
-    setStartedFromBase(true);
-    prevBaseRef.current = currentBase;
+    lastBaseRef.current = currentBase;
   };
 
   const handleFinalizeNormal = () => {
     const amount = calculateResult();
     if (!isNaN(amount)) {
       onFinalize(amount);
+      // Reset completo después de cobrar
       setDisplay("0");
       setEquation("");
       setIsReset(true);
       setIsCashMode(false);
       setCashReceived("");
-      setStartedFromBase(false);
-      prevBaseRef.current = 0;
+      lastBaseRef.current = 0;
     }
   };
 
@@ -175,31 +173,31 @@ export function CalculatorComponent({
   const totalToPay = calculateResult();
   const receivedAmount = parseInt(cashReceived || "0");
   const changeAmount = receivedAmount > 0 ? receivedAmount - totalToPay : 0;
-  const isShowingBaseValue = startedFromBase && equation === "" && isReset;
+  const isNeutral = equation === "" && isReset && parseInt(display) === Math.round(baseValue);
 
   return (
     <div className="space-y-3 md:space-y-4">
         {/* Pantalla Unificada del Total */}
         <div className={cn(
           "rounded-2xl p-3 md:p-4 shadow-inner border text-right transition-all duration-300 min-h-[90px] md:min-h-[120px] flex flex-col justify-center",
-          isCashMode ? "bg-green-50 border-green-200" : isShowingBaseValue ? "bg-primary/5 border-primary/20" : "bg-slate-50 border-slate-200"
+          isCashMode ? "bg-green-50 border-green-200" : isNeutral ? "bg-primary/5 border-primary/20" : "bg-slate-50 border-slate-200"
         )}>
           {!isCashMode ? (
             <>
               <div className="flex justify-between items-center mb-0.5 md:mb-1">
                 <span className="text-[9px] md:text-[10px] font-black uppercase text-slate-400 tracking-widest">
-                  {isShowingBaseValue ? "Total en Caja" : equation ? "Calculando..." : "Monto Final"}
+                  {isNeutral ? "Total en Caja" : equation ? "Calculando..." : "Monto Final"}
                 </span>
                 <span className="text-[8px] md:text-[9px] font-mono text-slate-300 uppercase tracking-tighter">Terminal AltodelBosque</span>
               </div>
               
               <div className="text-[10px] font-mono text-slate-400 mb-0.5 overflow-hidden truncate h-3 md:h-4">
-                {equation || (isShowingBaseValue ? "Sincronizado con productos" : "Ajuste manual activo")}
+                {equation || (isNeutral ? "Sincronizado con productos" : "Ajuste manual activo")}
               </div>
 
               <div className={cn(
                 "text-3xl md:text-5xl font-black font-mono tracking-tighter transition-colors",
-                isShowingBaseValue ? "text-primary" : "text-slate-800"
+                isNeutral ? "text-primary" : "text-slate-800"
               )}>
                 ${parseInt(display || "0").toLocaleString('es-CL')}
               </div>
