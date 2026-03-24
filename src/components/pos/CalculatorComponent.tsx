@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus, Minus, X, Divide, CheckCircle2, RotateCcw, Banknote, Loader2, Equal } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -26,9 +26,38 @@ export function CalculatorComponent({
   const [isCashMode, setIsCashMode] = useState(false);
   const [cashReceived, setCashReceived] = useState("");
 
+  // Referencia para trackear cambios en el valor base (productos en caja)
+  const prevBaseRef = useRef(baseValue);
+
+  // EFECTO DE SINCRONIZACIÓN CRÍTICO:
+  // Si el valor de la caja cambia (se escanea algo nuevo), actualizamos el visor automáticamente
+  useEffect(() => {
+    const currentBase = Math.round(baseValue);
+    const diff = currentBase - prevBaseRef.current;
+    
+    if (diff !== 0) {
+      setDisplay(prev => {
+        const currentDisplayVal = parseFloat(prev || "0");
+        const newValue = Math.round(currentDisplayVal + diff);
+        return newValue.toString();
+      });
+      
+      // Si estábamos en medio de una ecuación, la cerramos para que el nuevo total
+      // sea el punto de partida estable.
+      if (equation !== "") {
+        setEquation("");
+        setIsReset(true);
+      }
+      
+      prevBaseRef.current = currentBase;
+    }
+  }, [baseValue, equation]);
+
+  // Asegura que el visor inicialice con el valor base si no se ha tocado nada
   useEffect(() => {
     if (isReset && !isCashMode && equation === "" && startedFromBase) {
       setDisplay(Math.round(baseValue).toString());
+      prevBaseRef.current = Math.round(baseValue);
     }
   }, [baseValue, isReset, isCashMode, equation, startedFromBase]);
 
@@ -111,10 +140,12 @@ export function CalculatorComponent({
       setCashReceived("");
       return;
     }
-    setDisplay(Math.round(baseValue).toString());
+    const currentBase = Math.round(baseValue);
+    setDisplay(currentBase.toString());
     setEquation("");
     setIsReset(true);
     setStartedFromBase(true);
+    prevBaseRef.current = currentBase;
   };
 
   const handleFinalizeNormal = () => {
@@ -127,6 +158,7 @@ export function CalculatorComponent({
       setIsCashMode(false);
       setCashReceived("");
       setStartedFromBase(false);
+      prevBaseRef.current = 0;
     }
   };
 
@@ -156,13 +188,13 @@ export function CalculatorComponent({
             <>
               <div className="flex justify-between items-center mb-0.5 md:mb-1">
                 <span className="text-[9px] md:text-[10px] font-black uppercase text-slate-400 tracking-widest">
-                  {isShowingBaseValue ? "Monto en Caja" : equation ? "Calculando..." : "Monto Final"}
+                  {isShowingBaseValue ? "Total en Caja" : equation ? "Calculando..." : "Monto Final"}
                 </span>
                 <span className="text-[8px] md:text-[9px] font-mono text-slate-300 uppercase tracking-tighter">Terminal AltodelBosque</span>
               </div>
               
               <div className="text-[10px] font-mono text-slate-400 mb-0.5 overflow-hidden truncate h-3 md:h-4">
-                {equation || (isShowingBaseValue ? "Suma de productos" : "")}
+                {equation || (isShowingBaseValue ? "Sincronizado con productos" : "Ajuste manual activo")}
               </div>
 
               <div className={cn(
