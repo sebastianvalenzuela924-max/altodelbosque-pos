@@ -6,9 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/componen
 import { Button } from "@/components/ui/button";
 import { ScannerComponent } from "@/components/pos/ScannerComponent";
 import { CalculatorComponent } from "@/components/pos/CalculatorComponent";
-import { QuickAddDialog } from "@/components/pos/QuickAddDialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Trash2, PlusCircle, MinusCircle, ShoppingCart, CheckCircle2, Scan, Calculator, Loader2 } from "lucide-react";
+import { Trash2, PlusCircle, MinusCircle, ShoppingCart, CheckCircle2, Scan, Calculator, Loader2, AlertCircle } from "lucide-react";
 import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { doc, collection, serverTimestamp, increment, query } from "firebase/firestore";
@@ -18,25 +17,26 @@ export default function POSPage() {
   const firestore = useFirestore();
   const [items, setItems] = useState<any[]>([]);
   const [manualProducts, setManualProducts] = useState<any[]>([]);
-  const [quickAddBarcode, setQuickAddBarcode] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentTime, setCurrentTime] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
   const { toast } = useToast();
 
-  // Suscribirse a todos los productos para comparación instantánea local
+  // Sincronización en tiempo real del inventario completo para reconocimiento instantáneo
   const productsQuery = useMemoFirebase(() => {
     return query(collection(firestore, "products"));
   }, [firestore]);
   
   const { data: allProducts, isLoading: isLoadingInventory } = useCollection(productsQuery);
 
-  // Crear un mapa para búsquedas O(1) ultra rápidas y precisas
+  // Mapa de búsqueda O(1) para reconocimiento ultra-rápido por código de barras
   const productMap = useMemo(() => {
     const map = new Map();
     if (allProducts) {
       allProducts.forEach(p => {
-        map.set(p.id.toString().trim(), p);
+        // Aseguramos que la clave sea un string limpio para la comparación
+        const key = p.id.toString().trim();
+        map.set(key, p);
       });
     }
     return map;
@@ -56,13 +56,17 @@ export default function POSPage() {
     const cleanBarcode = barcode.toString().trim();
     if (!cleanBarcode) return;
     
-    // Si el inventario aún no carga, evitamos acciones que puedan abrir el diálogo de "Nuevo" erróneamente
+    // Verificamos si el inventario está disponible
     if (isLoadingInventory && productMap.size === 0) {
-      toast({ title: "Sincronizando...", description: "Espera un segundo a que cargue el inventario." });
+      toast({ 
+        title: "Sincronizando...", 
+        description: "El inventario se está cargando. Intenta de nuevo en un segundo.",
+        variant: "destructive"
+      });
       return;
     }
 
-    // 1. Verificar si ya está en el carrito para solo sumar cantidad
+    // 1. Si ya está en el carrito, simplemente incrementamos la cantidad
     const existingInCart = items.find(i => i.id === cleanBarcode);
     if (existingInCart) {
       updateQuantity(cleanBarcode, 1);
@@ -70,26 +74,25 @@ export default function POSPage() {
       return;
     }
 
-    // 2. Buscar en el Mapa de Inventario (Búsqueda exacta)
+    // 2. BUSCADOR: Intentamos reconocer el producto en el inventario
     const product = productMap.get(cleanBarcode);
 
     if (product) {
-      // PRODUCTO ENCONTRADO: Se agrega directamente al carrito
+      // PRODUCTO RECONOCIDO: Se añade directamente a la caja registradora
       setItems(prev => [...prev, { 
         id: cleanBarcode, 
         name: product.name, 
         price: product.price, 
         quantity: 1 
       }]);
-      toast({ title: "Producto Agregado", description: product.name });
+      toast({ title: "Producto Añadido", description: `${product.name} - $${product.price.toFixed(2)}` });
     } else {
-      // PRODUCTO NO ENCONTRADO: Solo aquí se abre el registro rápido
-      // Bloqueamos la apertura si el mapa está vacío por error de carga
-      if (allProducts && allProducts.length > 0) {
-        setQuickAddBarcode(cleanBarcode);
-      } else {
-        toast({ title: "Cargando datos...", description: "Reintentando conexión con inventario." });
-      }
+      // PRODUCTO NO RECONOCIDO: No permitimos añadir. Informamos al usuario.
+      toast({ 
+        variant: "destructive",
+        title: "Producto No Registrado", 
+        description: `El código ${cleanBarcode} no existe en el inventario. Regístralo primero en la sección de Inventario.`
+      });
     }
   };
 
@@ -138,7 +141,7 @@ export default function POSPage() {
 
     addDocumentNonBlocking(salesRef, saleData);
 
-    // Procesar cada item para registrar detalle y descontar stock real
+    // Procesamos cada item para el historial y descuento real de stock
     items.forEach(item => {
       const itemRef = collection(doc(firestore, "sales", saleId), "productSaleItems");
       addDocumentNonBlocking(itemRef, {
@@ -151,7 +154,7 @@ export default function POSPage() {
         subtotal: item.price * item.quantity
       });
 
-      // DESCUENTO DE INVENTARIO: Se resta la cantidad vendida del stock actual
+      // ACTUALIZACIÓN DE STOCK: Descontamos las unidades vendidas
       const productRef = doc(firestore, "products", item.id);
       updateDocumentNonBlocking(productRef, {
         stock: increment(-item.quantity)
@@ -168,13 +171,15 @@ export default function POSPage() {
       });
     });
 
-    toast({ title: "Venta Procesada", description: "La transacción se ha registrado y el stock se ha actualizado." });
+    toast({ title: "Venta Exitosa", description: "Venta registrada y stock actualizado." });
     setItems([]);
     setManualProducts([]);
     setIsProcessing(false);
   };
 
-  if (!mounted) return null;
+  if (!mounted) {
+    return <div className="min-h-screen bg-background" />;
+  }
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in fade-in duration-500">
@@ -187,7 +192,7 @@ export default function POSPage() {
                 Caja Registradora
               </CardTitle>
               <div className="flex flex-col items-end">
-                <span className="text-xs uppercase font-bold opacity-70">Sesión Activa</span>
+                <span className="text-xs uppercase font-bold opacity-70">Terminal Activo</span>
                 <span className="text-sm font-mono tracking-widest">
                   {currentTime || "--:--"}
                 </span>
@@ -200,7 +205,7 @@ export default function POSPage() {
               <div className="absolute inset-0 z-10 bg-white/60 backdrop-blur-sm flex items-center justify-center">
                 <div className="flex flex-col items-center gap-2">
                   <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                  <p className="text-xs font-black text-primary uppercase tracking-widest">Sincronizando Inventario...</p>
+                  <p className="text-xs font-black text-primary uppercase tracking-widest">Sincronizando Productos...</p>
                 </div>
               </div>
             )}
@@ -208,13 +213,13 @@ export default function POSPage() {
             <ScrollArea className="h-[450px]">
               <div className="divide-y divide-slate-200">
                 {items.length === 0 && manualProducts.length === 0 && (
-                  <div className="flex flex-col items-center justify-center py-20 px-6 text-center space-y-4">
+                  <div className="flex flex-col items-center justify-center py-24 px-6 text-center space-y-4">
                     <div className="w-24 h-24 bg-slate-100 rounded-full flex items-center justify-center text-slate-300">
                       <ShoppingCart className="w-12 h-12" />
                     </div>
                     <div>
-                      <h3 className="text-lg font-bold text-slate-400 uppercase tracking-wider">Listo para vender</h3>
-                      <p className="text-slate-400 text-sm">Escanea códigos de barras o usa la calculadora.</p>
+                      <h3 className="text-lg font-bold text-slate-400 uppercase tracking-wider">Esperando Escaneo</h3>
+                      <p className="text-slate-400 text-sm">Escanea el código de barras de un producto registrado.</p>
                     </div>
                   </div>
                 )}
@@ -226,7 +231,6 @@ export default function POSPage() {
                         <span className="bg-primary/10 text-primary text-[10px] font-black px-1.5 py-0.5 rounded uppercase">EAN</span>
                         <p className="font-bold text-lg text-slate-800 line-clamp-1">{item.name}</p>
                       </div>
-                      <p className="text-xs text-slate-400 font-mono tracking-tighter">{item.id}</p>
                       <p className="text-primary font-black text-xl mt-1 font-mono">${(item.price * item.quantity).toFixed(2)}</p>
                     </div>
                     <div className="flex items-center gap-2 md:gap-4">
@@ -251,7 +255,7 @@ export default function POSPage() {
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <span className="bg-accent/10 text-accent text-[10px] font-black px-1.5 py-0.5 rounded uppercase">Manual</span>
-                        <p className="font-bold text-lg text-slate-800">Ingreso Manual</p>
+                        <p className="font-bold text-lg text-slate-800">Monto Ingresado</p>
                       </div>
                       <p className="text-accent font-black text-xl mt-1 font-mono">${item.amount.toFixed(2)}</p>
                     </div>
@@ -269,7 +273,7 @@ export default function POSPage() {
           <CardFooter className="flex flex-col gap-6 bg-white border-t p-8">
             <div className="w-full flex justify-between items-end">
               <div className="text-right w-full">
-                <p className="text-xs font-black uppercase text-primary tracking-widest">Total General</p>
+                <p className="text-xs font-black uppercase text-primary tracking-widest">Total a Cobrar</p>
                 <p className="text-6xl font-black text-primary font-mono tracking-tighter leading-none">${total.toFixed(2)}</p>
               </div>
             </div>
@@ -291,33 +295,26 @@ export default function POSPage() {
 
       <div className="lg:col-span-5 flex flex-col gap-6">
         <section className="space-y-4">
-          <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 px-1">
-            <Scan className="w-4 h-4" /> Escáner de Venta
-          </h3>
+          <div className="flex items-center justify-between px-1">
+            <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+              <Scan className="w-4 h-4" /> Escáner de Productos
+            </h3>
+            {items.length > 0 && (
+              <span className="text-[10px] font-bold text-primary animate-pulse">LISTO PARA COBRAR</span>
+            )}
+          </div>
           <ScannerComponent onScan={handleScan} />
         </section>
 
         <section className="space-y-4">
           <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 px-1">
-            <Calculator className="w-4 h-4" /> Calculadora POS
+            <Calculator className="w-4 h-4" /> Calculadora de Montos
           </h3>
           <div className="bg-white rounded-3xl p-6 shadow-xl shadow-slate-200/50">
             <CalculatorComponent onAddManual={addManual} />
           </div>
         </section>
       </div>
-
-      {quickAddBarcode && (
-        <QuickAddDialog 
-          barcode={quickAddBarcode} 
-          open={!!quickAddBarcode} 
-          onClose={() => setQuickAddBarcode(null)}
-          onAdded={(p) => {
-            setItems(prev => [...prev, { id: p.id, name: p.name, price: p.price, quantity: 1 }]);
-            toast({ title: "Registrado y Agregado", description: p.name });
-          }}
-        />
-      )}
     </div>
   );
 }
