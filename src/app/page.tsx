@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
@@ -145,7 +144,6 @@ export default function POSPage() {
     });
     
     setScanSuccess(true);
-    // Mayor tiempo de feedback visual y bloqueo para evitar duplicados
     setTimeout(() => setScanSuccess(false), 800);
   };
 
@@ -154,7 +152,6 @@ export default function POSPage() {
     if (!cleanBarcode || isLoadingInventory || isScanLocked) return;
 
     const now = Date.now();
-    // Debounce aumentado a 2 segundos para evitar duplicados accidentales del mismo código
     if (lastScanRef.current && lastScanRef.current.code === cleanBarcode && (now - lastScanRef.current.time < 2000)) {
       return;
     }
@@ -164,9 +161,9 @@ export default function POSPage() {
     const product = productMap.get(cleanBarcode);
 
     if (product) {
-      setIsScanLocked(true); // Bloqueo temporal para procesar
+      setIsScanLocked(true);
       handleAddItem(product);
-      setTimeout(() => setIsScanLocked(false), 1000); // Desbloqueo tras 1 segundo
+      setTimeout(() => setIsScanLocked(false), 1000);
     } else {
       setIsScanLocked(true);
       toast({ 
@@ -335,18 +332,18 @@ export default function POSPage() {
       </div>
 
       <div className="lg:col-span-7 flex flex-col gap-6">
-        <Card className="flex-1 flex flex-col border-none shadow-2xl bg-white overflow-hidden rounded-3xl min-h-[700px]">
-          <CardHeader className="bg-primary text-white py-4 md:py-6 relative z-10">
+        <Card className="flex-1 flex flex-col border-none shadow-2xl bg-white overflow-hidden rounded-3xl">
+          <CardHeader className="bg-primary text-white py-4 relative z-10">
             <div className="flex justify-between items-center gap-4">
               <div className="flex items-center gap-3 overflow-hidden min-w-0">
                 <ReceiptText className="w-6 h-6 md:w-8 md:h-8 shrink-0" />
-                <CardTitle className="text-xl md:text-2xl truncate">Terminal de Venta</CardTitle>
+                <CardTitle className="text-xl md:text-2xl truncate">Terminal</CardTitle>
                 {(items.length > 0 || manualProducts.length > 0) && (
                   <Button 
                     variant="ghost" 
                     size="sm" 
                     onClick={handleClearCart}
-                    className="bg-white/10 hover:bg-white/20 text-white border-none rounded-full px-3 h-7 text-[9px] font-black uppercase tracking-widest shrink-0"
+                    className="bg-white/10 hover:bg-white/20 text-white border-none rounded-full px-2 h-6 text-[8px] font-black uppercase tracking-widest shrink-0"
                   >
                     <RotateCcw className="w-3 h-3 mr-1" />
                     Vaciar
@@ -362,22 +359,20 @@ export default function POSPage() {
           </CardHeader>
 
           <CardContent className="flex-1 p-0 flex flex-col relative bg-slate-50">
-            <ScrollArea className="flex-1 max-h-[350px]">
+            <ScrollArea className="flex-1 max-h-[300px] md:max-h-[350px]">
               <div className="divide-y divide-slate-100">
                 {items.length === 0 && manualProducts.length === 0 && (
-                  <div className="flex flex-col items-center justify-center py-20 px-6 text-center space-y-4 opacity-40">
-                    <ShoppingCart className="w-12 h-12 text-slate-300" />
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Esperando productos...</p>
+                  <div className="flex flex-col items-center justify-center py-10 md:py-20 px-6 text-center space-y-4 opacity-40">
+                    <ShoppingCart className="w-10 h-10 md:w-12 md:h-12 text-slate-300" />
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Esperando productos...</p>
                   </div>
                 )}
                 
                 {items.map((item) => (
                   <div key={item.id} className="p-3 sm:p-4 flex items-center gap-2 sm:gap-4 bg-white hover:bg-slate-50 transition-colors animate-in fade-in slide-in-from-left-2 duration-300">
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="font-bold text-sm text-slate-800 truncate">{item.name}</p>
-                      </div>
-                      <p className="text-primary font-black text-lg sm:text-xl mt-1 font-mono">${Math.round(item.price * item.quantity).toLocaleString('es-CL')}</p>
+                      <p className="font-bold text-sm text-slate-800 truncate">{item.name}</p>
+                      <p className="text-primary font-black text-lg mt-1 font-mono">${Math.round(item.price * item.quantity).toLocaleString('es-CL')}</p>
                     </div>
                     <div className="flex items-center gap-2 sm:gap-4 shrink-0">
                       <div className="flex items-center bg-slate-100 rounded-full p-1 scale-90 sm:scale-100">
@@ -403,7 +398,7 @@ export default function POSPage() {
                         <span className="bg-accent/10 text-accent text-[8px] font-black px-1.5 py-0.5 rounded uppercase">Manual</span>
                         <p className="font-bold text-sm text-slate-800 truncate">{item.description}</p>
                       </div>
-                      <p className="text-accent font-black text-lg sm:text-xl mt-1 font-mono">${Math.round(item.amount).toLocaleString('es-CL')}</p>
+                      <p className="text-accent font-black text-lg mt-1 font-mono">${Math.round(item.amount).toLocaleString('es-CL')}</p>
                     </div>
                     <div className="flex items-center gap-2 sm:gap-4 shrink-0">
                       <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 rounded-full h-8 w-8" onClick={() => removeManual(idx)}>
@@ -417,7 +412,7 @@ export default function POSPage() {
 
             <Separator className="bg-slate-200" />
 
-            <div className="p-4 sm:p-6 bg-white">
+            <div className="p-4 md:p-6 bg-white">
                <CalculatorComponent 
                 baseValue={Math.round(total)} 
                 isProcessing={isProcessing}
