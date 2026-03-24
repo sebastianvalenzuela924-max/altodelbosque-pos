@@ -159,7 +159,7 @@ export default function POSPage() {
 
     const now = Date.now();
     
-    // Doble verificación: ref síncrona para evitar re-entrada inmediata
+    // Cooldown de 2 segundos para evitar lecturas duplicadas inmediatas
     if (lastScanRef.current && lastScanRef.current.code === cleanBarcode && (now - lastScanRef.current.time < 2000)) {
       return;
     }
@@ -179,7 +179,6 @@ export default function POSPage() {
       });
     }
 
-    // Cooldown visual más corto para feedback del usuario
     setTimeout(() => {
       setIsScanLocked(false);
     }, 1500);
@@ -360,25 +359,25 @@ export default function POSPage() {
                 )}
                 
                 {items.map((item) => (
-                  <div key={item.id} className="p-4 flex items-center gap-4 bg-white hover:bg-slate-50 transition-colors">
+                  <div key={item.id} className="p-3 sm:p-4 flex items-center gap-2 sm:gap-4 bg-white hover:bg-slate-50 transition-colors">
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="bg-primary/10 text-primary text-[10px] font-black px-1.5 py-0.5 rounded uppercase shrink-0">Inv</span>
-                        <p className="font-bold text-base text-slate-800 truncate">{item.name}</p>
+                      <div className="flex items-center gap-1 sm:gap-2">
+                        <span className="bg-primary/10 text-primary text-[9px] sm:text-[10px] font-black px-1.5 py-0.5 rounded uppercase shrink-0">Inv</span>
+                        <p className="font-bold text-sm sm:text-base text-slate-800 truncate">{item.name}</p>
                       </div>
-                      <p className="text-primary font-black text-xl mt-1 font-mono">${Math.round(item.price * item.quantity).toLocaleString('es-CL')}</p>
+                      <p className="text-primary font-black text-lg sm:text-xl mt-1 font-mono">${Math.round(item.price * item.quantity).toLocaleString('es-CL')}</p>
                     </div>
-                    <div className="flex items-center gap-2 md:gap-4 shrink-0">
-                      <div className="flex items-center bg-slate-100 rounded-full p-1 shadow-inner">
-                        <Button variant="ghost" size="icon" className="rounded-full w-8 h-8 hover:bg-white text-slate-600" onClick={() => updateQuantity(item.id, -1)}>
+                    <div className="flex items-center gap-1 sm:gap-4 shrink-0">
+                      <div className="flex items-center bg-slate-100 rounded-full p-1 shadow-inner scale-90 sm:scale-100">
+                        <Button variant="ghost" size="icon" className="rounded-full w-7 h-7 sm:w-8 sm:h-8 hover:bg-white text-slate-600" onClick={() => updateQuantity(item.id, -1)}>
                           <MinusCircle className="w-5 h-5" />
                         </Button>
-                        <span className="font-black w-8 text-center text-lg">{item.quantity}</span>
-                        <Button variant="ghost" size="icon" className="rounded-full w-8 h-8 hover:bg-white text-slate-600" onClick={() => updateQuantity(item.id, 1)}>
+                        <span className="font-black w-6 sm:w-8 text-center text-base sm:text-lg">{item.quantity}</span>
+                        <Button variant="ghost" size="icon" className="rounded-full w-7 h-7 sm:w-8 sm:h-8 hover:bg-white text-slate-600" onClick={() => updateQuantity(item.id, 1)}>
                           <PlusCircle className="w-5 h-5" />
                         </Button>
                       </div>
-                      <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 rounded-full" onClick={() => removeItem(item.id)}>
+                      <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 rounded-full h-8 w-8" onClick={() => removeItem(item.id)}>
                         <Trash2 className="w-5 h-5" />
                       </Button>
                     </div>
@@ -386,16 +385,16 @@ export default function POSPage() {
                 ))}
 
                 {manualProducts.map((item, idx) => (
-                  <div key={`manual-${idx}`} className="p-4 flex items-center gap-4 bg-accent/5 border-l-4 border-accent">
+                  <div key={`manual-${idx}`} className="p-3 sm:p-4 flex items-center gap-2 sm:gap-4 bg-accent/5 border-l-4 border-accent">
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="bg-accent/10 text-accent text-[10px] font-black px-1.5 py-0.5 rounded uppercase shrink-0">Manual</span>
-                        <p className="font-bold text-base text-slate-800 truncate">{item.description}</p>
+                      <div className="flex items-center gap-1 sm:gap-2">
+                        <span className="bg-accent/10 text-accent text-[9px] sm:text-[10px] font-black px-1.5 py-0.5 rounded uppercase shrink-0">Manual</span>
+                        <p className="font-bold text-sm sm:text-base text-slate-800 truncate">{item.description}</p>
                       </div>
-                      <p className="text-accent font-black text-xl mt-1 font-mono">${Math.round(item.amount).toLocaleString('es-CL')}</p>
+                      <p className="text-accent font-black text-lg sm:text-xl mt-1 font-mono">${Math.round(item.amount).toLocaleString('es-CL')}</p>
                     </div>
-                    <div className="flex items-center gap-4 shrink-0">
-                      <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 rounded-full" onClick={() => removeManual(idx)}>
+                    <div className="flex items-center gap-1 sm:gap-4 shrink-0">
+                      <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 rounded-full h-8 w-8" onClick={() => removeManual(idx)}>
                         <Trash2 className="w-5 h-5" />
                       </Button>
                     </div>
@@ -405,21 +404,21 @@ export default function POSPage() {
             </ScrollArea>
           </CardContent>
 
-          <CardFooter className="flex flex-col gap-6 bg-white border-t p-8">
+          <CardFooter className="flex flex-col gap-6 bg-white border-t p-6 sm:p-8">
             <div className="w-full text-right">
               <p className="text-xs font-black uppercase text-primary tracking-widest">Total</p>
-              <p className="text-6xl font-black text-primary font-mono tracking-tighter leading-none">${Math.round(total).toLocaleString('es-CL')}</p>
+              <p className="text-4xl sm:text-6xl font-black text-primary font-mono tracking-tighter leading-none">${Math.round(total).toLocaleString('es-CL')}</p>
             </div>
             
             <Button 
               className={cn(
-                "w-full h-24 text-2xl font-black rounded-3xl shadow-2xl transition-all active:scale-95 flex items-center justify-center gap-4",
+                "w-full h-20 sm:h-24 text-xl sm:text-2xl font-black rounded-3xl shadow-2xl transition-all active:scale-95 flex items-center justify-center gap-4",
                 isProcessing ? "bg-slate-400" : "bg-primary hover:bg-primary/90"
               )}
               onClick={() => handleFinalize()}
               disabled={(items.length === 0 && manualProducts.length === 0) || isProcessing}
             >
-              <CheckCircle2 className="w-10 h-10" />
+              <CheckCircle2 className="w-8 h-8 sm:w-10 sm:h-10" />
               {isProcessing ? "PROCESANDO..." : "COBRAR"}
             </Button>
           </CardFooter>
