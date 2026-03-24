@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -7,17 +8,20 @@ import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Search, FileSpreadsheet, Edit3, AlertTriangle, Plus, Trash2, Package } from "lucide-react";
+import { Search, FileSpreadsheet, Edit3, AlertTriangle, Plus, Trash2, Package, Scan } from "lucide-react";
 import { exportToExcel } from "@/lib/export";
 import { useToast } from "@/hooks/use-toast";
 import { ProductDialog } from "@/components/inventory/ProductDialog";
+import { ScannerComponent } from "@/components/pos/ScannerComponent";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export default function InventoryPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const { toast } = useToast();
 
@@ -52,9 +56,19 @@ export default function InventoryPage() {
     setIsDialogOpen(true);
   };
 
-  const handleAddNew = () => {
-    setSelectedProduct(null);
-    setIsDialogOpen(true);
+  const handleAddNew = (barcode?: string) => {
+    const existing = products.find(p => p.id === barcode);
+    if (existing) {
+      handleEdit(existing);
+    } else {
+      setSelectedProduct(barcode ? { id: barcode, name: "", price: 0, stock: 0 } as Product : null);
+      setIsDialogOpen(true);
+    }
+    setIsScannerOpen(false);
+  };
+
+  const handleScanInInventory = (barcode: string) => {
+    handleAddNew(barcode);
   };
 
   const confirmDelete = async () => {
@@ -78,14 +92,17 @@ export default function InventoryPage() {
             <Package className="w-8 h-8" />
             Inventario
           </h1>
-          <p className="text-muted-foreground">Gestiona tus productos, precios y existencias.</p>
+          <p className="text-muted-foreground">Gestión por código de barras y control de stock.</p>
         </div>
-        <div className="flex gap-2 w-full md:w-auto">
-          <Button variant="outline" className="flex-1 md:flex-none" onClick={handleExport}>
-            <FileSpreadsheet className="w-4 h-4 mr-2 text-green-600" /> Exportar a Excel
+        <div className="flex flex-wrap gap-2 w-full md:w-auto">
+          <Button variant="outline" className="flex-1 md:flex-none border-primary text-primary" onClick={() => setIsScannerOpen(true)}>
+            <Scan className="w-4 h-4 mr-2" /> Escanear Código
           </Button>
-          <Button className="flex-1 md:flex-none bg-accent hover:bg-accent/90" onClick={handleAddNew}>
-            <Plus className="w-4 h-4 mr-2" /> Nuevo Producto
+          <Button variant="outline" className="flex-1 md:flex-none" onClick={handleExport}>
+            <FileSpreadsheet className="w-4 h-4 mr-2 text-green-600" /> Exportar
+          </Button>
+          <Button className="flex-1 md:flex-none bg-accent hover:bg-accent/90" onClick={() => handleAddNew()}>
+            <Plus className="w-4 h-4 mr-2" /> Nuevo
           </Button>
         </div>
       </div>
@@ -97,7 +114,7 @@ export default function InventoryPage() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input 
                 className="pl-10 h-11 bg-white border-none shadow-sm" 
-                placeholder="Buscar por nombre o código de barras..." 
+                placeholder="Buscar por nombre o código de barras (EAN)..." 
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
               />
@@ -109,7 +126,7 @@ export default function InventoryPage() {
             <Table>
               <TableHeader className="bg-muted/10">
                 <TableRow>
-                  <TableHead className="font-bold py-4">Código</TableHead>
+                  <TableHead className="font-bold py-4">Código EAN</TableHead>
                   <TableHead className="font-bold py-4">Nombre</TableHead>
                   <TableHead className="font-bold py-4">Precio</TableHead>
                   <TableHead className="font-bold py-4 text-center">Stock</TableHead>
@@ -121,13 +138,13 @@ export default function InventoryPage() {
                 {filtered.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="h-48 text-center text-muted-foreground">
-                      No se encontraron productos en el inventario.
+                      No se encontraron productos. Escanea uno para empezar.
                     </TableCell>
                   </TableRow>
                 ) : (
                   filtered.map((p) => (
                     <TableRow key={p.id} className={p.stock < 5 ? "bg-destructive/5" : ""}>
-                      <TableCell className="font-mono text-xs">{p.id}</TableCell>
+                      <TableCell className="font-mono text-xs font-bold text-primary">{p.id}</TableCell>
                       <TableCell className="font-bold">{p.name}</TableCell>
                       <TableCell className="text-primary font-black text-lg">${p.price.toFixed(2)}</TableCell>
                       <TableCell className="text-center font-bold">{p.stock}</TableCell>
@@ -165,6 +182,23 @@ export default function InventoryPage() {
         product={selectedProduct}
         onSaved={load}
       />
+
+      <Dialog open={isScannerOpen} onOpenChange={setIsScannerOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Scan className="w-5 h-5 text-primary" />
+              Escanear Producto para Registro
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <ScannerComponent onScan={handleScanInInventory} />
+            <p className="text-center text-sm text-muted-foreground mt-4">
+              Apunta la cámara al código de barras del producto.
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={!!productToDelete} onOpenChange={() => setProductToDelete(null)}>
         <AlertDialogContent>
