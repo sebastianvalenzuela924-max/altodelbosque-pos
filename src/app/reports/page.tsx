@@ -80,6 +80,16 @@ export default function ReportsPage() {
     if (!allProducts || !mounted) return [];
     
     const stats: Record<string, any> = {};
+    const productSoldMap: Record<string, number> = {};
+
+    // Mapear ventas por producto para el periodo actual
+    filteredSales.forEach(sale => {
+      sale.itemsSummary?.forEach((item: any) => {
+        if (item.id) {
+          productSoldMap[item.id] = (productSoldMap[item.id] || 0) + item.quantity;
+        }
+      });
+    });
     
     // Inicializar categorías con info de productos
     allProducts.forEach(p => {
@@ -97,14 +107,16 @@ export default function ReportsPage() {
         };
       }
       
+      const soldThisPeriod = productSoldMap[p.id] || 0;
+      
       stats[key].productCount++;
       if (getProductStatus(p.stock, p.idealStock) === "danger") {
         stats[key].stockCritical++;
       }
-      stats[key].products.push(p);
+      stats[key].products.push({ ...p, soldThisPeriod });
     });
 
-    // Sumar ventas reales filtradas
+    // Sumar ventas reales filtradas para totales de categoría
     filteredSales.forEach(sale => {
       sale.itemsSummary?.forEach((item: any) => {
         const key = (item.category || "General").toLowerCase();
@@ -316,9 +328,15 @@ export default function ReportsPage() {
                                  <ShieldCheck className="w-5 h-5 text-green-500" />}
                                 <div>
                                   <p className="font-bold text-sm text-slate-700">{p.name}</p>
-                                  <p className="text-[9px] text-slate-400 font-bold uppercase">
-                                    Stock: <span className={cn(status === 'danger' ? "text-destructive font-black" : "text-slate-500")}>{p.stock}</span> / Normal: {p.idealStock}
-                                  </p>
+                                  <div className="flex flex-col gap-0.5">
+                                    <p className="text-[9px] text-slate-400 font-bold uppercase">
+                                      Stock: <span className={cn(status === 'danger' ? "text-destructive font-black" : "text-slate-500")}>{p.stock}</span> / Normal: {p.idealStock}
+                                    </p>
+                                    <p className="text-[9px] text-primary font-black uppercase tracking-widest flex items-center gap-1">
+                                      <ShoppingBag className="w-2 h-2" />
+                                      Vendidos en periodo: {p.soldThisPeriod} u.
+                                    </p>
+                                  </div>
                                 </div>
                               </div>
                               <div className="text-right">
@@ -389,4 +407,3 @@ export default function ReportsPage() {
     </div>
   );
 }
-
