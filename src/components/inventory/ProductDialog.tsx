@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -12,12 +13,13 @@ import { Loader2, Package, Tag } from "lucide-react";
 
 interface ProductDialogProps {
   product?: any | null;
+  categories?: string[];
   open: boolean;
   onClose: () => void;
   onSaved: () => void;
 }
 
-export function ProductDialog({ product, open, onClose, onSaved }: ProductDialogProps) {
+export function ProductDialog({ product, categories = [], open, onClose, onSaved }: ProductDialogProps) {
   const firestore = useFirestore();
   const [formData, setFormData] = useState({
     id: "",
@@ -108,13 +110,26 @@ export function ProductDialog({ product, open, onClose, onSaved }: ProductDialog
             <Label htmlFor="category" className="font-bold text-slate-500 flex items-center gap-2">
               <Tag className="w-3 h-3" /> Categoría
             </Label>
-            <Input 
-              id="category" 
-              value={formData.category} 
-              className="h-12 rounded-xl"
-              onChange={e => setFormData({ ...formData, category: e.target.value })} 
-              placeholder="Ej: Bebidas, Snacks, Limpieza..." 
-            />
+            <div className="relative">
+              <Input 
+                id="category" 
+                list="category-suggestions"
+                value={formData.category} 
+                className="h-12 rounded-xl"
+                onChange={e => setFormData({ ...formData, category: e.target.value })} 
+                placeholder="Selecciona o escribe una categoría" 
+              />
+              <datalist id="category-suggestions">
+                {categories.map((cat) => (
+                  <option key={cat} value={cat} />
+                ))}
+              </datalist>
+            </div>
+            {categories.length > 0 && !formData.category && (
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest pl-2">
+                Escribe para ver sugerencias
+              </p>
+            )}
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">

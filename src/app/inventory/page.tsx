@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo } from "react";
@@ -270,6 +271,7 @@ export default function InventoryPage() {
         open={isDialogOpen} 
         onClose={() => setIsDialogOpen(false)} 
         product={selectedProduct}
+        categories={categories}
         onSaved={() => {}} 
       />
 
