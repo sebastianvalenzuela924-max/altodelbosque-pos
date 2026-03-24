@@ -55,7 +55,7 @@ export default function POSPage() {
     if (!cleanBarcode || isLoadingInventory || isScanLocked) return;
 
     const now = Date.now();
-    // 3 segundos de bloqueo para evitar duplicados
+    // Bloqueo de 3 segundos para evitar lecturas duplicadas accidentales
     if (lastScanRef.current && lastScanRef.current.code === cleanBarcode && (now - lastScanRef.current.time < 3000)) {
       return;
     }
@@ -91,6 +91,7 @@ export default function POSPage() {
       });
     }
 
+    // Liberar el escáner después de 3 segundos
     setTimeout(() => {
       setIsScanLocked(false);
     }, 3000);
@@ -182,7 +183,7 @@ export default function POSPage() {
       });
     });
 
-    toast({ title: "Venta Finalizada", description: "Venta guardada." });
+    toast({ title: "Venta Finalizada", description: "Venta guardada correctamente." });
     setItems([]);
     setManualProducts([]);
     setIsProcessing(false);

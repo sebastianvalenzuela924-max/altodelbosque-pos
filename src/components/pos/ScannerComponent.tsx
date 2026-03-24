@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Html5Qrcode } from "html5-qrcode";
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
 import { Scan, Camera, XCircle, AlertCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
@@ -32,37 +32,49 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
     setIsLoading(true);
     setIsEnabled(true);
 
-    // Pequeño delay para asegurar que el div "qr-reader" esté montado
+    // Esperar a que el elemento DOM esté listo
     setTimeout(async () => {
       try {
         if (!scannerRef.current) {
-          scannerRef.current = new Html5Qrcode("qr-reader");
+          // Forzamos soporte específico para códigos de barras 1D (EAN-13, EAN-8, etc.)
+          scannerRef.current = new Html5Qrcode("qr-reader", {
+            verbose: false,
+            formatsToSupport: [
+              Html5QrcodeSupportedFormats.EAN_13,
+              Html5QrcodeSupportedFormats.EAN_8,
+              Html5QrcodeSupportedFormats.CODE_128,
+              Html5QrcodeSupportedFormats.UPC_A,
+              Html5QrcodeSupportedFormats.UPC_E,
+            ]
+          });
         }
 
         const config = {
-          fps: 15,
+          fps: 20, // Mayor frecuencia para capturar mejor el movimiento
           qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
-            // Área de escaneo ancha ideal para códigos de barras
-            const width = Math.min(viewfinderWidth * 0.8, 400);
-            const height = Math.min(viewfinderHeight * 0.4, 200);
+            // Rectángulo horizontal optimizado para códigos de barras
+            const width = Math.min(viewfinderWidth * 0.85, 450);
+            const height = Math.min(viewfinderHeight * 0.45, 220);
             return { width, height };
           },
-          aspectRatio: 1.777778, // Sugerir 16:9
+          // Activamos funciones experimentales para usar el acelerador de hardware si está disponible
+          experimentalFeatures: {
+            useBarCodeDetectorIfSupported: true,
+          },
         };
 
-        // Usamos una configuración de cámara más compatible para evitar errores de hardware
         await scannerRef.current.start(
           { facingMode: "environment" },
           config,
           (decodedText) => {
             onScan(decodedText);
           },
-          () => {} // Ignorar errores de frame no detectado
+          () => {} // Callback silencioso para frames fallidos
         );
         setIsLoading(false);
       } catch (err: any) {
         console.error("Error iniciando escáner:", err);
-        setError("No se pudo acceder a la cámara. Asegúrate de dar los permisos necesarios.");
+        setError("Error de cámara. Asegúrate de dar permisos y que ninguna otra app la use.");
         setIsEnabled(false);
         setIsLoading(false);
         toast({
@@ -71,7 +83,7 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
           description: "Por favor, permite el acceso a la cámara en los ajustes del navegador.",
         });
       }
-    }, 500);
+    }, 300);
   };
 
   useEffect(() => {
@@ -92,9 +104,9 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
             <Scan className="w-10 h-10 text-primary" />
           </div>
           <div className="space-y-1">
-            <h3 className="text-white font-bold text-lg">Escáner de Barra</h3>
+            <h3 className="text-white font-bold text-lg">Escáner de Productos</h3>
             <p className="text-slate-400 text-xs px-4">
-              Enfoca el código de barras dentro del recuadro.
+              Enfoca el código de barras dentro del visor.
             </p>
           </div>
           
@@ -108,7 +120,7 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
             ) : (
               <Camera className="mr-2 w-5 h-5" />
             )}
-            ACTIVAR CÁMARA
+            ACTIVAR ESCÁNER
           </Button>
           
           {error && (
@@ -125,12 +137,12 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
         <>
           <div className="absolute inset-0 pointer-events-none z-20">
              <div className="absolute inset-0 border-[30px] border-black/40 flex items-center justify-center">
-                <div className="w-[85%] max-w-[400px] h-[45%] max-h-[200px] relative border-2 border-primary/50 rounded-lg bg-primary/5">
-                    <div className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-primary"></div>
-                    <div className="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-primary"></div>
-                    <div className="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-primary"></div>
-                    <div className="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-primary"></div>
-                    <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-primary/60 animate-pulse"></div>
+                <div className="w-[90%] max-w-[450px] h-[45%] max-h-[220px] relative border-2 border-primary/50 rounded-lg bg-primary/5">
+                    <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-primary"></div>
+                    <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-primary"></div>
+                    <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-primary"></div>
+                    <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-primary"></div>
+                    <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-primary/40 animate-pulse"></div>
                 </div>
              </div>
           </div>
