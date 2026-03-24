@@ -19,10 +19,20 @@ export default function POSPage() {
   const [inventory, setInventory] = useState<Product[]>([]);
   const [quickAddBarcode, setQuickAddBarcode] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [currentTime, setCurrentTime] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
     loadInventory();
+    // Set time on mount to avoid hydration mismatch
+    setCurrentTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+    
+    // Optional: Update time every minute
+    const timer = setInterval(() => {
+      setCurrentTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+    }, 60000);
+    
+    return () => clearInterval(timer);
   }, []);
 
   const loadInventory = async () => {
@@ -110,7 +120,9 @@ export default function POSPage() {
               </CardTitle>
               <div className="flex flex-col items-end">
                 <span className="text-xs uppercase font-bold opacity-70">Sesión Activa</span>
-                <span className="text-sm font-mono tracking-widest">{new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                <span className="text-sm font-mono tracking-widest">
+                  {currentTime || "--:--"}
+                </span>
               </div>
             </div>
           </CardHeader>
