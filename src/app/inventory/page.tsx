@@ -1,23 +1,24 @@
 
 "use client";
 
-import { useState, useMemo } from "react";
-import { useCollection, useFirestore, useMemoFirebase, deleteDocumentNonBlocking } from "@/firebase";
-import { collection, doc, query, orderBy } from "firebase/firestore";
+import { useState, useMemo, useRef } from "react";
+import { useCollection, useFirestore, useMemoFirebase, deleteDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase";
+import { collection, doc, query, orderBy, increment } from "firebase/firestore";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Search, FileSpreadsheet, Edit3, AlertTriangle, Plus, Trash2, Package, Scan, Loader2, Check, X, ArrowUp, ArrowDown, ChevronDown, ListFilter, ShieldAlert, ShieldCheck, ShieldQuestion, DollarSign } from "lucide-react";
+import { Search, FileSpreadsheet, Edit3, AlertTriangle, Plus, Trash2, Package, Scan, Loader2, Check, X, ArrowUp, ArrowDown, ChevronDown, ListFilter, ShieldAlert, ShieldCheck, ShieldQuestion, DollarSign, PackagePlus, MousePointer2 } from "lucide-react";
 import { exportToExcel } from "@/lib/export";
 import { useToast } from "@/hooks/use-toast";
 import { ProductDialog } from "@/components/inventory/ProductDialog";
 import { ScannerComponent } from "@/components/pos/ScannerComponent";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { Label } from "@/components/ui/label";
 
 type SortOption = "name" | "stock-asc" | "stock-desc" | "status-critical" | "price-asc" | "price-desc" | "category-asc" | "category-desc";
 
@@ -31,6 +32,12 @@ export default function InventoryPage() {
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [pendingBarcode, setPendingBarcode] = useState<string | null>(null);
   const [productToDelete, setProductToDelete] = useState<any | null>(null);
+  
+  // Estados para Carga Rápida
+  const [quickStockProduct, setQuickStockProduct] = useState<any | null>(null);
+  const [quickAddValue, setQuickAddValue] = useState("");
+  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
+
   const { toast } = useToast();
 
   const productsQuery = useMemoFirebase(() => {
@@ -82,6 +89,36 @@ export default function InventoryPage() {
     });
   }, [products, searchTerm, sortBy, categoryFilter]);
 
+  // Manejo de Pulsación Larga (Long Press)
+  const handlePointerDown = (product: any) => {
+    longPressTimer.current = setTimeout(() => {
+      setQuickStockProduct(product);
+      setQuickAddValue("");
+    }, 600); // 600ms para activar
+  };
+
+  const handlePointerUp = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+    }
+  };
+
+  const handleQuickAdd = () => {
+    const val = parseInt(quickAddValue);
+    if (isNaN(val) || val === 0) return;
+
+    const docRef = doc(firestore, "products", quickStockProduct.id);
+    updateDocumentNonBlocking(docRef, {
+      stock: increment(val)
+    });
+
+    toast({ 
+      title: "Stock Actualizado", 
+      description: `Se han añadido ${val} unidades a ${quickStockProduct.name}.` 
+    });
+    setQuickStockProduct(null);
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -90,7 +127,10 @@ export default function InventoryPage() {
             <Package className="w-8 h-8" />
             Inventario
           </h1>
-          <p className="text-muted-foreground text-sm font-bold">Gestión de stock inteligente.</p>
+          <p className="text-muted-foreground text-sm font-bold flex items-center gap-2">
+            <MousePointer2 className="w-4 h-4 text-accent" />
+            Mantén presionado un producto para carga rápida de stock.
+          </p>
         </div>
         <div className="flex flex-wrap gap-2 w-full md:w-auto">
           <Button variant="outline" className="flex-1 md:flex-none h-11 rounded-2xl" onClick={() => setIsScannerOpen(true)}>
@@ -177,8 +217,11 @@ export default function InventoryPage() {
                 return (
                   <TableRow 
                     key={p.id} 
+                    onPointerDown={() => handlePointerDown(p)}
+                    onPointerUp={handlePointerUp}
+                    onPointerLeave={handlePointerUp}
                     className={cn(
-                      "transition-colors border-b", 
+                      "transition-colors border-b select-none touch-none", 
                       status === "peligro" ? "bg-red-200 hover:bg-red-300" : 
                       status === "precaución" ? "bg-amber-200 hover:bg-amber-300" : 
                       status === "ok" ? "bg-green-200 hover:bg-green-300" : "hover:bg-slate-50"
@@ -232,6 +275,42 @@ export default function InventoryPage() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Diálogo de Carga Rápida */}
+      <Dialog open={!!quickStockProduct} onOpenChange={() => setQuickStockProduct(null)}>
+        <DialogContent className="rounded-3xl border-none shadow-2xl max-w-xs">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl font-black text-primary uppercase tracking-tighter">
+              <PackagePlus className="w-6 h-6" />
+              Carga Rápida
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="text-center">
+              <p className="font-bold text-slate-600 truncate">{quickStockProduct?.name}</p>
+              <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mt-1">Stock Actual: {quickStockProduct?.stock}</p>
+            </div>
+            <div className="grid gap-2">
+              <Label className="font-black text-[10px] uppercase text-slate-400 tracking-widest text-center">¿Cuánto vas a sumar?</Label>
+              <Input 
+                type="number" 
+                className="h-16 rounded-2xl bg-primary/5 border-none text-center text-4xl font-black text-primary focus-visible:ring-primary" 
+                placeholder="+0"
+                value={quickAddValue}
+                onChange={e => setQuickAddValue(e.target.value)}
+                autoFocus
+                onKeyDown={(e) => e.key === "Enter" && handleQuickAdd()}
+              />
+            </div>
+          </div>
+          <DialogFooter className="grid grid-cols-2 gap-2">
+            <Button variant="ghost" onClick={() => setQuickStockProduct(null)} className="rounded-xl h-12 font-bold uppercase text-[10px]">Cancelar</Button>
+            <Button onClick={handleQuickAdd} className="bg-primary hover:bg-primary/90 rounded-xl h-12 font-black uppercase text-[10px] shadow-lg shadow-primary/20">
+              Añadir
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <ProductDialog open={isDialogOpen} onClose={() => setIsDialogOpen(false)} product={selectedProduct} categories={categories} onSaved={() => {}} />
 
