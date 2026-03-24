@@ -25,17 +25,39 @@ export function CalculatorComponent({
   const [isReset, setIsReset] = useState(true);
   const [startedFromBase, setStartedFromBase] = useState(true);
   
-  // Estados para el cálculo de vuelto
   const [isCashMode, setIsCashMode] = useState(false);
   const [cashReceived, setCashReceived] = useState("");
 
-  // Sincronizar con el valor base de la caja (total del carrito)
   useEffect(() => {
-    if (isReset && !isCashMode && equation === "") {
+    if (isReset && !isCashMode && equation === "" && startedFromBase) {
       setDisplay(Math.round(baseValue).toString());
-      setStartedFromBase(true);
     }
-  }, [baseValue, isReset, isCashMode, equation]);
+  }, [baseValue, isReset, isCashMode, equation, startedFromBase]);
+
+  const calculateResult = (forceEquation?: string) => {
+    // Si isReset es true, el número actual ya está en la ecuación o el display es el resultado parcial
+    const currentVal = isReset ? "" : display;
+    const eqToEval = forceEquation || (equation + currentVal);
+    
+    if (!eqToEval.trim()) return Math.round(baseValue);
+    
+    try {
+      let sanitized = eqToEval.trim();
+      // Limpiar operadores huérfanos al final para el eval
+      while (sanitized.match(/[+\-×÷]\s*$/)) {
+        sanitized = sanitized.replace(/[+\-×÷]\s*$/, "").trim();
+      }
+      
+      if (!sanitized) return parseInt(display || "0");
+      
+      const evalString = sanitized.replace(/×/g, '*').replace(/÷/g, '/');
+      // eslint-disable-next-line no-eval
+      const result = eval(evalString);
+      return Math.round(result ?? 0);
+    } catch (e) {
+      return parseInt(display || "0");
+    }
+  };
 
   const handleNumber = (n: string) => {
     if (isCashMode) {
@@ -46,40 +68,19 @@ export function CalculatorComponent({
     if (isReset) {
       setDisplay(n);
       setIsReset(false);
-      // Si el usuario empieza a escribir, ya no es solo el monto de caja puro
+      // Si empezamos de cero sin ecuación, ya no es el monto base puro
       if (equation === "") setStartedFromBase(false);
     } else {
       setDisplay(display === "0" ? n : display + n);
     }
   };
 
-  const calculateResult = (forceEquation?: string) => {
-    const eqToEval = forceEquation || (equation + (isReset ? "" : display));
-    if (!eqToEval.trim()) return parseInt(display || "0");
-    
-    try {
-      // Limpiar operadores huérfanos al final para el eval
-      let sanitized = eqToEval.trim();
-      while (sanitized.endsWith('+') || sanitized.endsWith('-') || sanitized.endsWith('×') || sanitized.endsWith('÷')) {
-        sanitized = sanitized.slice(0, -1).trim();
-      }
-      
-      if (!sanitized) return parseInt(display || "0");
-      
-      const evalString = sanitized.replace(/×/g, '*').replace(/÷/g, '/');
-      // eslint-disable-next-line no-eval
-      const result = eval(evalString);
-      return Math.round(result);
-    } catch (e) {
-      console.error("Eval error:", e);
-      return parseInt(display || "0");
-    }
-  };
-
   const handleOperator = (op: string) => {
     if (isCashMode) return;
     
-    // Si ya hay un operador al final y no hemos escrito un número nuevo, lo reemplazamos
+    const currentVal = display || "0";
+
+    // Si ya hay un operador y no hemos escrito nada nuevo, lo reemplazamos
     if (isReset && equation !== "" && !startedFromBase) {
       setEquation(prev => {
         const parts = prev.trim().split(" ");
@@ -91,9 +92,16 @@ export function CalculatorComponent({
       return;
     }
 
-    const currentSubtotal = calculateResult();
-    setEquation(prev => prev + (isReset ? "" : display) + " " + op + " ");
-    setDisplay(currentSubtotal.toString());
+    if (equation === "") {
+      // Primera operación: usamos el display actual (que puede ser el baseValue)
+      setEquation(currentVal + " " + op + " ");
+    } else {
+      // Operación en curso: calculamos subtotal y seguimos
+      const result = calculateResult();
+      setEquation(prev => prev + (isReset ? "" : currentVal) + " " + op + " ");
+      setDisplay(result.toString());
+    }
+    
     setIsReset(true);
     setStartedFromBase(false);
   };
@@ -104,6 +112,8 @@ export function CalculatorComponent({
     setDisplay(result.toString());
     setEquation("");
     setIsReset(true);
+    // Después de un =, si el resultado es igual al baseValue y no hemos hecho más, podríamos considerarlo base
+    // Pero para evitar confusión lo dejamos como entrada manual
     setStartedFromBase(false);
   };
 
@@ -130,13 +140,9 @@ export function CalculatorComponent({
   const handleFinalizeNormal = () => {
     const amount = calculateResult();
     if (!isNaN(amount)) {
-      setIsReset(true);
-      setEquation("");
-      setDisplay("0"); 
-      setIsCashMode(false);
-      setCashReceived("");
-      setStartedFromBase(true);
       onFinalize(amount);
+      // Reset absoluto tras cobrar
+      forceZero();
     }
   };
 
@@ -154,7 +160,6 @@ export function CalculatorComponent({
   const receivedAmount = parseInt(cashReceived || "0");
   const changeAmount = receivedAmount > 0 ? receivedAmount - totalToPay : 0;
   
-  // Determinar si lo que se muestra es puramente el monto de la caja inicial
   const isShowingBaseValue = startedFromBase && equation === "" && isReset;
 
   return (
@@ -176,18 +181,21 @@ export function CalculatorComponent({
                   )}
                   {equation && (
                     <span className="text-[9px] font-black bg-slate-200 text-slate-500 px-2 py-0.5 rounded-full uppercase tracking-widest">
-                      Operación en curso
+                      Operación
                     </span>
                   )}
                 </div>
-                <div className="text-[10px] text-muted-foreground font-mono uppercase font-black tracking-widest max-w-[200px] truncate">
-                  {equation ? "Historial de sumas" : "Calculadora"}
+                <div className="text-[10px] text-muted-foreground font-mono uppercase font-black tracking-widest">
+                  Calculadora
                 </div>
               </div>
               
-              {/* Historial de la suma arriba del número principal */}
               <div className="text-sm font-mono text-slate-400 mb-2 overflow-hidden text-ellipsis whitespace-nowrap min-h-[1.25rem]">
-                {equation || (isShowingBaseValue ? "" : "Entrada manual...")}
+                {equation.split(' ').map((part, i) => (
+                    <span key={i} className={cn(i === 0 && startedFromBase ? "text-primary font-bold" : "")}>
+                        {part}{' '}
+                    </span>
+                ))}
               </div>
 
               <div className={cn(
@@ -220,7 +228,6 @@ export function CalculatorComponent({
           )}
         </div>
 
-        {/* Botones de Control Rápido */}
         <div className="flex gap-2">
           <Button variant="outline" className="flex-1 h-11 text-[10px] font-black uppercase tracking-widest rounded-xl border-primary/30 hover:bg-primary/5" onClick={clear}>
             <RotateCcw className="w-4 h-4 mr-2 text-primary" />
@@ -232,7 +239,6 @@ export function CalculatorComponent({
           </Button>
         </div>
 
-        {/* Teclado Numérico */}
         <div className="grid grid-cols-4 gap-2">
           <Button variant="secondary" className="h-14 text-lg font-bold rounded-xl" onClick={clear}>
             {isCashMode ? <Delete className="w-5 h-5"/> : "CE"}
@@ -277,7 +283,6 @@ export function CalculatorComponent({
           </Button>
         </div>
 
-        {/* Botones de Finalización */}
         <div className="space-y-3 mt-4">
           <Button 
             className={cn(
