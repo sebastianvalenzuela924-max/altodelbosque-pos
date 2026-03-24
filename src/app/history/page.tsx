@@ -15,6 +15,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 
 export default function HistoryPage() {
   const [isMounted, setIsMounted] = useState(false);
+  const [isCleaning, setIsCleaning] = useState(false);
   const firestore = useFirestore();
   const { toast } = useToast();
   
@@ -72,41 +73,49 @@ export default function HistoryPage() {
     setSaleToDelete(null);
   };
 
-  const confirmBulkDelete = () => {
+  const confirmBulkDelete = async () => {
     if (!bulkDeleteType || !sales) return;
     
+    setIsCleaning(true);
+    const type = bulkDeleteType;
+    setBulkDeleteType(null); // Cerramos el diálogo inmediatamente para evitar bloqueos visuales
+
     const now = new Date();
     let targets: any[] = [];
 
-    if (bulkDeleteType === 'day') {
+    if (type === 'day') {
       targets = sales.filter(s => {
         const d = s.saleDateTime?.toDate?.();
         if (!d) return false;
         return d.toDateString() === now.toDateString();
       });
-    } else if (bulkDeleteType === 'month') {
+    } else if (type === 'month') {
       targets = sales.filter(s => {
         const d = s.saleDateTime?.toDate?.();
         if (!d) return false;
         return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
       });
-    } else if (bulkDeleteType === 'all') {
+    } else if (type === 'all') {
       targets = sales;
     }
 
     if (targets.length === 0) {
       toast({ title: "Sin registros", description: "No se encontraron ventas para borrar en este rango." });
+      setIsCleaning(false);
     } else {
+      // Procesamos las eliminaciones
       targets.forEach(t => {
         deleteDocumentNonBlocking(doc(firestore, "sales", t.id));
       });
+      
       toast({ 
         title: "Limpieza completada", 
         description: `Se han eliminado ${targets.length} registros.` 
       });
+      
+      // Damos un pequeño respiro al hilo principal antes de quitar el loader
+      setTimeout(() => setIsCleaning(false), 500);
     }
-    
-    setBulkDeleteType(null);
   };
 
   if (!isMounted) {
@@ -114,7 +123,17 @@ export default function HistoryPage() {
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
+    <div className="space-y-6 animate-in fade-in duration-500 relative">
+      {isCleaning && (
+        <div className="fixed inset-0 z-[100] bg-white/60 backdrop-blur-md flex flex-col items-center justify-center animate-in fade-in duration-300">
+          <Loader2 className="w-12 h-12 animate-spin text-primary mb-4" />
+          <h2 className="text-xl font-black text-primary tracking-tighter uppercase">Limpiando Historial</h2>
+          <p className="text-[10px] text-muted-foreground font-black uppercase tracking-[0.2em] mt-2">
+            Por favor, no cierres la aplicación
+          </p>
+        </div>
+      )}
+
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-black text-primary flex items-center gap-2">
@@ -126,7 +145,7 @@ export default function HistoryPage() {
         <div className="flex gap-2 w-full md:w-auto">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="flex-1 md:flex-none border-destructive text-destructive hover:bg-destructive/5 h-11 rounded-2xl">
+              <Button variant="outline" disabled={isCleaning || !sales?.length} className="flex-1 md:flex-none border-destructive text-destructive hover:bg-destructive/5 h-11 rounded-2xl">
                 <Eraser className="w-4 h-4 mr-2" /> Limpiar Historial
               </Button>
             </DropdownMenuTrigger>
@@ -146,7 +165,7 @@ export default function HistoryPage() {
             </DropdownMenuContent>
           </DropdownMenu>
           
-          <Button variant="outline" onClick={handleExport} disabled={!sales?.length} className="flex-1 md:flex-none h-11 rounded-2xl">
+          <Button variant="outline" onClick={handleExport} disabled={!sales?.length || isCleaning} className="flex-1 md:flex-none h-11 rounded-2xl">
             <FileSpreadsheet className="w-4 h-4 mr-2 text-green-600" /> Exportar
           </Button>
         </div>
@@ -198,7 +217,16 @@ export default function HistoryPage() {
                             </div>
                           </div>
                           
-                          <Button variant="ghost" size="icon" className="text-destructive opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => setSaleToDelete(sale)}>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            disabled={isCleaning}
+                            className="text-destructive opacity-0 group-hover:opacity-100 transition-opacity" 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSaleToDelete(sale);
+                            }}
+                          >
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
