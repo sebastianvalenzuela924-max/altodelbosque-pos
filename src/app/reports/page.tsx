@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
@@ -6,10 +5,15 @@ import { collection, query, orderBy } from "firebase/firestore";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from "recharts";
 import { DollarSign, Package, TrendingUp, Calendar, ShoppingBag, ArrowUpRight, Loader2 } from "lucide-react";
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 
 export default function ReportsPage() {
+  const [mounted, setMounted] = useState(false);
   const firestore = useFirestore();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const salesQuery = useMemoFirebase(() => {
     return query(collection(firestore, "sales"), orderBy("saleDateTime", "desc"));
@@ -18,7 +22,7 @@ export default function ReportsPage() {
   const { data: sales, isLoading } = useCollection(salesQuery);
 
   const stats = useMemo(() => {
-    if (!sales) return { daily: 0, monthly: 0, totalSales: 0, itemCount: 0 };
+    if (!sales || !mounted) return { daily: 0, monthly: 0, totalSales: 0, itemCount: 0 };
 
     const today = new Date();
     const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
@@ -46,10 +50,10 @@ export default function ReportsPage() {
       totalSales: sales.length,
       itemCount
     };
-  }, [sales]);
+  }, [sales, mounted]);
 
   const chartData = useMemo(() => {
-    if (!sales) return [];
+    if (!sales || !mounted) return [];
     return Array.from({ length: 7 }, (_, i) => {
       const d = new Date();
       d.setDate(d.getDate() - (6 - i));
@@ -62,12 +66,10 @@ export default function ReportsPage() {
         .reduce((sum, s) => sum + (s.totalAmount || 0), 0);
       return { name: dayStr, amount };
     });
-  }, [sales]);
+  }, [sales, mounted]);
 
   const topProductsData = useMemo(() => {
-    if (!sales) return [];
-    // Note: To get real product names, we'd need to fetch productSaleItems subcollections
-    // For this prototype view, we'll summarize the count of IDs as a placeholder for popular products
+    if (!sales || !mounted) return [];
     const productStats: Record<string, number> = {};
     sales.forEach(sale => {
       sale.productSaleItemIds?.forEach((id: string) => {
@@ -79,11 +81,11 @@ export default function ReportsPage() {
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5)
       .map(([name, value]) => ({ name: `Prod ${name.slice(-4)}`, value }));
-  }, [sales]);
+  }, [sales, mounted]);
 
   const COLORS = ['#3366CC', '#8B4ADF', '#10b981', '#f59e0b', '#ef4444'];
 
-  if (isLoading) {
+  if (!mounted || isLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-32 gap-4">
         <Loader2 className="w-12 h-12 animate-spin text-primary" />

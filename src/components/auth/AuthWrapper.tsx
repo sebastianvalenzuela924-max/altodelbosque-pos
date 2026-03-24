@@ -7,15 +7,13 @@ import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
 
 /**
- * AuthWrapper optimizado para eliminar errores de hidratación y manejar la autorización.
- * Garantiza que el servidor y el cliente rendericen lo mismo en el primer paso.
+ * AuthWrapper definitivo: garantiza paridad total entre servidor y cliente.
  */
 export function AuthWrapper({ children }: { children: React.ReactNode }) {
+  const [mounted, setMounted] = useState(false);
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const auth = useAuth();
-  
-  const [mounted, setMounted] = useState(false);
   const [isAuthorized, setIsAuthorized] = useState(false);
 
   // Referencia al documento de autorización
@@ -26,19 +24,18 @@ export function AuthWrapper({ children }: { children: React.ReactNode }) {
 
   const { data: authDoc, isLoading: isAuthDocLoading } = useDoc(authDocRef);
 
-  // 1. Evitar errores de hidratación: marcar como montado en el cliente después del primer render
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // 2. Iniciar sesión anónima automáticamente
+  // Login anónimo automático
   useEffect(() => {
     if (mounted && !isUserLoading && !user && auth) {
       initiateAnonymousSignIn(auth);
     }
   }, [mounted, user, isUserLoading, auth]);
 
-  // 3. Gestionar la autorización automática
+  // Autorización automática silenciosa
   useEffect(() => {
     if (!mounted || !user || !firestore || isAuthDocLoading) return;
 
@@ -54,12 +51,12 @@ export function AuthWrapper({ children }: { children: React.ReactNode }) {
       }, { merge: true })
       .then(() => setIsAuthorized(true))
       .catch(() => {
-        // Error manejado silenciosamente o por el listener global
+        // Errores gestionados por el listener global
       });
     }
   }, [mounted, user, firestore, authDoc, isAuthDocLoading]);
 
-  // Durante SSR y el PRIMER render del cliente, retornamos el mismo contenedor vacío
+  // Durante SSR y el PRIMER render del cliente, el componente es estático y vacío
   if (!mounted) {
     return <div className="min-h-screen bg-background" />;
   }
@@ -72,7 +69,7 @@ export function AuthWrapper({ children }: { children: React.ReactNode }) {
           <div className="relative">
             <Loader2 className="w-12 h-12 animate-spin text-primary" />
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-2 h-2 bg-primary rounded-full animate-ping" />
+              <div className="w-2 bg-primary rounded-full animate-ping" />
             </div>
           </div>
           <div className="text-center">

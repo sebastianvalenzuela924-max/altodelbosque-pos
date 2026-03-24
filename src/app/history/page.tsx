@@ -3,14 +3,20 @@
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import { collection, query, orderBy } from "firebase/firestore";
 import { Card } from "@/components/ui/card";
-import { FileSpreadsheet, Calendar, History, ShoppingBag, DollarSign, Clock } from "lucide-react";
+import { FileSpreadsheet, Calendar, History, ShoppingBag, DollarSign, Clock, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { exportToExcel } from "@/lib/export";
 import { useToast } from "@/hooks/use-toast";
+import { useEffect, useState } from "react";
 
 export default function HistoryPage() {
+  const [mounted, setMounted] = useState(false);
   const firestore = useFirestore();
   const { toast } = useToast();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const salesQuery = useMemoFirebase(() => {
     return query(collection(firestore, "sales"), orderBy("saleDateTime", "desc"));
@@ -35,6 +41,11 @@ export default function HistoryPage() {
     toast({ title: "Exportación exitosa", description: "Se ha descargado el historial en Excel." });
   };
 
+  // Prevenir renderizado de fechas/datos dinámicos hasta montar
+  if (!mounted) {
+    return <div className="min-h-screen" />;
+  }
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -53,7 +64,7 @@ export default function HistoryPage() {
       <div className="grid gap-4">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20 opacity-30">
-            <Clock className="w-12 h-12 animate-pulse mb-2" />
+            <Loader2 className="w-12 h-12 animate-spin mb-2" />
             <p>Cargando historial...</p>
           </div>
         ) : !sales || sales.length === 0 ? (

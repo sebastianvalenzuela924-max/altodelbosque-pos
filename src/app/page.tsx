@@ -20,14 +20,16 @@ export default function POSPage() {
   const [quickAddBarcode, setQuickAddBarcode] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentTime, setCurrentTime] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
   const { toast } = useToast();
 
-  // Actualizar el reloj solo en el cliente para evitar errores de hidratación
   useEffect(() => {
-    setCurrentTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-    const timer = setInterval(() => {
+    setMounted(true);
+    const updateTime = () => {
       setCurrentTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-    }, 60000);
+    };
+    updateTime();
+    const timer = setInterval(updateTime, 60000);
     return () => clearInterval(timer);
   }, []);
 
@@ -128,6 +130,9 @@ export default function POSPage() {
     setIsProcessing(false);
   };
 
+  // Evitar renderizado de tiempo en servidor
+  const displayTime = mounted ? (currentTime || "--:--") : "--:--";
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in fade-in duration-500">
       <div className="lg:col-span-7 flex flex-col h-full gap-4">
@@ -141,7 +146,7 @@ export default function POSPage() {
               <div className="flex flex-col items-end">
                 <span className="text-xs uppercase font-bold opacity-70">Sesión Activa</span>
                 <span className="text-sm font-mono tracking-widest">
-                  {currentTime || "--:--"}
+                  {displayTime}
                 </span>
               </div>
             </div>
