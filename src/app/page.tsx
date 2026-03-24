@@ -50,6 +50,11 @@ export default function POSPage() {
     return () => clearInterval(timer);
   }, []);
 
+  const total = useMemo(() => {
+    return items.reduce((sum, item) => sum + (item.price * item.quantity), 0) +
+           manualProducts.reduce((sum, item) => sum + item.amount, 0);
+  }, [items, manualProducts]);
+
   const handleScan = (barcode: string) => {
     const cleanBarcode = String(barcode).trim();
     if (!cleanBarcode || isLoadingInventory || isScanLocked) return;
@@ -95,16 +100,69 @@ export default function POSPage() {
     }, 3000);
   };
 
-  const addManualAdjustment = (newTotalCalculated: number, desc: string) => {
-    const currentTotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0) +
-                         manualProducts.reduce((sum, item) => sum + item.amount, 0);
-    
-    const diff = Math.round(newTotalCalculated) - Math.round(currentTotal);
-    
-    if (diff !== 0) {
-      setManualProducts(prev => [...prev, { description: desc, amount: diff }]);
-      toast({ title: "Monto Agregado", description: `${desc}: $${Math.abs(diff).toLocaleString('es-CL')}` });
+  const handleFinalize = (manualFinalAmount?: number) => {
+    // Si viene de la calculadora, calcular la diferencia manual primero
+    let currentManualItems = [...manualProducts];
+    let currentCartTotal = total;
+
+    if (manualFinalAmount !== undefined) {
+      const diff = Math.round(manualFinalAmount) - Math.round(currentCartTotal);
+      if (diff !== 0) {
+        currentManualItems.push({ description: "Ajuste Manual", amount: diff });
+      }
     }
+
+    if (items.length === 0 && currentManualItems.length === 0) return;
+    
+    setIsProcessing(true);
+    const salesRef = collection(firestore, "sales");
+    const saleId = crypto.randomUUID();
+    
+    const finalTotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0) +
+                       currentManualItems.reduce((sum, item) => sum + item.amount, 0);
+
+    const saleData = {
+      id: saleId,
+      totalAmount: Math.round(finalTotal),
+      saleDateTime: serverTimestamp(),
+      productSaleItemIds: items.map(i => i.id),
+      manualSaleItemIds: currentManualItems.map((_, idx) => `manual-${idx}`)
+    };
+
+    addDocumentNonBlocking(salesRef, saleData);
+
+    items.forEach(item => {
+      const itemRef = collection(doc(firestore, "sales", saleId), "productSaleItems");
+      addDocumentNonBlocking(itemRef, {
+        id: crypto.randomUUID(),
+        saleId: saleId,
+        productId: item.id,
+        productName: item.name,
+        unitPrice: Math.round(item.price),
+        quantity: item.quantity,
+        subtotal: Math.round(item.price * item.quantity)
+      });
+
+      const productRef = doc(firestore, "products", item.id);
+      updateDocumentNonBlocking(productRef, {
+        stock: increment(-item.quantity)
+      });
+    });
+
+    currentManualItems.forEach(mp => {
+      const manualRef = collection(doc(firestore, "sales", saleId), "manualSaleItems");
+      addDocumentNonBlocking(manualRef, {
+        id: crypto.randomUUID(),
+        saleId: saleId,
+        description: mp.description,
+        amount: Math.round(mp.amount)
+      });
+    });
+
+    toast({ title: "Venta Finalizada", description: "Venta guardada correctamente." });
+    setItems([]);
+    setManualProducts([]);
+    setIsProcessing(false);
   };
 
   const updateQuantity = (id: string, delta: number) => {
@@ -129,62 +187,6 @@ export default function POSPage() {
     setItems([]);
     setManualProducts([]);
     toast({ title: "Caja Vaciada", description: "Se han eliminado todos los items." });
-  };
-
-  const total = useMemo(() => {
-    return items.reduce((sum, item) => sum + (item.price * item.quantity), 0) +
-           manualProducts.reduce((sum, item) => sum + item.amount, 0);
-  }, [items, manualProducts]);
-
-  const handleFinalize = () => {
-    if (items.length === 0 && manualProducts.length === 0) return;
-    setIsProcessing(true);
-
-    const salesRef = collection(firestore, "sales");
-    const saleId = crypto.randomUUID();
-    
-    const saleData = {
-      id: saleId,
-      totalAmount: Math.round(total),
-      saleDateTime: serverTimestamp(),
-      productSaleItemIds: items.map(i => i.id),
-      manualSaleItemIds: manualProducts.map((_, idx) => `manual-${idx}`)
-    };
-
-    addDocumentNonBlocking(salesRef, saleData);
-
-    items.forEach(item => {
-      const itemRef = collection(doc(firestore, "sales", saleId), "productSaleItems");
-      addDocumentNonBlocking(itemRef, {
-        id: crypto.randomUUID(),
-        saleId: saleId,
-        productId: item.id,
-        productName: item.name,
-        unitPrice: Math.round(item.price),
-        quantity: item.quantity,
-        subtotal: Math.round(item.price * item.quantity)
-      });
-
-      const productRef = doc(firestore, "products", item.id);
-      updateDocumentNonBlocking(productRef, {
-        stock: increment(-item.quantity)
-      });
-    });
-
-    manualProducts.forEach(mp => {
-      const manualRef = collection(doc(firestore, "sales", saleId), "manualSaleItems");
-      addDocumentNonBlocking(manualRef, {
-        id: crypto.randomUUID(),
-        saleId: saleId,
-        description: mp.description,
-        amount: Math.round(mp.amount)
-      });
-    });
-
-    toast({ title: "Venta Finalizada", description: "Venta guardada correctamente." });
-    setItems([]);
-    setManualProducts([]);
-    setIsProcessing(false);
   };
 
   if (!mounted) {
@@ -301,7 +303,7 @@ export default function POSPage() {
                 "w-full h-24 text-2xl font-black rounded-3xl shadow-2xl transition-all active:scale-95 flex items-center justify-center gap-4",
                 isProcessing ? "bg-slate-400" : "bg-primary hover:bg-primary/90"
               )}
-              onClick={handleFinalize}
+              onClick={() => handleFinalize()}
               disabled={(items.length === 0 && manualProducts.length === 0) || isProcessing}
             >
               <CheckCircle2 className="w-10 h-10" />
@@ -335,7 +337,8 @@ export default function POSPage() {
           <div className="bg-white rounded-3xl p-6 shadow-xl shadow-slate-200/50 border border-slate-100">
             <CalculatorComponent 
               baseValue={Math.round(total)} 
-              onResult={addManualAdjustment} 
+              isProcessing={isProcessing}
+              onFinalize={handleFinalize} 
             />
           </div>
         </section>

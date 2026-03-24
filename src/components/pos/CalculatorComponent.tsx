@@ -3,15 +3,20 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Calculator, Plus, Minus, X, Divide, CornerDownLeft, Trash2, Hash } from "lucide-react";
+import { Plus, Minus, X, Divide, CheckCircle2, Trash2, Hash, Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+interface CalculatorComponentProps {
+  baseValue: number;
+  isProcessing?: boolean;
+  onFinalize: (amount: number) => void;
+}
 
 export function CalculatorComponent({ 
   baseValue, 
-  onResult 
-}: { 
-  baseValue: number, 
-  onResult: (amount: number, description: string) => void
-}) {
+  isProcessing = false,
+  onFinalize 
+}: CalculatorComponentProps) {
   const [display, setDisplay] = useState(Math.round(baseValue).toString());
   const [equation, setEquation] = useState("");
   const [isReset, setIsReset] = useState(true);
@@ -66,9 +71,9 @@ export function CalculatorComponent({
     <Card className="h-full border-none shadow-none bg-transparent">
       <CardContent className="p-0 space-y-4">
         <div className="bg-white rounded-xl p-4 shadow-inner border text-right">
-          <div className="text-[10px] text-muted-foreground h-4 uppercase font-black tracking-widest">{equation || "Calculadora Simple"}</div>
+          <div className="text-[10px] text-muted-foreground h-4 uppercase font-black tracking-widest">{equation || "Calculadora de Cobro"}</div>
           <div className="text-3xl font-black font-mono text-primary truncate mt-1">
-            ${parseInt(display).toLocaleString('es-CL')}
+            ${parseInt(display || "0").toLocaleString('es-CL')}
           </div>
         </div>
 
@@ -108,17 +113,24 @@ export function CalculatorComponent({
         </div>
 
         <Button 
-          className="w-full h-14 text-lg font-black bg-primary hover:bg-primary/90 rounded-2xl shadow-lg"
+          className={cn(
+            "w-full h-20 text-xl font-black rounded-2xl shadow-xl transition-all active:scale-95 flex items-center justify-center gap-3 mt-4",
+            isProcessing ? "bg-slate-400" : "bg-primary hover:bg-primary/90"
+          )}
           onClick={() => {
             const amount = parseInt(display);
             if (!isNaN(amount)) {
-              onResult(amount, "Ajuste Manual");
-              clear();
+              onFinalize(amount);
             }
           }}
+          disabled={isProcessing}
         >
-          <CornerDownLeft className="mr-2 w-6 h-6" />
-          AÑADIR A CAJA
+          {isProcessing ? (
+            <Loader2 className="w-8 h-8 animate-spin" />
+          ) : (
+            <CheckCircle2 className="w-8 h-8" />
+          )}
+          {isProcessing ? "PROCESANDO..." : "COBRAR"}
         </Button>
       </CardContent>
     </Card>
