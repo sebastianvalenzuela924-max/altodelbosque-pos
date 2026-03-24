@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { quickProductRegistration } from "@/ai/flows/quick-product-registration";
-import { Sparkles, Loader2, Barcode, Save, Tag, Target } from "lucide-react";
+import { Sparkles, Loader2, Barcode } from "lucide-react";
 import { useFirestore, setDocumentNonBlocking, useCollection, useMemoFirebase } from "@/firebase";
 import { doc, collection } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
@@ -54,8 +54,8 @@ export function QuickAddDialog({
         existingProductNames: products?.map(p => p.name).slice(0, 20)
       });
       setName(result.suggestedName);
-      setPrice(Math.round(result.suggestedPrice).toString());
-      setCategory(result.suggestedCategory);
+      price === "" && setPrice(Math.round(result.suggestedPrice).toString());
+      category === "" && setCategory(result.suggestedCategory);
       setIdealStock(result.suggestedIdealStock.toString());
       toast({ title: "IA: Datos sugeridos" });
     } catch (e) {
@@ -93,49 +93,64 @@ export function QuickAddDialog({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-[95vw] sm:max-w-md border-none shadow-2xl rounded-3xl p-0 overflow-hidden max-h-[90vh] flex flex-col gap-0">
-        <DialogHeader className="p-6 pb-2 shrink-0 bg-white z-10">
+      <DialogContent className="max-w-[95vw] sm:max-w-md border-none shadow-2xl rounded-3xl p-0 overflow-hidden max-h-[90vh] flex flex-col gap-0" onOpenAutoFocus={(e) => e.preventDefault()}>
+        <DialogHeader className="p-6 pb-2 shrink-0 bg-white border-b z-10">
           <DialogTitle className="flex items-center gap-3 text-2xl font-black text-primary">
             <Barcode className="w-6 h-6" />
             Nuevo Producto
           </DialogTitle>
         </DialogHeader>
         
-        <div className="flex-1 min-h-0 overflow-hidden">
-          <ScrollArea className="h-full">
-            <div className="px-6 py-4 grid gap-5">
-              <Button variant="outline" className="w-full flex items-center justify-center gap-2 h-12 border-accent text-accent font-bold" onClick={handleAI} disabled={loading}>
-                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
-                Auto-completar con IA
-              </Button>
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          <Button variant="outline" className="w-full flex items-center justify-center gap-2 h-12 border-accent text-accent font-bold" onClick={handleAI} disabled={loading}>
+            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
+            Auto-completar con IA
+          </Button>
 
-              <div className="space-y-4 pb-4">
-                <div className="grid gap-2">
-                    <Label className="font-bold text-xs uppercase text-slate-500">Nombre</Label>
-                    <Input className="h-12 rounded-xl bg-slate-50 border-none font-bold" value={name} onChange={e => setName(e.target.value)} placeholder="Ej: Coca Cola" />
-                </div>
-
-                <div className="grid gap-2">
-                    <Label className="font-bold text-xs uppercase text-slate-500">Categoría</Label>
-                    <Input value={category} className="h-12 rounded-xl bg-slate-50 border-none font-bold" onChange={e => setCategory(e.target.value)} placeholder="Categoría..." />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="grid gap-2">
-                      <Label className="font-bold text-xs uppercase text-slate-500">Precio ($)</Label>
-                      <Input type="number" className="h-12 rounded-xl bg-slate-50 border-none font-black" value={price} onChange={e => setPrice(e.target.value)} />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label className="font-bold text-xs uppercase text-slate-500">Normal (Ideal)</Label>
-                      <Input type="number" className="h-12 rounded-xl bg-primary/5 border-none font-black text-primary" value={idealStock} onChange={e => setIdealStock(e.target.value)} />
-                    </div>
-                </div>
-              </div>
+          <div className="space-y-4">
+            <div className="grid gap-2">
+                <Label className="font-bold text-xs uppercase text-slate-500">Nombre</Label>
+                <Input className="h-12 rounded-xl bg-slate-50 border-none font-bold" value={name} onChange={e => setName(e.target.value)} placeholder="Ej: Coca Cola" />
             </div>
-          </ScrollArea>
+
+            <div className="grid gap-2">
+                <Label className="font-bold text-xs uppercase text-slate-500">Categoría</Label>
+                <Input value={category} className="h-12 rounded-xl bg-slate-50 border-none font-bold" onChange={e => setCategory(e.target.value)} placeholder="Categoría..." />
+                {existingCategories.length > 0 && (
+                  <ScrollArea className="w-full whitespace-nowrap pb-2 mt-2">
+                    <div className="flex gap-2">
+                      {existingCategories.map((cat) => (
+                        <Badge key={cat} variant={category.toLowerCase() === cat.toLowerCase() ? "default" : "secondary"} className="cursor-pointer rounded-lg px-3 py-1 font-bold text-[10px] uppercase" onClick={() => setCategory(cat)}>
+                          {cat}
+                        </Badge>
+                      ))}
+                    </div>
+                    <ScrollBar orientation="horizontal" className="h-1" />
+                  </ScrollArea>
+                )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label className="font-bold text-xs uppercase text-slate-500">Precio ($)</Label>
+                  <Input type="number" className="h-12 rounded-xl bg-slate-50 border-none font-black" value={price} onChange={e => setPrice(e.target.value)} />
+                </div>
+                <div className="grid gap-2">
+                  <Label className="font-bold text-xs uppercase text-slate-500">Normal (Ideal)</Label>
+                  <Input type="number" className="h-12 rounded-xl bg-primary/5 border-none font-black text-primary" value={idealStock} onChange={e => setIdealStock(e.target.value)} />
+                </div>
+            </div>
+            
+            <div className="grid gap-2">
+              <Label className="font-bold text-xs uppercase text-slate-500">Stock Inicial (Opcional)</Label>
+              <Input type="number" className="h-12 rounded-xl bg-slate-50 border-none font-black" value={stock} onChange={e => setStock(e.target.value)} placeholder="0" />
+            </div>
+          </div>
+          
+          <div className="h-4" />
         </div>
 
-        <DialogFooter className="flex flex-row items-center gap-2 p-6 pt-4 bg-white border-t shrink-0 z-10">
+        <DialogFooter className="flex flex-row items-center gap-2 p-6 shrink-0 bg-white border-t z-10">
           <Button variant="ghost" className="rounded-xl flex-1 h-12" onClick={onClose}>Descartar</Button>
           <Button className="rounded-xl flex-1 bg-primary font-black h-12" onClick={handleSave}>REGISTRAR</Button>
         </DialogFooter>

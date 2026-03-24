@@ -92,70 +92,66 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
         className="max-w-[95vw] sm:max-w-lg border-none shadow-2xl rounded-3xl p-0 overflow-hidden max-h-[90vh] flex flex-col gap-0"
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
-        <DialogHeader className="p-6 pb-2 shrink-0 bg-white z-10">
+        <DialogHeader className="p-6 pb-2 shrink-0 bg-white border-b z-10">
           <DialogTitle className="flex items-center gap-2 text-2xl font-black text-primary">
             <Package className="w-6 h-6" />
             {product?.id && product.name ? "Editar Producto" : "Nuevo Producto"}
           </DialogTitle>
         </DialogHeader>
         
-        <div className="flex-1 min-h-0 overflow-hidden">
-          <ScrollArea className="h-full">
-            <div className="px-6 py-4 grid gap-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="id" className="font-bold text-slate-500 text-xs uppercase tracking-widest">Código</Label>
-                  <Input id="id" value={formData.id} disabled={!!product?.id && !!product?.name} className="h-12 rounded-xl bg-slate-50 border-none font-mono font-bold" onChange={e => setFormData({ ...formData, id: e.target.value })} placeholder="EAN" />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="price" className="font-bold text-slate-500 text-xs uppercase tracking-widest">Precio ($)</Label>
-                  <Input id="price" type="number" className="h-12 rounded-xl bg-slate-50 border-none font-black" value={formData.price} onChange={e => setFormData({ ...formData, price: e.target.value })} placeholder="0" />
-                </div>
-              </div>
-              
-              <div className="grid gap-2">
-                <Label htmlFor="name" className="font-bold text-slate-500 text-xs uppercase tracking-widest">Nombre</Label>
-                <Input id="name" value={formData.name} className="h-12 rounded-xl bg-slate-50 border-none font-bold" onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="Ej: Bebida 1.5L" />
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="category" className="font-bold text-slate-500 text-xs uppercase tracking-widest flex items-center gap-2">
-                  <Tag className="w-3 h-3" /> Categoría
-                </Label>
-                <Input id="category" value={formData.category} className="h-12 rounded-xl bg-slate-50 border-none font-bold" onChange={e => setFormData({ ...formData, category: e.target.value })} placeholder="Escribe o selecciona..." />
-                {categories.length > 0 && (
-                  <div className="w-full overflow-hidden">
-                    <ScrollArea className="w-full whitespace-nowrap pb-2">
-                      <div className="flex gap-2">
-                        {categories.map((cat) => (
-                          <Badge key={cat} variant={formData.category.toLowerCase() === cat.toLowerCase() ? "default" : "secondary"} className="cursor-pointer rounded-lg px-3 py-1 font-bold text-[10px] uppercase" onClick={() => setFormData({ ...formData, category: cat })}>
-                            {cat}
-                          </Badge>
-                        ))}
-                      </div>
-                      <ScrollBar orientation="horizontal" className="h-1" />
-                    </ScrollArea>
-                  </div>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 pb-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="stock" className="font-bold text-slate-500 text-xs uppercase tracking-widest">Stock Actual</Label>
-                  <Input id="stock" type="number" className="h-12 rounded-xl bg-slate-50 border-none font-black" value={formData.stock} onChange={e => setFormData({ ...formData, stock: e.target.value })} placeholder="0" />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="idealStock" className="font-bold text-slate-500 text-xs uppercase tracking-widest flex items-center gap-1">
-                    <Target className="w-3 h-3" /> Stock Ideal
-                  </Label>
-                  <Input id="idealStock" type="number" className="h-12 rounded-xl bg-primary/5 border-primary/20 font-black text-primary" value={formData.idealStock} onChange={e => setFormData({ ...formData, idealStock: e.target.value })} placeholder="10" />
-                </div>
-              </div>
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="id" className="font-bold text-slate-500 text-xs uppercase tracking-widest">Código</Label>
+              <Input id="id" value={formData.id} disabled={!!product?.id && !!product?.name} className="h-12 rounded-xl bg-slate-50 border-none font-mono font-bold" onChange={e => setFormData({ ...formData, id: e.target.value })} placeholder="EAN" />
             </div>
-          </ScrollArea>
+            <div className="grid gap-2">
+              <Label htmlFor="price" className="font-bold text-slate-500 text-xs uppercase tracking-widest">Precio ($)</Label>
+              <Input id="price" type="number" className="h-12 rounded-xl bg-slate-50 border-none font-black" value={formData.price} onChange={e => setFormData({ ...formData, price: e.target.value })} placeholder="0" />
+            </div>
+          </div>
+          
+          <div className="grid gap-2">
+            <Label htmlFor="name" className="font-bold text-slate-500 text-xs uppercase tracking-widest">Nombre</Label>
+            <Input id="name" value={formData.name} className="h-12 rounded-xl bg-slate-50 border-none font-bold" onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="Ej: Bebida 1.5L" />
+          </div>
+
+          <div className="grid gap-2">
+            <Label htmlFor="category" className="font-bold text-slate-500 text-xs uppercase tracking-widest flex items-center gap-2">
+              <Tag className="w-3 h-3" /> Categoría
+            </Label>
+            <Input id="category" value={formData.category} className="h-12 rounded-xl bg-slate-50 border-none font-bold" onChange={e => setFormData({ ...formData, category: e.target.value })} placeholder="Escribe o selecciona..." />
+            {categories.length > 0 && (
+              <ScrollArea className="w-full whitespace-nowrap pb-2 mt-2">
+                <div className="flex gap-2">
+                  {categories.map((cat) => (
+                    <Badge key={cat} variant={formData.category.toLowerCase() === cat.toLowerCase() ? "default" : "secondary"} className="cursor-pointer rounded-lg px-3 py-1 font-bold text-[10px] uppercase" onClick={() => setFormData({ ...formData, category: cat })}>
+                      {cat}
+                    </Badge>
+                  ))}
+                </div>
+                <ScrollBar orientation="horizontal" className="h-1" />
+              </ScrollArea>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="stock" className="font-bold text-slate-500 text-xs uppercase tracking-widest">Stock Actual</Label>
+              <Input id="stock" type="number" className="h-12 rounded-xl bg-slate-50 border-none font-black" value={formData.stock} onChange={e => setFormData({ ...formData, stock: e.target.value })} placeholder="0" />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="idealStock" className="font-bold text-slate-500 text-xs uppercase tracking-widest flex items-center gap-1">
+                <Target className="w-3 h-3" /> Stock Ideal
+              </Label>
+              <Input id="idealStock" type="number" className="h-12 rounded-xl bg-primary/5 border-primary/20 font-black text-primary" value={formData.idealStock} onChange={e => setFormData({ ...formData, idealStock: e.target.value })} placeholder="10" />
+            </div>
+          </div>
+          
+          <div className="h-4" /> {/* Espaciador final para asegurar visibilidad en el scroll */}
         </div>
 
-        <DialogFooter className="gap-2 p-6 pt-4 shrink-0 bg-white border-t z-10 flex flex-row items-center">
+        <DialogFooter className="gap-2 p-6 shrink-0 bg-white border-t z-10 flex flex-row items-center">
           <Button variant="ghost" onClick={onClose} disabled={loading} className="rounded-xl flex-1 h-12">Cancelar</Button>
           <Button onClick={handleSave} disabled={loading} className="bg-primary hover:bg-primary/90 rounded-xl flex-1 h-12 font-black">
             {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
