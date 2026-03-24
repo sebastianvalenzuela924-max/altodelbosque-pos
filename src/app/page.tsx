@@ -336,7 +336,6 @@ export default function POSPage() {
             <CalculatorComponent 
               baseValue={Math.round(total)} 
               onResult={addManualAdjustment} 
-              onFinalize={handleFinalize}
             />
           </div>
         </section>

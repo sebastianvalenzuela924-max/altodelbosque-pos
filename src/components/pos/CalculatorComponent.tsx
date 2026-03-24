@@ -3,23 +3,18 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Calculator, Plus, Minus, X, Divide, CornerDownLeft, Trash2, Hash, ShoppingCart } from "lucide-react";
+import { Calculator, Plus, Minus, X, Divide, CornerDownLeft, Trash2, Hash } from "lucide-react";
 
 export function CalculatorComponent({ 
   baseValue, 
-  onResult,
-  onFinalize 
+  onResult 
 }: { 
   baseValue: number, 
-  onResult: (amount: number, description: string) => void,
-  onFinalize?: () => void
+  onResult: (amount: number, description: string) => void
 }) {
   const [display, setDisplay] = useState(Math.round(baseValue).toString());
   const [equation, setEquation] = useState("");
   const [isReset, setIsReset] = useState(true);
-  const [description, setDescription] = useState("");
 
   useEffect(() => {
     if (isReset) {
@@ -70,18 +65,8 @@ export function CalculatorComponent({
   return (
     <Card className="h-full border-none shadow-none bg-transparent">
       <CardContent className="p-0 space-y-4">
-        <div className="grid gap-2">
-          <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Descripción (opcional)</Label>
-          <Input 
-            placeholder="Ej: Helado Soft, Pan, Varios..." 
-            className="h-11 rounded-xl border-slate-200"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-        </div>
-
         <div className="bg-white rounded-xl p-4 shadow-inner border text-right">
-          <div className="text-[10px] text-muted-foreground h-4 uppercase font-black tracking-widest">{equation || "Calculando"}</div>
+          <div className="text-[10px] text-muted-foreground h-4 uppercase font-black tracking-widest">{equation || "Calculadora Simple"}</div>
           <div className="text-3xl font-black font-mono text-primary truncate mt-1">
             ${parseInt(display).toLocaleString('es-CL')}
           </div>
@@ -122,34 +107,19 @@ export function CalculatorComponent({
           <Button variant="secondary" className="h-12 text-xl font-bold rounded-xl" onClick={() => handleNumber(".")}>.</Button>
         </div>
 
-        <div className="grid grid-cols-1 gap-2 pt-2">
-          <Button 
-            className="w-full h-14 text-lg font-black bg-primary hover:bg-primary/90 rounded-2xl shadow-lg"
-            onClick={() => {
-              const amount = parseInt(display);
-              if (!isNaN(amount)) {
-                onResult(amount, description || "Producto Manual");
-                clear();
-                setDescription("");
-              }
-            }}
-          >
-            <CornerDownLeft className="mr-2 w-6 h-6" />
-            AÑADIR A CAJA
-          </Button>
-
-          {onFinalize && (
-            <Button 
-              variant="outline"
-              className="w-full h-14 text-lg font-black text-green-600 border-green-200 hover:bg-green-50 rounded-2xl"
-              onClick={onFinalize}
-              disabled={baseValue <= 0}
-            >
-              <ShoppingCart className="mr-2 w-6 h-6" />
-              COBRAR AHORA
-            </Button>
-          )}
-        </div>
+        <Button 
+          className="w-full h-14 text-lg font-black bg-primary hover:bg-primary/90 rounded-2xl shadow-lg"
+          onClick={() => {
+            const amount = parseInt(display);
+            if (!isNaN(amount)) {
+              onResult(amount, "Ajuste Manual");
+              clear();
+            }
+          }}
+        >
+          <CornerDownLeft className="mr-2 w-6 h-6" />
+          AÑADIR A CAJA
+        </Button>
       </CardContent>
     </Card>
   );
