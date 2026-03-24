@@ -8,7 +8,7 @@ import { CalculatorComponent } from "@/components/pos/CalculatorComponent";
 import { QuickAddDialog } from "@/components/pos/QuickAddDialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Trash2, PlusCircle, MinusCircle, ShoppingCart, CheckCircle2, Scan, Calculator } from "lucide-react";
-import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase";
+import { useFirestore, addDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { doc, getDoc, collection, serverTimestamp, increment } from "firebase/firestore";
 import { cn } from "@/lib/utils";
@@ -22,6 +22,7 @@ export default function POSPage() {
   const [currentTime, setCurrentTime] = useState<string | null>(null);
   const { toast } = useToast();
 
+  // Actualizar el reloj solo en el cliente para evitar errores de hidratación
   useEffect(() => {
     setCurrentTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
     const timer = setInterval(() => {
@@ -91,10 +92,8 @@ export default function POSPage() {
       manualSaleItemIds: manualProducts.map((_, idx) => `manual-${idx}`)
     };
 
-    // 1. Registrar venta
     addDocumentNonBlocking(salesRef, saleData);
 
-    // 2. Registrar items de producto y actualizar stock
     items.forEach(item => {
       const itemRef = collection(doc(firestore, "sales", saleId), "productSaleItems");
       addDocumentNonBlocking(itemRef, {
@@ -107,14 +106,12 @@ export default function POSPage() {
         subtotal: item.price * item.quantity
       });
 
-      // Restar stock
       const productRef = doc(firestore, "products", item.id);
       updateDocumentNonBlocking(productRef, {
         stock: increment(-item.quantity)
       });
     });
 
-    // 3. Registrar items manuales
     manualProducts.forEach(mp => {
       const manualRef = collection(doc(firestore, "sales", saleId), "manualSaleItems");
       addDocumentNonBlocking(manualRef, {
@@ -160,7 +157,7 @@ export default function POSPage() {
                     </div>
                     <div>
                       <h3 className="text-lg font-bold text-slate-400 uppercase tracking-wider">Carrito Vacío</h3>
-                      <p className="text-slate-400 text-sm">Escanea un producto o usa la calculadora para empezar.</p>
+                      <p className="text-slate-400 text-sm">Escanea un producto para empezar.</p>
                     </div>
                   </div>
                 )}

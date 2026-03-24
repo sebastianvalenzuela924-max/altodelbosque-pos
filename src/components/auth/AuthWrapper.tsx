@@ -7,8 +7,8 @@ import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
 
 /**
- * AuthWrapper optimizado para evitar errores de hidratación.
- * Maneja la autenticación y autorización automática en segundo plano.
+ * AuthWrapper optimizado para eliminar errores de hidratación y manejar la autorización.
+ * Garantiza que el servidor y el cliente rendericen lo mismo en el primer paso.
  */
 export function AuthWrapper({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
@@ -18,7 +18,7 @@ export function AuthWrapper({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false);
   const [isAuthorized, setIsAuthorized] = useState(false);
 
-  // Referencia al documento de autorización del usuario actual
+  // Referencia al documento de autorización
   const authDocRef = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return doc(firestore, 'authorizedUsers', user.uid);
@@ -26,26 +26,25 @@ export function AuthWrapper({ children }: { children: React.ReactNode }) {
 
   const { data: authDoc, isLoading: isAuthDocLoading } = useDoc(authDocRef);
 
-  // 1. Evitar errores de hidratación: marcar como montado en el cliente
+  // 1. Evitar errores de hidratación: marcar como montado en el cliente después del primer render
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // 2. Iniciar sesión anónima automáticamente si no hay usuario
+  // 2. Iniciar sesión anónima automáticamente
   useEffect(() => {
     if (mounted && !isUserLoading && !user && auth) {
       initiateAnonymousSignIn(auth);
     }
   }, [mounted, user, isUserLoading, auth]);
 
-  // 3. Gestionar la autorización automática (DBAC)
+  // 3. Gestionar la autorización automática
   useEffect(() => {
     if (!mounted || !user || !firestore || isAuthDocLoading) return;
 
     if (authDoc) {
       setIsAuthorized(true);
     } else {
-      // Si el documento no existe, intentamos crearlo (Auto-activación)
       const docRef = doc(firestore, 'authorizedUsers', user.uid);
       setDoc(docRef, { 
         uid: user.uid,
@@ -55,13 +54,12 @@ export function AuthWrapper({ children }: { children: React.ReactNode }) {
       }, { merge: true })
       .then(() => setIsAuthorized(true))
       .catch(() => {
-        // El error se manejará por las reglas de seguridad o el hook useDoc
+        // Error manejado silenciosamente o por el listener global
       });
     }
   }, [mounted, user, firestore, authDoc, isAuthDocLoading]);
 
-  // Durante SSR y el primer render del cliente, mostramos un estado mínimo estable
-  // Usamos min-h-screen para que coincida con la estructura de carga posterior
+  // Durante SSR y el PRIMER render del cliente, retornamos el mismo contenedor vacío
   if (!mounted) {
     return <div className="min-h-screen bg-background" />;
   }
@@ -78,7 +76,7 @@ export function AuthWrapper({ children }: { children: React.ReactNode }) {
             </div>
           </div>
           <div className="text-center">
-            <h2 className="text-2xl font-black text-primary tracking-tighter">SmartSale POS</h2>
+            <h2 className="text-2xl font-black text-primary tracking-tighter uppercase">SmartSale POS</h2>
             <p className="text-[10px] text-muted-foreground font-black uppercase tracking-[0.2em] mt-1">
               Sincronizando Terminal
             </p>
