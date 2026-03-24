@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -33,22 +34,22 @@ export function ProductDialog({ product, open, onClose, onSaved }: ProductDialog
       setFormData({
         id: product.id,
         name: product.name || "",
-        price: product.price?.toString() || "",
-        stock: product.stock?.toString() || "0"
+        price: product.price ? Math.round(product.price).toString() : "",
+        stock: product.stock !== undefined ? product.stock.toString() : ""
       });
     } else {
       setFormData({
         id: "",
         name: "",
         price: "",
-        stock: "0"
+        stock: ""
       });
     }
   }, [product, open]);
 
   const handleSave = () => {
     if (!formData.id || !formData.name || !formData.price) {
-      toast({ title: "Error", description: "Por favor complete todos los campos obligatorios.", variant: "destructive" });
+      toast({ title: "Error", description: "Completa los campos obligatorios.", variant: "destructive" });
       return;
     }
 
@@ -57,13 +58,13 @@ export function ProductDialog({ product, open, onClose, onSaved }: ProductDialog
     const data = {
       id: formData.id,
       name: formData.name,
-      price: parseFloat(formData.price),
+      price: Math.round(parseFloat(formData.price)) || 0,
       stock: parseInt(formData.stock) || 0
     };
 
     setDocumentNonBlocking(docRef, data, { merge: true });
     
-    toast({ title: "Éxito", description: "Operación enviada correctamente." });
+    toast({ title: "Guardado", description: "Producto actualizado en el inventario." });
     setLoading(false);
     onClose();
   };
@@ -94,28 +95,28 @@ export function ProductDialog({ product, open, onClose, onSaved }: ProductDialog
               id="name" 
               value={formData.name} 
               onChange={e => setFormData({ ...formData, name: e.target.value })} 
-              placeholder="Ej: Coca Cola 2.25L" 
+              placeholder="Ej: Bebida 1.5L" 
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="price">Precio de Venta ($)</Label>
+              <Label htmlFor="price">Precio ($)</Label>
               <Input 
                 id="price" 
                 type="number" 
                 value={formData.price} 
                 onChange={e => setFormData({ ...formData, price: e.target.value })} 
-                placeholder="0.00" 
+                placeholder="Valor sin decimales" 
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="stock">Stock Actual</Label>
+              <Label htmlFor="stock">Stock</Label>
               <Input 
                 id="stock" 
                 type="number" 
                 value={formData.stock} 
                 onChange={e => setFormData({ ...formData, stock: e.target.value })} 
-                placeholder="0" 
+                placeholder="Cant." 
               />
             </div>
           </div>

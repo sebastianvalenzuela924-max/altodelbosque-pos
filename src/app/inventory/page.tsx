@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -41,12 +42,12 @@ export default function InventoryPage() {
     const dataForExport = products.map(p => ({
       "Código Barras": p.id,
       "Nombre": p.name,
-      "Precio ($)": p.price,
+      "Precio ($)": Math.round(p.price),
       "Stock": p.stock,
       "Estado": p.stock < 5 ? "Stock Bajo" : "Normal"
     }));
     exportToExcel("Inventario_SmartSale", dataForExport, "Inventario");
-    toast({ title: "Exportación exitosa", description: "Se ha descargado el archivo Excel del inventario." });
+    toast({ title: "Exportación exitosa", description: "Se ha descargado el archivo Excel." });
   };
 
   const handleEdit = (product: any) => {
@@ -59,7 +60,7 @@ export default function InventoryPage() {
     if (existing) {
       handleEdit(existing);
     } else {
-      setSelectedProduct(barcode ? { id: barcode, name: "", price: 0, stock: 0 } : null);
+      setSelectedProduct(barcode ? { id: barcode, name: "", price: "", stock: "" } : null);
       setIsDialogOpen(true);
     }
     setIsScannerOpen(false);
@@ -69,7 +70,7 @@ export default function InventoryPage() {
     if (!productToDelete) return;
     const docRef = doc(firestore, "products", productToDelete.id);
     deleteDocumentNonBlocking(docRef);
-    toast({ title: "Eliminado", description: "El producto ha sido marcado para eliminación." });
+    toast({ title: "Eliminado", description: "Producto eliminado correctamente." });
     setProductToDelete(null);
   };
 
@@ -81,11 +82,10 @@ export default function InventoryPage() {
             <Package className="w-8 h-8" />
             Inventario
           </h1>
-          <p className="text-muted-foreground">Gestión por código de barras y control de stock.</p>
         </div>
         <div className="flex flex-wrap gap-2 w-full md:w-auto">
           <Button variant="outline" className="flex-1 md:flex-none border-primary text-primary" onClick={() => setIsScannerOpen(true)}>
-            <Scan className="w-4 h-4 mr-2" /> Escanear Código
+            <Scan className="w-4 h-4 mr-2" /> Escanear
           </Button>
           <Button variant="outline" className="flex-1 md:flex-none" onClick={handleExport} disabled={!products?.length}>
             <FileSpreadsheet className="w-4 h-4 mr-2 text-green-600" /> Exportar
@@ -103,7 +103,7 @@ export default function InventoryPage() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input 
                 className="pl-10 h-11 bg-white border-none shadow-sm" 
-                placeholder="Buscar por nombre o código de barras (EAN)..." 
+                placeholder="Buscar por nombre o código..." 
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
               />
@@ -115,7 +115,7 @@ export default function InventoryPage() {
             <Table>
               <TableHeader className="bg-muted/10">
                 <TableRow>
-                  <TableHead className="font-bold py-4">Código EAN</TableHead>
+                  <TableHead className="font-bold py-4">Código</TableHead>
                   <TableHead className="font-bold py-4">Nombre</TableHead>
                   <TableHead className="font-bold py-4">Precio</TableHead>
                   <TableHead className="font-bold py-4 text-center">Stock</TableHead>
@@ -129,14 +129,14 @@ export default function InventoryPage() {
                     <TableCell colSpan={6} className="h-48 text-center">
                       <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
                         <Loader2 className="w-8 h-8 animate-spin" />
-                        <p>Cargando inventario...</p>
+                        <p>Cargando...</p>
                       </div>
                     </TableCell>
                   </TableRow>
                 ) : filtered.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="h-48 text-center text-muted-foreground">
-                      No se encontraron productos. Escanea uno para empezar.
+                      Sin resultados.
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -144,15 +144,15 @@ export default function InventoryPage() {
                     <TableRow key={p.id} className={p.stock < 5 ? "bg-destructive/5" : ""}>
                       <TableCell className="font-mono text-xs font-bold text-primary">{p.id}</TableCell>
                       <TableCell className="font-bold">{p.name}</TableCell>
-                      <TableCell className="text-primary font-black text-lg">${p.price.toFixed(2)}</TableCell>
+                      <TableCell className="text-primary font-black text-lg">${Math.round(p.price).toLocaleString('es-CL')}</TableCell>
                       <TableCell className="text-center font-bold">{p.stock}</TableCell>
                       <TableCell>
                         {p.stock < 5 ? (
                           <Badge variant="destructive" className="flex items-center gap-1 w-fit">
-                            <AlertTriangle className="w-3 h-3" /> Stock Bajo
+                            <AlertTriangle className="w-3 h-3" /> Bajo
                           </Badge>
                         ) : (
-                          <Badge variant="secondary" className="bg-green-100 text-green-700 hover:bg-green-100 border-none w-fit">Normal</Badge>
+                          <Badge variant="secondary" className="bg-green-100 text-green-700 hover:bg-green-100 border-none w-fit">OK</Badge>
                         )}
                       </TableCell>
                       <TableCell className="text-right">
@@ -186,14 +186,11 @@ export default function InventoryPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Scan className="w-5 h-5 text-primary" />
-              Escanear Producto para Registro
+              Escanear para Inventario
             </DialogTitle>
           </DialogHeader>
           <div className="py-4">
             <ScannerComponent onScan={handleAddNew} />
-            <p className="text-center text-sm text-muted-foreground mt-4">
-              Apunta la cámara al código de barras del producto.
-            </p>
           </div>
         </DialogContent>
       </Dialog>
@@ -201,15 +198,15 @@ export default function InventoryPage() {
       <AlertDialog open={!!productToDelete} onOpenChange={() => setProductToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+            <AlertDialogTitle>¿Eliminar producto?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acción eliminará el producto <strong>{productToDelete?.name}</strong> del inventario.
+              Se borrará <strong>{productToDelete?.name}</strong> definitivamente.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>No</AlertDialogCancel>
             <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Eliminar
+              Sí, eliminar
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

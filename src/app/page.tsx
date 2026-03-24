@@ -24,14 +24,12 @@ export default function POSPage() {
   const lastScanRef = useRef<{ code: string; time: number } | null>(null);
   const { toast } = useToast();
 
-  // Cargamos el inventario completo para reconocimiento instantáneo
   const productsQuery = useMemoFirebase(() => {
     return query(collection(firestore, "products"));
   }, [firestore]);
   
   const { data: allProducts, isLoading: isLoadingInventory } = useCollection(productsQuery);
 
-  // Mapa de búsqueda ultra-rápido por ID (Barcode EAN)
   const productMap = useMemo(() => {
     const map = new Map();
     if (allProducts) {
@@ -57,21 +55,17 @@ export default function POSPage() {
     const cleanBarcode = String(barcode).trim();
     if (!cleanBarcode || isLoadingInventory || isScanLocked) return;
 
-    // DEBOUNCING AGRESIVO: Evitar múltiples escaneos del mismo código en menos de 3 segundos
     const now = Date.now();
     if (lastScanRef.current && lastScanRef.current.code === cleanBarcode && (now - lastScanRef.current.time < 3000)) {
       return;
     }
 
-    // Bloqueo temporal del escáner para dar tiempo al usuario
     setIsScanLocked(true);
     lastScanRef.current = { code: cleanBarcode, time: now };
     
-    // Buscamos en el inventario cargado
     const product = productMap.get(cleanBarcode);
 
     if (product) {
-      // PRODUCTO ENCONTRADO: Añadir directamente al carrito
       setItems(prev => {
         const existing = prev.find(i => i.id === cleanBarcode);
         if (existing) {
@@ -86,27 +80,32 @@ export default function POSPage() {
       });
       
       toast({ 
-        title: "Añadido a la Caja", 
-        description: `${product.name} - $${product.price.toFixed(2)}` 
+        title: "Añadido", 
+        description: `${product.name} - $${Math.round(product.price).toLocaleString('es-CL')}` 
       });
     } else {
-      // PRODUCTO NO ENCONTRADO: Error informativo
       toast({ 
         variant: "destructive",
         title: "No en Inventario", 
-        description: `El código ${cleanBarcode} no existe en el sistema.`
+        description: `El código ${cleanBarcode} no existe.`
       });
     }
 
-    // Liberar el escáner después de 3 segundos
     setTimeout(() => {
       setIsScanLocked(false);
     }, 3000);
   };
 
-  const addManual = (amount: number) => {
-    setManualProducts(prev => [...prev, { description: "Venta Manual", amount }]);
-    toast({ title: "Monto Agregado", description: `$${amount.toFixed(2)}` });
+  const addManualAdjustment = (newTotalCalculated: number) => {
+    const currentTotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0) +
+                         manualProducts.reduce((sum, item) => sum + item.amount, 0);
+    
+    const diff = Math.round(newTotalCalculated) - Math.round(currentTotal);
+    
+    if (diff !== 0) {
+      setManualProducts(prev => [...prev, { description: "Ajuste Manual", amount: diff }]);
+      toast({ title: "Monto Agregado", description: `$${Math.abs(diff).toLocaleString('es-CL')}` });
+    }
   };
 
   const updateQuantity = (id: string, delta: number) => {
@@ -141,7 +140,7 @@ export default function POSPage() {
     
     const saleData = {
       id: saleId,
-      totalAmount: total,
+      totalAmount: Math.round(total),
       saleDateTime: serverTimestamp(),
       productSaleItemIds: items.map(i => i.id),
       manualSaleItemIds: manualProducts.map((_, idx) => `manual-${idx}`)
@@ -149,7 +148,6 @@ export default function POSPage() {
 
     addDocumentNonBlocking(salesRef, saleData);
 
-    // Guardamos los items de la venta y actualizamos el stock real
     items.forEach(item => {
       const itemRef = collection(doc(firestore, "sales", saleId), "productSaleItems");
       addDocumentNonBlocking(itemRef, {
@@ -157,12 +155,11 @@ export default function POSPage() {
         saleId: saleId,
         productId: item.id,
         productName: item.name,
-        unitPrice: item.price,
+        unitPrice: Math.round(item.price),
         quantity: item.quantity,
-        subtotal: item.price * item.quantity
+        subtotal: Math.round(item.price * item.quantity)
       });
 
-      // DESCUENTO DE STOCK
       const productRef = doc(firestore, "products", item.id);
       updateDocumentNonBlocking(productRef, {
         stock: increment(-item.quantity)
@@ -175,11 +172,11 @@ export default function POSPage() {
         id: crypto.randomUUID(),
         saleId: saleId,
         description: mp.description,
-        amount: mp.amount
+        amount: Math.round(mp.amount)
       });
     });
 
-    toast({ title: "Venta Finalizada", description: "Venta guardada y stock descontado." });
+    toast({ title: "Venta Finalizada", description: "Venta guardada." });
     setItems([]);
     setManualProducts([]);
     setIsProcessing(false);
@@ -213,7 +210,7 @@ export default function POSPage() {
               <div className="absolute inset-0 z-50 bg-white/80 backdrop-blur-sm flex items-center justify-center">
                 <div className="flex flex-col items-center gap-2">
                   <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                  <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">Sincronizando Inventario...</p>
+                  <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">Sincronizando...</p>
                 </div>
               </div>
             )}
@@ -227,7 +224,6 @@ export default function POSPage() {
                     </div>
                     <div>
                       <h3 className="text-lg font-bold text-slate-400 uppercase tracking-wider">Caja Vacía</h3>
-                      <p className="text-slate-400 text-sm">Escanea productos existentes para empezar.</p>
                     </div>
                   </div>
                 )}
@@ -239,7 +235,7 @@ export default function POSPage() {
                         <span className="bg-primary/10 text-primary text-[10px] font-black px-1.5 py-0.5 rounded uppercase">Inventario</span>
                         <p className="font-bold text-lg text-slate-800 line-clamp-1">{item.name}</p>
                       </div>
-                      <p className="text-primary font-black text-xl mt-1 font-mono">${(item.price * item.quantity).toFixed(2)}</p>
+                      <p className="text-primary font-black text-xl mt-1 font-mono">${Math.round(item.price * item.quantity).toLocaleString('es-CL')}</p>
                     </div>
                     <div className="flex items-center gap-2 md:gap-4">
                       <div className="flex items-center bg-slate-100 rounded-full p-1 shadow-inner">
@@ -262,10 +258,10 @@ export default function POSPage() {
                   <div key={`manual-${idx}`} className="p-4 flex items-center gap-4 bg-accent/5 border-l-4 border-accent">
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="bg-accent/10 text-accent text-[10px] font-black px-1.5 py-0.5 rounded uppercase">Manual</span>
-                        <p className="font-bold text-lg text-slate-800">Monto Directo</p>
+                        <span className="bg-accent/10 text-accent text-[10px] font-black px-1.5 py-0.5 rounded uppercase">Ajuste</span>
+                        <p className="font-bold text-lg text-slate-800">{item.description}</p>
                       </div>
-                      <p className="text-accent font-black text-xl mt-1 font-mono">${item.amount.toFixed(2)}</p>
+                      <p className="text-accent font-black text-xl mt-1 font-mono">${Math.round(item.amount).toLocaleString('es-CL')}</p>
                     </div>
                     <div className="flex items-center gap-4">
                       <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 rounded-full" onClick={() => removeManual(idx)}>
@@ -280,8 +276,8 @@ export default function POSPage() {
 
           <CardFooter className="flex flex-col gap-6 bg-white border-t p-8">
             <div className="w-full text-right">
-              <p className="text-xs font-black uppercase text-primary tracking-widest">Total General</p>
-              <p className="text-6xl font-black text-primary font-mono tracking-tighter leading-none">${total.toFixed(2)}</p>
+              <p className="text-xs font-black uppercase text-primary tracking-widest">Total</p>
+              <p className="text-6xl font-black text-primary font-mono tracking-tighter leading-none">${Math.round(total).toLocaleString('es-CL')}</p>
             </div>
             
             <Button 
@@ -293,7 +289,7 @@ export default function POSPage() {
               disabled={(items.length === 0 && manualProducts.length === 0) || isProcessing}
             >
               <CheckCircle2 className="w-10 h-10" />
-              {isProcessing ? "PROCESANDO..." : "COBRAR TOTAL"}
+              {isProcessing ? "PROCESANDO..." : "COBRAR"}
             </Button>
           </CardFooter>
         </Card>
@@ -303,11 +299,11 @@ export default function POSPage() {
         <section className="space-y-4">
           <div className="flex items-center justify-between px-1">
             <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
-              <Scan className="w-4 h-4" /> Escáner de Venta
+              <Scan className="w-4 h-4" /> Escáner
             </h3>
             {isScanLocked && (
               <span className="text-[10px] font-bold text-amber-600 flex items-center gap-1 animate-pulse">
-                <Clock className="w-3 h-3" /> Procesando, espere...
+                <Clock className="w-3 h-3" /> Pausa...
               </span>
             )}
           </div>
@@ -318,10 +314,10 @@ export default function POSPage() {
 
         <section className="space-y-4">
           <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 px-1">
-            <Calculator className="w-4 h-4" /> Montos Manuales
+            <Calculator className="w-4 h-4" /> Calculadora de Ajuste
           </h3>
           <div className="bg-white rounded-3xl p-6 shadow-xl shadow-slate-200/50">
-            <CalculatorComponent onAddManual={addManual} />
+            <CalculatorComponent baseValue={Math.round(total)} onResult={addManualAdjustment} />
           </div>
         </section>
       </div>

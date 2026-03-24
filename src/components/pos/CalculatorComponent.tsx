@@ -1,37 +1,54 @@
+
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Calculator, Plus, Minus, X, Divide, ChevronRight, CornerDownLeft } from "lucide-react";
 
-export function CalculatorComponent({ onAddManual }: { onAddManual: (amount: number) => void }) {
-  const [display, setDisplay] = useState("0");
+export function CalculatorComponent({ baseValue, onResult }: { baseValue: number, onResult: (amount: number) => void }) {
+  const [display, setDisplay] = useState(Math.round(baseValue).toString());
   const [equation, setEquation] = useState("");
+  const [isReset, setIsReset] = useState(true);
+
+  // Sincronizar con el total de la caja cuando este cambia
+  useEffect(() => {
+    if (isReset) {
+      setDisplay(Math.round(baseValue).toString());
+    }
+  }, [baseValue, isReset]);
 
   const handleNumber = (n: string) => {
-    setDisplay(display === "0" ? n : display + n);
+    if (isReset) {
+      setDisplay(n);
+      setIsReset(false);
+    } else {
+      setDisplay(display === "0" ? n : display + n);
+    }
   };
 
   const handleOperator = (op: string) => {
     setEquation(display + " " + op + " ");
     setDisplay("0");
+    setIsReset(false);
   };
 
   const handleCalculate = () => {
     try {
       const fullEq = equation + display;
       const result = eval(fullEq.replace('×', '*').replace('÷', '/'));
-      setDisplay(result.toString());
+      setDisplay(Math.round(result).toString());
       setEquation("");
+      setIsReset(false);
     } catch (e) {
       setDisplay("Error");
     }
   };
 
   const clear = () => {
-    setDisplay("0");
+    setDisplay(Math.round(baseValue).toString());
     setEquation("");
+    setIsReset(true);
   };
 
   return (
@@ -39,7 +56,9 @@ export function CalculatorComponent({ onAddManual }: { onAddManual: (amount: num
       <CardContent className="p-0 space-y-3">
         <div className="bg-white rounded-xl p-4 shadow-inner border text-right">
           <div className="text-xs text-muted-foreground h-4">{equation}</div>
-          <div className="text-3xl font-bold font-mono text-primary truncate">{display}</div>
+          <div className="text-3xl font-bold font-mono text-primary truncate">
+            {parseInt(display).toLocaleString('es-CL')}
+          </div>
         </div>
 
         <div className="grid grid-cols-4 gap-2">
@@ -69,15 +88,15 @@ export function CalculatorComponent({ onAddManual }: { onAddManual: (amount: num
         <Button 
           className="w-full h-16 text-lg font-bold bg-primary hover:bg-primary/90 rounded-xl shadow-lg"
           onClick={() => {
-            const amount = parseFloat(display);
-            if (!isNaN(amount) && amount > 0) {
-              onAddManual(amount);
+            const amount = parseInt(display);
+            if (!isNaN(amount)) {
+              onResult(amount);
               clear();
             }
           }}
         >
           <CornerDownLeft className="mr-2 w-6 h-6" />
-          Agregar al Total
+          Ajustar Caja
         </Button>
       </CardContent>
     </Card>
