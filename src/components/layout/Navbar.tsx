@@ -1,8 +1,9 @@
+
 "use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Package, History, BarChart3, ShoppingCart, Store } from "lucide-react";
+import { Package, History, BarChart3, ShoppingCart, Store, Notebook } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NavItems = [
@@ -10,6 +11,7 @@ const NavItems = [
   { name: "Inventario", href: "/inventory", icon: Package },
   { name: "Historial", href: "/history", icon: History },
   { name: "Reportes", href: "/reports", icon: BarChart3 },
+  { name: "Notas", href: "/notes", icon: Notebook },
 ];
 
 export function Navbar() {

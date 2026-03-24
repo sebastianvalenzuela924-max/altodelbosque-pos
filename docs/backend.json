@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "Product": {
@@ -76,84 +77,24 @@
         "manualSaleItemIds"
       ]
     },
-    "ProductSaleItem": {
+    "Note": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "ProductSaleItem",
+      "title": "Note",
       "type": "object",
-      "description": "Represents a specific product and its details as a line item within a particular sale.",
+      "description": "A simple note or reminder for the terminal user.",
       "properties": {
         "id": {
+          "type": "string"
+        },
+        "content": {
+          "type": "string"
+        },
+        "createdAt": {
           "type": "string",
-          "description": "Unique identifier for the ProductSaleItem entity."
-        },
-        "saleId": {
-          "type": "string",
-          "description": "Reference to the Sale this product item belongs to."
-        },
-        "productId": {
-          "type": "string",
-          "description": "Reference to the Product sold."
-        },
-        "productName": {
-          "type": "string",
-          "description": "The name of the product at the time of the sale."
-        },
-        "unitPrice": {
-          "type": "number",
-          "description": "The price of a single unit of the product at the time of the sale."
-        },
-        "quantity": {
-          "type": "number",
-          "description": "The quantity of the product sold."
-        },
-        "subtotal": {
-          "type": "number",
-          "description": "The total price for this specific product item."
-        },
-        "category": {
-          "type": "string",
-          "description": "The category of the product at the time of sale."
+          "format": "date-time"
         }
       },
-      "required": [
-        "id",
-        "saleId",
-        "productId",
-        "productName",
-        "unitPrice",
-        "quantity",
-        "subtotal"
-      ]
-    },
-    "ManualSaleItem": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "ManualSaleItem",
-      "type": "object",
-      "description": "Represents a manually entered item or value added to a sale.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the ManualSaleItem entity."
-        },
-        "saleId": {
-          "type": "string",
-          "description": "Reference to the Sale this manual item belongs to."
-        },
-        "description": {
-          "type": "string",
-          "description": "A description for the manual item."
-        },
-        "amount": {
-          "type": "number",
-          "description": "The monetary amount of the manual item."
-        }
-      },
-      "required": [
-        "id",
-        "saleId",
-        "description",
-        "amount"
-      ]
+      "required": ["id", "content", "createdAt"]
     }
   },
   "auth": {
@@ -192,6 +133,16 @@
             "$ref": "#/backend/entities/Sale"
           },
           "description": "Completed sales transactions."
+        }
+      },
+      {
+        "path": "/notes/{noteId}",
+        "definition": {
+          "entityName": "Note",
+          "schema": {
+            "$ref": "#/backend/entities/Note"
+          },
+          "description": "System reminders and notes."
         }
       }
     ]

@@ -5,14 +5,7 @@ service cloud.firestore {
 
     /**
      * SMART SALE POS SECURITY RULES
-     * 
-     * Core Philosophy:
-     * This ruleset implements a Database Access Control (DBAC) model based on a global "Authorized User" 
-     * role. Rather than individual document ownership, access to inventory and sales data is 
-     * granted to any user whose UID exists within the top-level `/authorizedUsers` collection.
      */
-
-    // --- Helper Functions ---
 
     function isSignedIn() {
       return request.auth != null;
@@ -30,8 +23,6 @@ service cloud.firestore {
       return isOwner(userId) && resource != null;
     }
 
-    // --- Collection Rules ---
-
     match /authorizedUsers/{userId} {
       allow get: if isOwner(userId);
       allow list: if false;
@@ -47,10 +38,17 @@ service cloud.firestore {
       allow delete: if isAuthorized();
     }
 
+    match /notes/{noteId} {
+      allow get, list: if isAuthorized();
+      allow create: if isAuthorized();
+      allow update: if isAuthorized();
+      allow delete: if isAuthorized();
+    }
+
     match /sales/{saleId} {
       allow get, list: if isAuthorized();
       allow create: if isAuthorized();
-      allow update: if isAuthorized(); // Permitir actualizaciones para metadatos si fuera necesario
+      allow update: if isAuthorized();
       allow delete: if isAuthorized();
 
       match /productSaleItems/{itemId} {

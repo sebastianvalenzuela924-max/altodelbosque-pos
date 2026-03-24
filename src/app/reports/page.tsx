@@ -5,17 +5,13 @@ import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import { collection, query, orderBy } from "firebase/firestore";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { PieChart, Pie, Tooltip, ResponsiveContainer, Cell, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
-import { DollarSign, Package, TrendingUp, Calendar, ShoppingBag, ArrowUpRight, Loader2, ListFilter, Table as TableIcon, CalendarDays, ChevronRight, Clock, Tag, AlertTriangle } from "lucide-react";
+import { DollarSign, Package, TrendingUp, Calendar, ShoppingBag, ArrowUpRight, Loader2, ListFilter, Table as TableIcon, CalendarDays, ChevronRight, Clock, Tag, AlertTriangle, Trophy, CheckCircle2 } from "lucide-react";
 import { useMemo, useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
 
 export default function ReportsPage() {
   const [mounted, setMounted] = useState(false);
-  const [rankingFilter, setRankingFilter] = useState<'today' | 'yesterday' | 'week' | 'month' | 'all'>('all');
   const firestore = useFirestore();
 
   useEffect(() => {
@@ -33,63 +29,56 @@ export default function ReportsPage() {
   const { data: sales, isLoading: isLoadingSales } = useCollection(salesQuery);
   const { data: products, isLoading: isLoadingProducts } = useCollection(productsQuery);
 
-  const stats = useMemo(() => {
-    if (!sales || !mounted) return { daily: 0, monthly: 0, totalSales: 0, unitsSold: 0 };
-    const today = new Date();
-    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-    const daily = sales.filter(s => (s.saleDateTime?.toDate?.() || new Date()) >= startOfDay).reduce((sum, s) => sum + (s.totalAmount || 0), 0);
-    const monthly = sales.filter(s => (s.saleDateTime?.toDate?.() || new Date()) >= startOfMonth).reduce((sum, s) => sum + (s.totalAmount || 0), 0);
-    const unitsSold = sales.reduce((sum, s) => sum + (s.itemsSummary?.reduce((itemSum: number, item: any) => itemSum + (item.quantity || 0), 0) || 0), 0);
-    return { daily, monthly, totalSales: sales.length, unitsSold };
-  }, [sales, mounted]);
-
-  const categoryStats = useMemo(() => {
+  const productRanking = useMemo(() => {
     if (!sales || !mounted) return [];
-    
-    // Mapa para agrupar por nombre de categoría insensible a mayúsculas
-    const normalizedStats: Record<string, { category: string, total: number, units: number }> = {};
+    const ranking: Record<string, { name: string, quantity: number, total: number, category: string }> = {};
     
     sales.forEach(sale => {
       sale.itemsSummary?.forEach((item: any) => {
-        const rawCat = item.category || (products?.find(p => p.id === item.id)?.category) || "General";
-        const normKey = rawCat.trim().toLowerCase();
-        
-        if (!normalizedStats[normKey]) {
-          normalizedStats[normKey] = { 
-            category: rawCat, // Usamos la primera versión encontrada como canonical
-            total: 0, 
-            units: 0 
-          };
+        if (item.type === 'manual') return;
+        const id = item.id;
+        if (!ranking[id]) {
+          ranking[id] = { name: item.name, quantity: 0, total: 0, category: item.category || "General" };
         }
-        normalizedStats[normKey].total += Math.round(item.price * item.quantity) || 0;
-        normalizedStats[normKey].units += item.quantity || 0;
+        ranking[id].quantity += item.quantity;
+        ranking[id].total += Math.round(item.price * item.quantity);
+      });
+    });
+
+    return Object.values(ranking).sort((a, b) => b.quantity - a.quantity).slice(0, 10);
+  }, [sales, mounted]);
+
+  const categoryStats = useMemo(() => {
+    if (!sales || !products || !mounted) return [];
+    
+    const stats: Record<string, { category: string, totalRevenue: number, unitsSold: number, productCount: number, stockCritical: number }> = {};
+    
+    // Contar productos por categoría
+    products.forEach(p => {
+      const cat = p.category || "General";
+      const key = cat.toLowerCase().trim();
+      if (!stats[key]) {
+        stats[key] = { category: cat, totalRevenue: 0, unitsSold: 0, productCount: 0, stockCritical: 0 };
+      }
+      stats[key].productCount++;
+      if (p.stock < 5) stats[key].stockCritical++;
+    });
+
+    // Sumar ventas por categoría
+    sales.forEach(sale => {
+      sale.itemsSummary?.forEach((item: any) => {
+        const cat = item.category || "General";
+        const key = cat.toLowerCase().trim();
+        if (!stats[key]) {
+          stats[key] = { category: cat, totalRevenue: 0, unitsSold: 0, productCount: 0, stockCritical: 0 };
+        }
+        stats[key].totalRevenue += Math.round(item.price * item.quantity);
+        stats[key].unitsSold += item.quantity;
       });
     });
     
-    return Object.values(normalizedStats).sort((a, b) => b.total - a.total);
+    return Object.values(stats).sort((a, b) => b.totalRevenue - a.totalRevenue);
   }, [sales, products, mounted]);
-
-  const stockAlertsByCategory = useMemo(() => {
-    if (!products || !mounted) return [];
-    
-    // Normalización también aquí para agrupar alertas de stock
-    const normalizedAlerts: Record<string, { category: string, lowStockCount: number, products: any[] }> = {};
-    
-    products.forEach(p => {
-      if (p.stock < 5) {
-        const rawCat = p.category || "General";
-        const normKey = rawCat.trim().toLowerCase();
-        
-        if (!normalizedAlerts[normKey]) {
-          normalizedAlerts[normKey] = { category: rawCat, lowStockCount: 0, products: [] };
-        }
-        normalizedAlerts[normKey].lowStockCount++;
-        normalizedAlerts[normKey].products.push(p);
-      }
-    });
-    return Object.values(normalizedAlerts).sort((a, b) => b.lowStockCount - a.lowStockCount);
-  }, [products, mounted]);
 
   const COLORS = ['#3366CC', '#8B4ADF', '#10b981', '#f59e0b', '#ef4444', '#64748b', '#ec4899', '#8b5cf6', '#06b6d4', '#f97316'];
 
@@ -97,85 +86,145 @@ export default function ReportsPage() {
     return (
       <div className="flex flex-col items-center justify-center py-32 gap-4">
         <Loader2 className="w-12 h-12 animate-spin text-primary" />
-        <p className="text-muted-foreground font-bold">Analizando ventas y categorías...</p>
+        <p className="text-muted-foreground font-bold uppercase text-[10px] tracking-widest">Compilando reportes...</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
+    <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-black text-primary uppercase tracking-tighter">Reportes de Categorías</h1>
-          <p className="text-muted-foreground">Analiza el rendimiento por tipo de producto.</p>
+          <h1 className="text-3xl font-black text-primary uppercase tracking-tighter">Panel de Inteligencia</h1>
+          <p className="text-muted-foreground">Analiza el rendimiento de tus categorías y stock.</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="border-none shadow-lg bg-primary text-white">
+        <Card className="border-none shadow-lg bg-primary text-white rounded-3xl">
           <CardHeader className="pb-2">
-            <CardDescription className="text-primary-foreground/70 font-black uppercase text-[10px] tracking-widest">Recaudación Categoría Top</CardDescription>
-            <CardTitle className="text-2xl font-black flex items-center justify-between">
-              {categoryStats[0]?.category || "N/A"}
-              <Tag className="w-6 h-6 opacity-20" />
-            </CardTitle>
+            <CardDescription className="text-primary-foreground/70 font-black uppercase text-[10px] tracking-widest">Categoría Líder</CardDescription>
+            <CardTitle className="text-2xl font-black truncate">{categoryStats[0]?.category || "---"}</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-black">${Math.round(categoryStats[0]?.total || 0).toLocaleString('es-CL')}</div>
+            <div className="text-3xl font-black font-mono">${Math.round(categoryStats[0]?.totalRevenue || 0).toLocaleString('es-CL')}</div>
           </CardContent>
         </Card>
 
-        <Card className="border-none shadow-lg bg-white">
+        <Card className="border-none shadow-lg bg-white rounded-3xl">
           <CardHeader className="pb-2">
-            <CardDescription className="text-muted-foreground font-black uppercase text-[10px] tracking-widest">Alertas de Reposición</CardDescription>
-            <CardTitle className="text-3xl font-black flex items-center justify-between text-destructive">
-              {products?.filter(p => p.stock < 5).length || 0}
-              <AlertTriangle className="w-8 h-8 opacity-20" />
+            <CardDescription className="text-muted-foreground font-black uppercase text-[10px] tracking-widest">Total Productos</CardDescription>
+            <CardTitle className="text-3xl font-black text-slate-800">{products?.length || 0}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-xs text-slate-400 font-bold uppercase tracking-widest">En todo el inventario</div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-none shadow-lg bg-white rounded-3xl border-l-4 border-destructive">
+          <CardHeader className="pb-2">
+            <CardDescription className="text-muted-foreground font-black uppercase text-[10px] tracking-widest">Stock Crítico</CardDescription>
+            <CardTitle className="text-3xl font-black text-destructive">{products?.filter(p => p.stock < 5).length || 0}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-xs text-slate-400 font-bold uppercase tracking-widest">Necesitan reposición</div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-none shadow-lg bg-accent text-white rounded-3xl">
+          <CardHeader className="pb-2">
+            <CardDescription className="text-accent-foreground/70 font-black uppercase text-[10px] tracking-widest">Unidades Vendidas</CardDescription>
+            <CardTitle className="text-3xl font-black">
+              {categoryStats.reduce((sum, c) => sum + c.unitsSold, 0)}
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-xs text-slate-400">Productos con stock crítico</div>
+            <div className="text-xs opacity-70 font-bold uppercase tracking-widest">Volumen total histórico</div>
           </CardContent>
         </Card>
       </div>
 
-      <Tabs defaultValue="categorias" className="w-full">
-        <TabsList className="bg-white border p-1 rounded-2xl h-14 w-full md:w-auto grid grid-cols-2 md:inline-flex mb-6 gap-2">
-          <TabsTrigger value="categorias" className="rounded-xl font-bold data-[state=active]:bg-primary data-[state=active]:text-white">
-            <Tag className="w-4 h-4 mr-2" /> Por Categoría
+      <Tabs defaultValue="ranking" className="w-full">
+        <TabsList className="bg-white border p-1 rounded-2xl h-14 w-full md:w-auto grid grid-cols-2 md:inline-flex mb-8 gap-2 shadow-sm">
+          <TabsTrigger value="ranking" className="rounded-xl font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-white">
+            <Trophy className="w-4 h-4 mr-2" /> Top Productos
           </TabsTrigger>
-          <TabsTrigger value="stock" className="rounded-xl font-bold data-[state=active]:bg-primary data-[state=active]:text-white">
-            <Package className="w-4 h-4 mr-2" /> Necesitan Stock
+          <TabsTrigger value="categorias" className="rounded-xl font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-white">
+            <Tag className="w-4 h-4 mr-2" /> Categorías
           </TabsTrigger>
         </TabsList>
 
+        <TabsContent value="ranking" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div className="lg:col-span-12 space-y-4">
+              <h3 className="text-lg font-black text-slate-800 uppercase tracking-tighter flex items-center gap-2">
+                <Trophy className="w-5 h-5 text-amber-500" /> Los 10 Más Vendidos
+              </h3>
+              <div className="grid gap-3">
+                {productRanking.map((prod, idx) => (
+                  <Card key={idx} className="border-none shadow-md rounded-2xl bg-white overflow-hidden group">
+                    <div className="flex items-center">
+                      <div className={cn(
+                        "w-12 h-16 flex items-center justify-center font-black text-lg",
+                        idx === 0 ? "bg-amber-100 text-amber-600" : 
+                        idx === 1 ? "bg-slate-100 text-slate-500" :
+                        idx === 2 ? "bg-orange-100 text-orange-600" : "bg-slate-50 text-slate-400"
+                      )}>
+                        #{idx + 1}
+                      </div>
+                      <div className="flex-1 p-4 flex flex-col md:flex-row md:items-center justify-between gap-2">
+                        <div>
+                          <p className="font-black text-slate-700">{prod.name}</p>
+                          <Badge variant="outline" className="text-[9px] uppercase font-black tracking-widest border-slate-200">
+                            {prod.category}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-8">
+                          <div className="text-right">
+                            <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Unidades</p>
+                            <p className="text-lg font-black text-slate-700">{prod.quantity}</p>
+                          </div>
+                          <div className="text-right min-w-[100px]">
+                            <p className="text-[9px] font-black uppercase text-primary tracking-widest">Ingresos</p>
+                            <p className="text-xl font-black text-primary font-mono">${prod.total.toLocaleString('es-CL')}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          </div>
+        </TabsContent>
+
         <TabsContent value="categorias" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
             <Card className="border-none shadow-xl bg-white rounded-3xl p-6">
-              <CardTitle className="text-xl font-black mb-6">Ventas por Categoría ($)</CardTitle>
+              <CardTitle className="text-lg font-black mb-6 uppercase tracking-tighter">Recaudación por Categoría</CardTitle>
               <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={categoryStats}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                     <XAxis dataKey="category" axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 'bold'}} />
                     <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10}} />
-                    <Tooltip cursor={{fill: 'transparent'}} contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)'}} />
-                    <Bar dataKey="total" fill="#3366CC" radius={[10, 10, 0, 0]} />
+                    <Tooltip cursor={{fill: '#f8fafc'}} contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)'}} />
+                    <Bar dataKey="totalRevenue" fill="#3366CC" radius={[10, 10, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
             </Card>
 
             <Card className="border-none shadow-xl bg-white rounded-3xl p-6">
-              <CardTitle className="text-xl font-black mb-6">Distribución de Unidades</CardTitle>
+              <CardTitle className="text-lg font-black mb-6 uppercase tracking-tighter">Unidades por Categoría</CardTitle>
               <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={categoryStats} innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="units" nameKey="category">
+                    <Pie data={categoryStats} innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="unitsSold" nameKey="category">
                       {categoryStats.map((_, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                     </Pie>
-                    <Tooltip contentStyle={{borderRadius: '16px'}} />
-                    <Legend />
+                    <Tooltip contentStyle={{borderRadius: '16px', border: 'none'}} />
+                    <Legend iconType="circle" wrapperStyle={{fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase'}} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
@@ -183,62 +232,59 @@ export default function ReportsPage() {
           </div>
 
           <div className="grid gap-4">
+             <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest px-2">Desglose Detallado de Stock y Ventas</h3>
              {categoryStats.map((cat, idx) => (
-                <Card key={idx} className="border-none shadow-md rounded-2xl p-6 flex items-center justify-between">
-                   <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-black" style={{backgroundColor: COLORS[idx % COLORS.length]}}>
-                         {cat.category[0]}
+                <Card key={idx} className="border-none shadow-md rounded-2xl p-0 overflow-hidden bg-white">
+                   <div className="flex flex-col md:flex-row">
+                      <div className="p-6 md:w-1/3 flex items-center gap-4 bg-slate-50/50">
+                        <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-black text-xl shadow-lg" style={{backgroundColor: COLORS[idx % COLORS.length]}}>
+                           {cat.category[0].toUpperCase()}
+                        </div>
+                        <div>
+                           <h3 className="font-black text-slate-800 text-lg uppercase tracking-tighter">{cat.category}</h3>
+                           <div className="flex gap-2 mt-1">
+                              <Badge variant="secondary" className="text-[9px] font-black uppercase bg-slate-200">
+                                {cat.productCount} Prod.
+                              </Badge>
+                              {cat.stockCritical > 0 && (
+                                <Badge variant="destructive" className="text-[9px] font-black uppercase">
+                                  {cat.stockCritical} Alertas
+                                </Badge>
+                              )}
+                           </div>
+                        </div>
                       </div>
-                      <div>
-                         <h3 className="font-black text-slate-800">{cat.category}</h3>
-                         <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">{cat.units} unidades vendidas</p>
+                      
+                      <div className="flex-1 p-6 grid grid-cols-2 md:grid-cols-3 gap-6">
+                        <div className="space-y-1">
+                          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Ventas Totales</p>
+                          <p className="text-2xl font-black text-primary font-mono">${cat.totalRevenue.toLocaleString('es-CL')}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Unidades</p>
+                          <p className="text-2xl font-black text-slate-700">{cat.unitsSold}</p>
+                        </div>
+                        <div className="space-y-1 col-span-2 md:col-span-1">
+                          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Salud de Stock</p>
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                              <div 
+                                className={cn(
+                                  "h-full rounded-full",
+                                  cat.stockCritical > 0 ? "bg-destructive" : "bg-green-500"
+                                )} 
+                                style={{ width: `${Math.max(10, 100 - (cat.stockCritical / cat.productCount * 100))}%` }}
+                              />
+                            </div>
+                            <span className="text-xs font-black text-slate-500">
+                              {cat.stockCritical > 0 ? 'Reponer' : 'OK'}
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                   </div>
-                   <div className="text-right">
-                      <p className="text-2xl font-black text-primary font-mono">${cat.total.toLocaleString('es-CL')}</p>
                    </div>
                 </Card>
              ))}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="stock" className="space-y-6">
-          <div className="grid gap-6">
-             {stockAlertsByCategory.length > 0 ? (
-                stockAlertsByCategory.map((alert, idx) => (
-                   <Card key={idx} className="border-none shadow-lg rounded-3xl overflow-hidden">
-                      <div className="bg-destructive/10 p-4 px-6 flex items-center justify-between border-b border-destructive/10">
-                         <div className="flex items-center gap-3">
-                            <AlertTriangle className="w-5 h-5 text-destructive" />
-                            <h3 className="font-black text-destructive uppercase tracking-tighter text-lg">{alert.category}</h3>
-                         </div>
-                         <Badge variant="destructive" className="rounded-full px-3 py-1 font-black uppercase text-[10px]">
-                            {alert.lowStockCount} por reponer
-                         </Badge>
-                      </div>
-                      <div className="p-0">
-                         {alert.products.map((p, pIdx) => (
-                            <div key={pIdx} className="p-4 px-8 border-b last:border-none flex items-center justify-between hover:bg-slate-50 transition-colors">
-                               <div>
-                                  <p className="font-bold text-slate-700">{p.name}</p>
-                                  <p className="text-[10px] font-mono text-slate-400">SKU: {p.id}</p>
-                               </div>
-                               <div className="text-right">
-                                  <p className="text-xs font-black uppercase text-slate-400">Stock Actual</p>
-                                  <p className="text-xl font-black text-destructive">{p.stock}</p>
-                               </div>
-                            </div>
-                         ))}
-                      </div>
-                   </Card>
-                ))
-             ) : (
-                <div className="text-center py-20 bg-white rounded-3xl shadow-inner border-2 border-dashed border-slate-200">
-                   <CheckCircle2 className="w-16 h-16 mx-auto mb-4 text-green-200" />
-                   <h3 className="text-xl font-bold text-slate-400 uppercase tracking-widest">Stock Completo</h3>
-                   <p className="text-slate-400">No hay productos por debajo del límite de seguridad.</p>
-                </div>
-             )}
           </div>
         </TabsContent>
       </Tabs>
