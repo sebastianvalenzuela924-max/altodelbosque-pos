@@ -19,7 +19,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
-type SortOption = "name" | "stock-asc" | "stock-desc" | "status-critical" | "price-asc" | "price-desc";
+type SortOption = "name" | "stock-asc" | "stock-desc" | "status-critical" | "price-asc" | "price-desc" | "category-asc" | "category-desc";
 
 export default function InventoryPage() {
   const firestore = useFirestore();
@@ -64,6 +64,10 @@ export default function InventoryPage() {
           return a.price - b.price;
         case "price-desc":
           return b.price - a.price;
+        case "category-asc":
+          return (a.category || "General").localeCompare(b.category || "General");
+        case "category-desc":
+          return (b.category || "General").localeCompare(a.category || "General");
         case "status-critical":
           const aCritical = a.stock < 5 ? 0 : 1;
           const bCritical = b.stock < 5 ? 0 : 1;
@@ -126,13 +130,15 @@ export default function InventoryPage() {
     setProductToDelete(null);
   };
 
-  const toggleSort = (type: 'name' | 'stock' | 'price' | 'status') => {
+  const toggleSort = (type: 'name' | 'stock' | 'price' | 'status' | 'category') => {
     if (type === 'name') {
       setSortBy('name');
     } else if (type === 'stock') {
       setSortBy(sortBy === 'stock-asc' ? 'stock-desc' : 'stock-asc');
     } else if (type === 'price') {
       setSortBy(sortBy === 'price-asc' ? 'price-desc' : 'price-asc');
+    } else if (type === 'category') {
+      setSortBy(sortBy === 'category-asc' ? 'category-desc' : 'category-asc');
     } else if (type === 'status') {
       setSortBy('status-critical');
     }
@@ -207,6 +213,8 @@ export default function InventoryPage() {
                     <SelectItem value="stock-desc">Stock (Mayor a Menor)</SelectItem>
                     <SelectItem value="price-asc">Precio (Menor a Mayor)</SelectItem>
                     <SelectItem value="price-desc">Precio (Mayor a Menor)</SelectItem>
+                    <SelectItem value="category-asc">Categoría (A-Z)</SelectItem>
+                    <SelectItem value="category-desc">Categoría (Z-A)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -230,7 +238,16 @@ export default function InventoryPage() {
                     </div>
                   </TableHead>
 
-                  <TableHead className="font-black py-4 uppercase text-[10px] tracking-widest px-6">Categoría</TableHead>
+                  <TableHead 
+                    className="font-black py-4 uppercase text-[10px] tracking-widest px-6 cursor-pointer hover:text-primary transition-colors"
+                    onClick={() => toggleSort('category')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Categoría
+                      {sortBy === 'category-asc' && <ArrowUp className="w-3 h-3" />}
+                      {sortBy === 'category-desc' && <ArrowDown className="w-3 h-3" />}
+                    </div>
+                  </TableHead>
                   
                   <TableHead 
                     className="font-black py-4 uppercase text-[10px] tracking-widest px-6 cursor-pointer hover:text-primary transition-colors"
@@ -260,7 +277,7 @@ export default function InventoryPage() {
                   >
                     <div className="flex items-center gap-1">
                       Estado
-                      {sortBy === 'status-critical' && <AlertTriangle className="w-3 h-3" />}
+                      {sortBy === 'status-critical' && <AlertTriangle className="w-3 h-3 text-destructive" />}
                     </div>
                   </TableHead>
 
