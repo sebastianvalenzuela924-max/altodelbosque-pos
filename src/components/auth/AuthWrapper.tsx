@@ -1,19 +1,23 @@
-
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useUser, useFirestore, useAuth, useDoc, useMemoFirebase, setDocumentNonBlocking } from '@/firebase';
 import { initiateAnonymousSignIn } from '@/firebase/non-blocking-login';
 import { doc, serverTimestamp } from 'firebase/firestore';
-import { Button } from '@/components/ui/button';
-import { Loader2, Lock, ShieldCheck } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
+/**
+ * AuthWrapper simplificado.
+ * Maneja la autenticación anónima y la auto-autorización en segundo plano
+ * para que el usuario entre directo a la aplicación.
+ */
 export function AuthWrapper({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const auth = useAuth();
+  const [isAuthorizing, setIsAuthorizing] = useState(false);
 
-  // Memoize the doc ref for authorization check
+  // Referencia al documento de autorización del usuario actual
   const authDocRef = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return doc(firestore, 'authorizedUsers', user.uid);
@@ -21,69 +25,61 @@ export function AuthWrapper({ children }: { children: React.ReactNode }) {
 
   const { data: authDoc, isLoading: isAuthDocLoading } = useDoc(authDocRef);
 
+  // 1. Manejar inicio de sesión anónimo automático
   useEffect(() => {
     if (!isUserLoading && !user && auth) {
       initiateAnonymousSignIn(auth);
     }
   }, [user, isUserLoading, auth]);
 
-  if (isUserLoading || isAuthDocLoading) {
+  // 2. Auto-autorizar si el usuario está logueado pero no tiene documento en authorizedUsers
+  useEffect(() => {
+    if (user && firestore && !isAuthDocLoading && !authDoc && !isAuthorizing) {
+      setIsAuthorizing(true);
+      const docRef = doc(firestore, 'authorizedUsers', user.uid);
+      
+      // Creamos el documento de autorización automáticamente
+      setDocumentNonBlocking(docRef, { 
+        uid: user.uid,
+        activatedAt: serverTimestamp(),
+        name: "Terminal Auto-Autorizada",
+        autoActivated: true
+      }, { merge: true });
+      
+      // Damos un pequeño respiro para que Firestore procese (opcional, useDoc lo detectará)
+      setTimeout(() => setIsAuthorizing(false), 1000);
+    }
+  }, [user, firestore, authDoc, isAuthDocLoading, isAuthorizing]);
+
+  // Mostrar cargando solo durante los procesos iniciales
+  if (isUserLoading || isAuthDocLoading || (user && !authDoc)) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <Loader2 className="w-10 h-10 animate-spin text-primary" />
-        <p className="text-muted-foreground font-medium">Verificando acceso...</p>
+      <div className="flex flex-col items-center justify-center min-h-[80vh] gap-4">
+        <div className="relative">
+          <Loader2 className="w-12 h-12 animate-spin text-primary" />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="w-2 h-2 bg-primary rounded-full animate-ping" />
+          </div>
+        </div>
+        <div className="text-center">
+          <p className="text-lg font-black text-primary animate-pulse">SmartSale POS</p>
+          <p className="text-xs text-muted-foreground font-medium uppercase tracking-widest">Iniciando terminal...</p>
+        </div>
       </div>
     );
   }
 
-  if (!user) {
+  // Si no hay usuario ni auth, algo falló en la conexión inicial
+  if (!user && !isUserLoading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 text-center px-4">
-        <div className="w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center text-primary">
-          <Lock className="w-10 h-10" />
-        </div>
-        <div className="space-y-2">
-          <h2 className="text-2xl font-black">Acceso Requerido</h2>
-          <p className="text-muted-foreground max-w-xs">Iniciando sesión de forma segura para tu terminal de punto de venta...</p>
-        </div>
-        <Button onClick={() => initiateAnonymousSignIn(auth)} className="h-12 px-8 rounded-xl font-bold">
-          Intentar Re-conectar
-        </Button>
-      </div>
-    );
-  }
-
-  if (!authDoc) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 text-center px-4 animate-in fade-in zoom-in duration-500">
-        <div className="w-24 h-24 bg-accent/10 rounded-full flex items-center justify-center text-accent shadow-inner">
-          <ShieldCheck className="w-12 h-12" />
-        </div>
-        <div className="space-y-2 max-w-md">
-          <h2 className="text-3xl font-black text-slate-800">Activar Sistema POS</h2>
-          <p className="text-muted-foreground">
-            Para poder acceder al inventario y registrar ventas, este dispositivo debe estar autorizado.
-          </p>
-        </div>
-        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 w-full max-w-sm">
-          <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Tu ID de Usuario</p>
-          <p className="text-xs font-mono font-bold text-slate-600 truncate">{user.uid}</p>
-        </div>
-        <Button 
-          onClick={() => {
-            if (user && firestore) {
-               const docRef = doc(firestore, 'authorizedUsers', user.uid);
-               setDocumentNonBlocking(docRef, { 
-                 uid: user.uid,
-                 activatedAt: serverTimestamp(),
-                 name: "Operador de Caja" 
-               }, { merge: true });
-            }
-          }} 
-          className="w-full max-w-sm h-16 text-lg rounded-2xl font-black bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20"
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center">
+        <p className="text-destructive font-bold">Error de conexión con el servidor.</p>
+        <button 
+          onClick={() => window.location.reload()}
+          className="px-4 py-2 bg-primary text-white rounded-lg font-bold"
         >
-          AUTORIZAR ESTE TERMINAL
-        </Button>
+          Reintentar
+        </button>
       </div>
     );
   }
