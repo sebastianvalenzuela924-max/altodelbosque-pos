@@ -278,7 +278,10 @@ export default function InventoryPage() {
 
       {/* Diálogo de Carga Rápida */}
       <Dialog open={!!quickStockProduct} onOpenChange={() => setQuickStockProduct(null)}>
-        <DialogContent className="rounded-3xl border-none shadow-2xl max-w-xs">
+        <DialogContent 
+          className="rounded-3xl border-none shadow-2xl max-w-xs"
+          onOpenAutoFocus={(e) => e.preventDefault()}
+        >
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-xl font-black text-primary uppercase tracking-tighter">
               <PackagePlus className="w-6 h-6" />
@@ -298,7 +301,6 @@ export default function InventoryPage() {
                 placeholder="+0"
                 value={quickAddValue}
                 onChange={e => setQuickAddValue(e.target.value)}
-                autoFocus
                 onKeyDown={(e) => e.key === "Enter" && handleQuickAdd()}
               />
             </div>

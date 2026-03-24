@@ -88,7 +88,10 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md border-none shadow-2xl rounded-3xl">
+      <DialogContent 
+        className="sm:max-w-md border-none shadow-2xl rounded-3xl"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-2xl font-black text-primary">
             <Package className="w-6 h-6" />
