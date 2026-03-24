@@ -55,6 +55,7 @@ export default function POSPage() {
     if (!cleanBarcode || isLoadingInventory || isScanLocked) return;
 
     const now = Date.now();
+    // 3 segundos de bloqueo para evitar duplicados
     if (lastScanRef.current && lastScanRef.current.code === cleanBarcode && (now - lastScanRef.current.time < 3000)) {
       return;
     }
@@ -195,19 +196,17 @@ export default function POSPage() {
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in fade-in duration-500">
       <div className="lg:col-span-7 flex flex-col h-full gap-4">
         <Card className="flex-1 flex flex-col border-none shadow-2xl bg-white overflow-hidden rounded-3xl min-h-[600px]">
-          <CardHeader className="bg-primary text-white py-4 md:py-6">
-            <div className="flex justify-between items-center gap-2">
-              <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4 overflow-hidden">
-                <CardTitle className="text-xl md:text-2xl flex items-center gap-2 md:gap-3 whitespace-nowrap">
-                  <ShoppingCart className="w-6 h-6 md:w-8 md:h-8 shrink-0" />
-                  <span className="truncate">Caja</span>
-                </CardTitle>
+          <CardHeader className="bg-primary text-white py-4 md:py-6 relative z-10">
+            <div className="flex justify-between items-center gap-4">
+              <div className="flex items-center gap-3 overflow-hidden min-w-0">
+                <ShoppingCart className="w-6 h-6 md:w-8 md:h-8 shrink-0" />
+                <CardTitle className="text-xl md:text-2xl truncate">Caja</CardTitle>
                 {(items.length > 0 || manualProducts.length > 0) && (
                   <Button 
                     variant="ghost" 
                     size="sm" 
                     onClick={handleClearCart}
-                    className="bg-white/10 hover:bg-white/20 text-white border-none rounded-full px-3 h-7 text-[9px] md:text-[10px] font-black uppercase tracking-widest w-fit"
+                    className="bg-white/10 hover:bg-white/20 text-white border-none rounded-full px-3 h-7 text-[9px] font-black uppercase tracking-widest shrink-0"
                   >
                     <RotateCcw className="w-3 h-3 mr-1" />
                     Vaciar
@@ -215,7 +214,7 @@ export default function POSPage() {
                 )}
               </div>
               <div className="flex flex-col items-end shrink-0">
-                <span className="text-[9px] md:text-xs uppercase font-bold opacity-70 whitespace-nowrap">Terminal Activo</span>
+                <span className="text-[9px] md:text-xs uppercase font-bold opacity-70 whitespace-nowrap">Terminal</span>
                 <span className="text-xs md:text-sm font-mono tracking-widest">
                   {currentTime || "--:--"}
                 </span>
@@ -248,14 +247,14 @@ export default function POSPage() {
                 
                 {items.map((item) => (
                   <div key={item.id} className="p-4 flex items-center gap-4 bg-white hover:bg-slate-50 transition-colors">
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="bg-primary/10 text-primary text-[10px] font-black px-1.5 py-0.5 rounded uppercase">Inventario</span>
-                        <p className="font-bold text-lg text-slate-800 line-clamp-1">{item.name}</p>
+                        <span className="bg-primary/10 text-primary text-[10px] font-black px-1.5 py-0.5 rounded uppercase shrink-0">Inv</span>
+                        <p className="font-bold text-base text-slate-800 truncate">{item.name}</p>
                       </div>
                       <p className="text-primary font-black text-xl mt-1 font-mono">${Math.round(item.price * item.quantity).toLocaleString('es-CL')}</p>
                     </div>
-                    <div className="flex items-center gap-2 md:gap-4">
+                    <div className="flex items-center gap-2 md:gap-4 shrink-0">
                       <div className="flex items-center bg-slate-100 rounded-full p-1 shadow-inner">
                         <Button variant="ghost" size="icon" className="rounded-full w-8 h-8 hover:bg-white text-slate-600" onClick={() => updateQuantity(item.id, -1)}>
                           <MinusCircle className="w-5 h-5" />
@@ -274,14 +273,14 @@ export default function POSPage() {
 
                 {manualProducts.map((item, idx) => (
                   <div key={`manual-${idx}`} className="p-4 flex items-center gap-4 bg-accent/5 border-l-4 border-accent">
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="bg-accent/10 text-accent text-[10px] font-black px-1.5 py-0.5 rounded uppercase">Ajuste</span>
-                        <p className="font-bold text-lg text-slate-800">{item.description}</p>
+                        <span className="bg-accent/10 text-accent text-[10px] font-black px-1.5 py-0.5 rounded uppercase shrink-0">Ajuste</span>
+                        <p className="font-bold text-base text-slate-800 truncate">{item.description}</p>
                       </div>
                       <p className="text-accent font-black text-xl mt-1 font-mono">${Math.round(item.amount).toLocaleString('es-CL')}</p>
                     </div>
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4 shrink-0">
                       <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 rounded-full" onClick={() => removeManual(idx)}>
                         <Trash2 className="w-5 h-5" />
                       </Button>
@@ -321,7 +320,7 @@ export default function POSPage() {
             </h3>
             {isScanLocked && (
               <span className="text-[10px] font-bold text-amber-600 flex items-center gap-1 animate-pulse">
-                <Clock className="w-3 h-3" /> Pausa...
+                <Clock className="w-3 h-3" /> Pausa procesado...
               </span>
             )}
           </div>

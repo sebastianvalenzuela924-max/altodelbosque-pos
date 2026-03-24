@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -34,10 +33,12 @@ export function ProductDialog({ product, open, onClose, onSaved }: ProductDialog
       setFormData({
         id: product.id,
         name: product.name || "",
+        // Si el valor es 0, lo dejamos en blanco para mayor comodidad al editar, o lo mostramos si ya existía
         price: product.price ? Math.round(product.price).toString() : "",
         stock: product.stock !== undefined ? product.stock.toString() : ""
       });
     } else {
+      // Para productos nuevos, siempre iniciamos en blanco
       setFormData({
         id: "",
         name: "",
@@ -106,7 +107,7 @@ export function ProductDialog({ product, open, onClose, onSaved }: ProductDialog
                 type="number" 
                 value={formData.price} 
                 onChange={e => setFormData({ ...formData, price: e.target.value })} 
-                placeholder="Valor sin decimales" 
+                placeholder="Valor en CLP" 
               />
             </div>
             <div className="grid gap-2">

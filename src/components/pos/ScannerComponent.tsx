@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useRef, useState } from "react";
@@ -39,19 +38,30 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
           scannerRef.current = new Html5Qrcode("qr-reader");
         }
 
+        // Configuración optimizada para mayor distancia y nitidez
         const config = {
-          fps: 15,
-          qrbox: { width: 280, height: 160 },
+          fps: 20, // Mayor frecuencia de escaneo
+          qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
+            // Área de escaneo ancha y más grande para facilitar detección lejana
+            const width = Math.min(viewfinderWidth * 0.85, 450);
+            const height = Math.min(viewfinderHeight * 0.45, 250);
+            return { width, height };
+          },
+          aspectRatio: 1.777778, // Forzar 16:9 para mejor campo de visión
         };
 
         await scannerRef.current.start(
-          { facingMode: "environment" },
+          { 
+            facingMode: "environment",
+            // Solicitamos resolución HD para permitir detección desde más lejos
+            width: { min: 640, ideal: 1280, max: 1920 },
+            height: { min: 480, ideal: 720, max: 1080 }
+          },
           config,
           (decodedText) => {
-            // Pasamos el código a la página principal para buscarlo en el inventario
             onScan(decodedText);
           },
-          () => {}
+          () => {} // Ignorar errores de frame no detectado
         );
         setIsLoading(false);
       } catch (err: any) {
@@ -62,7 +72,7 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
         toast({
           variant: "destructive",
           title: "Error de Cámara",
-          description: "Permite el acceso a la cámara en los ajustes de tu navegador.",
+          description: "Permite el acceso a la cámara y asegúrate de estar en un sitio iluminado.",
         });
       }
     }, 300);
@@ -88,7 +98,7 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
           <div className="space-y-1">
             <h3 className="text-white font-bold text-lg">Escáner de Barra</h3>
             <p className="text-slate-400 text-xs px-4">
-              Enfoca el código de barras del producto registrado.
+              Enfoca el código de barras. No acerques demasiado el teléfono para evitar desenfoque.
             </p>
           </div>
           
@@ -118,13 +128,13 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
       {isEnabled && !isLoading && (
         <>
           <div className="absolute inset-0 pointer-events-none z-20">
-             <div className="absolute inset-0 border-[40px] border-black/40 flex items-center justify-center">
-                <div className="w-[280px] h-[160px] relative border-2 border-primary/50 rounded-lg">
-                    <div className="absolute top-0 left-0 w-4 h-4 border-t-4 border-l-4 border-primary"></div>
-                    <div className="absolute top-0 right-0 w-4 h-4 border-t-4 border-r-4 border-primary"></div>
-                    <div className="absolute bottom-0 left-0 w-4 h-4 border-b-4 border-l-4 border-primary"></div>
-                    <div className="absolute bottom-0 right-0 w-4 h-4 border-b-4 border-r-4 border-primary"></div>
-                    <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-primary/80 animate-pulse"></div>
+             <div className="absolute inset-0 border-[30px] border-black/40 flex items-center justify-center">
+                <div className="w-[85%] max-w-[450px] h-[45%] max-h-[250px] relative border-2 border-primary/50 rounded-lg bg-primary/5">
+                    <div className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-primary"></div>
+                    <div className="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-primary"></div>
+                    <div className="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-primary"></div>
+                    <div className="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-primary"></div>
+                    <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-primary/60 animate-pulse"></div>
                 </div>
              </div>
           </div>
