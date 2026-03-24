@@ -153,8 +153,8 @@ export default function POSPage() {
     if (!cleanBarcode || isLoadingInventory || isScanLocked) return;
 
     const now = Date.now();
-    // Debounce de 800ms para evitar lecturas duplicadas accidentales
-    if (lastScanRef.current && lastScanRef.current.code === cleanBarcode && (now - lastScanRef.current.time < 800)) {
+    // Debounce de 600ms para permitir cobro rápido
+    if (lastScanRef.current && lastScanRef.current.code === cleanBarcode && (now - lastScanRef.current.time < 600)) {
       return;
     }
 
@@ -165,14 +165,14 @@ export default function POSPage() {
     if (product) {
       handleAddItem(product);
     } else {
-      // Bloqueo temporal para que el usuario pueda leer el toast sin que sigan llegando errores
+      // Bloqueo corto tras error para que el usuario pueda reintentar rápido
       setIsScanLocked(true);
       toast({ 
         variant: "destructive",
         title: "Producto no encontrado", 
         description: `El código ${cleanBarcode} no existe.`
       });
-      setTimeout(() => setIsScanLocked(false), 2000);
+      setTimeout(() => setIsScanLocked(false), 800);
     }
   };
 
