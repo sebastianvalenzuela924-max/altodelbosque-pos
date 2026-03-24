@@ -276,10 +276,10 @@ export default function InventoryPage() {
         </CardContent>
       </Card>
 
-      {/* Diálogo de Carga Rápida */}
+      {/* Diálogo de Carga Rápida Optimizado para PC y Móvil */}
       <Dialog open={!!quickStockProduct} onOpenChange={() => setQuickStockProduct(null)}>
         <DialogContent 
-          className="rounded-3xl border-none shadow-2xl max-w-xs"
+          className="rounded-3xl border-none shadow-2xl max-w-[90vw] sm:max-w-sm p-6"
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
           <DialogHeader>
@@ -317,11 +317,11 @@ export default function InventoryPage() {
       <ProductDialog open={isDialogOpen} onClose={() => setIsDialogOpen(false)} product={selectedProduct} categories={categories} onSaved={() => {}} />
 
       <Dialog open={isScannerOpen} onOpenChange={setIsScannerOpen}>
-        <DialogContent className="p-0 overflow-hidden rounded-3xl"><ScannerComponent onScan={(b) => { setPendingBarcode(b); setIsScannerOpen(false); }} /></DialogContent>
+        <DialogContent className="p-0 overflow-hidden rounded-3xl max-w-[90vw] sm:max-w-2xl"><ScannerComponent onScan={(b) => { setPendingBarcode(b); setIsScannerOpen(false); }} /></DialogContent>
       </Dialog>
 
       <AlertDialog open={!!pendingBarcode} onOpenChange={() => setPendingBarcode(null)}>
-        <AlertDialogContent className="rounded-3xl p-8">
+        <AlertDialogContent className="rounded-3xl p-8 max-w-[90vw] sm:max-w-lg">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-2xl font-black">Código Detectado</AlertDialogTitle>
             <AlertDialogDescription className="text-center py-4 font-mono font-bold text-3xl">{pendingBarcode}</AlertDialogDescription>
@@ -339,7 +339,7 @@ export default function InventoryPage() {
       </AlertDialog>
 
       <AlertDialog open={!!productToDelete} onOpenChange={() => setProductToDelete(null)}>
-        <AlertDialogContent className="rounded-3xl">
+        <AlertDialogContent className="rounded-3xl max-w-[90vw] sm:max-w-md">
           <AlertDialogHeader>
             <AlertDialogTitle>¿Eliminar producto?</AlertDialogTitle>
             <AlertDialogDescription>Se borrará {productToDelete?.name} definitivamente.</AlertDialogDescription>
