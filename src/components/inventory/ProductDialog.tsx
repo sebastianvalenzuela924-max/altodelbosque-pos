@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -72,49 +71,53 @@ export function ProductDialog({ product, open, onClose, onSaved }: ProductDialog
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md border-none shadow-2xl rounded-3xl">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Package className="w-5 h-5 text-primary" />
+          <DialogTitle className="flex items-center gap-2 text-2xl font-black text-primary">
+            <Package className="w-6 h-6" />
             {product?.id && product.name ? "Editar Producto" : "Nuevo Producto"}
           </DialogTitle>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
+        <div className="grid gap-6 py-4">
           <div className="grid gap-2">
-            <Label htmlFor="id">Código de Barras (EAN-13)</Label>
+            <Label htmlFor="id" className="font-bold text-slate-500">Código de Barras (EAN-13)</Label>
             <Input 
               id="id" 
               value={formData.id} 
               disabled={!!product?.id && !!product?.name}
+              className="h-12 rounded-xl"
               onChange={e => setFormData({ ...formData, id: e.target.value })} 
               placeholder="Ej: 7791234567890" 
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="name">Nombre del Producto</Label>
+            <Label htmlFor="name" className="font-bold text-slate-500">Nombre del Producto</Label>
             <Input 
               id="name" 
               value={formData.name} 
+              className="h-12 rounded-xl"
               onChange={e => setFormData({ ...formData, name: e.target.value })} 
               placeholder="Ej: Bebida 1.5L" 
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="price">Precio ($)</Label>
+              <Label htmlFor="price" className="font-bold text-slate-500">Precio ($)</Label>
               <Input 
                 id="price" 
                 type="number" 
+                className="h-12 rounded-xl"
                 value={formData.price} 
                 onChange={e => setFormData({ ...formData, price: e.target.value })} 
                 placeholder="Monto" 
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="stock">Stock</Label>
+              <Label htmlFor="stock" className="font-bold text-slate-500">Stock</Label>
               <Input 
                 id="stock" 
                 type="number" 
+                className="h-12 rounded-xl"
                 value={formData.stock} 
                 onChange={e => setFormData({ ...formData, stock: e.target.value })} 
                 placeholder="Cantidad" 
@@ -122,11 +125,11 @@ export function ProductDialog({ product, open, onClose, onSaved }: ProductDialog
             </div>
           </div>
         </div>
-        <DialogFooter className="gap-2 sm:gap-0">
-          <Button variant="outline" onClick={onClose} disabled={loading}>Cancelar</Button>
-          <Button onClick={handleSave} disabled={loading} className="bg-primary hover:bg-primary/90">
+        <DialogFooter className="gap-2 sm:gap-2">
+          <Button variant="ghost" onClick={onClose} disabled={loading} className="rounded-xl flex-1">Cancelar</Button>
+          <Button onClick={handleSave} disabled={loading} className="bg-primary hover:bg-primary/90 rounded-xl flex-1 h-12 font-black">
             {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            {product?.id && product.name ? "Actualizar" : "Crear Producto"}
+            {product?.id && product.name ? "ACTUALIZAR" : "CREAR PRODUCTO"}
           </Button>
         </DialogFooter>
       </DialogContent>

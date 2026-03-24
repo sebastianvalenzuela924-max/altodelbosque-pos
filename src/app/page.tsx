@@ -55,7 +55,6 @@ export default function POSPage() {
     if (!cleanBarcode || isLoadingInventory || isScanLocked) return;
 
     const now = Date.now();
-    // Bloqueo de 3 segundos para evitar lecturas duplicadas accidentales
     if (lastScanRef.current && lastScanRef.current.code === cleanBarcode && (now - lastScanRef.current.time < 3000)) {
       return;
     }
@@ -91,21 +90,20 @@ export default function POSPage() {
       });
     }
 
-    // Liberar el escáner después de 3 segundos
     setTimeout(() => {
       setIsScanLocked(false);
     }, 3000);
   };
 
-  const addManualAdjustment = (newTotalCalculated: number) => {
+  const addManualAdjustment = (newTotalCalculated: number, desc: string) => {
     const currentTotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0) +
                          manualProducts.reduce((sum, item) => sum + item.amount, 0);
     
     const diff = Math.round(newTotalCalculated) - Math.round(currentTotal);
     
     if (diff !== 0) {
-      setManualProducts(prev => [...prev, { description: "Ajuste Manual", amount: diff }]);
-      toast({ title: "Monto Agregado", description: `$${Math.abs(diff).toLocaleString('es-CL')}` });
+      setManualProducts(prev => [...prev, { description: desc, amount: diff }]);
+      toast({ title: "Monto Agregado", description: `${desc}: $${Math.abs(diff).toLocaleString('es-CL')}` });
     }
   };
 
@@ -276,7 +274,7 @@ export default function POSPage() {
                   <div key={`manual-${idx}`} className="p-4 flex items-center gap-4 bg-accent/5 border-l-4 border-accent">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="bg-accent/10 text-accent text-[10px] font-black px-1.5 py-0.5 rounded uppercase shrink-0">Ajuste</span>
+                        <span className="bg-accent/10 text-accent text-[10px] font-black px-1.5 py-0.5 rounded uppercase shrink-0">Manual</span>
                         <p className="font-bold text-base text-slate-800 truncate">{item.description}</p>
                       </div>
                       <p className="text-accent font-black text-xl mt-1 font-mono">${Math.round(item.amount).toLocaleString('es-CL')}</p>
@@ -332,10 +330,14 @@ export default function POSPage() {
 
         <section className="space-y-4">
           <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 px-1">
-            <Calculator className="w-4 h-4" /> Calculadora de Ajuste
+            <Calculator className="w-4 h-4" /> Cobro Manual
           </h3>
-          <div className="bg-white rounded-3xl p-6 shadow-xl shadow-slate-200/50">
-            <CalculatorComponent baseValue={Math.round(total)} onResult={addManualAdjustment} />
+          <div className="bg-white rounded-3xl p-6 shadow-xl shadow-slate-200/50 border border-slate-100">
+            <CalculatorComponent 
+              baseValue={Math.round(total)} 
+              onResult={addManualAdjustment} 
+              onFinalize={handleFinalize}
+            />
           </div>
         </section>
       </div>
