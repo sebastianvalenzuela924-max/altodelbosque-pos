@@ -6,7 +6,7 @@ import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { AuthGate } from '@/components/auth/AuthGate';
 
 export const metadata: Metadata = {
-  title: 'SmartSale POS - Punto de Venta Inteligente',
+  title: 'AltodelBosque POS - Punto de Venta Inteligente',
   description: 'Sistema de gestión de inventario y punto de venta optimizado para dispositivos móviles.',
 };
 

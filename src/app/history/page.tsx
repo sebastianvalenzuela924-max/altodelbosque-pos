@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useCollection, useFirestore, useMemoFirebase, deleteDocumentNonBlocking } from "@/firebase";
@@ -61,7 +60,7 @@ export default function HistoryPage() {
         Total_Venta: Math.round(s.totalAmount)
       }];
     });
-    exportToExcel("Historial_SmartSale", flattened, "Ventas");
+    exportToExcel("Historial_AltodelBosque", flattened, "Ventas");
     toast({ title: "Exportación exitosa", description: "Se ha descargado el historial en Excel." });
   };
 
@@ -241,7 +240,7 @@ export default function HistoryPage() {
                       <div className="p-6 flex items-center justify-end md:min-w-[200px] bg-primary/5 border-l border-primary/5 group-hover:bg-primary/10 transition-colors">
                         <div className="text-right">
                           <p className="text-[10px] text-primary/60 font-black uppercase tracking-widest mb-1">Total</p>
-                          <p className="text-4xl font-black text-primary font-mono tracking-tighter">${Math.round(sale.totalAmount).toLocaleString('es-CL')}</p>
+                          <p className="text-4xl font-black text-primary font-mono tracking-tighter leading-none">${Math.round(sale.totalAmount).toLocaleString('es-CL')}</p>
                         </div>
                       </div>
                     </div>

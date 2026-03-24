@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -41,7 +40,7 @@ export function Navbar() {
             <Store className="w-6 h-6" />
           </div>
           <div className="flex flex-col leading-none">
-            <span className="font-headline font-black text-xl tracking-tighter text-slate-800">SmartSale</span>
+            <span className="font-headline font-black text-xl tracking-tighter text-slate-800">AltodelBosque</span>
             <span className="text-[10px] font-black uppercase tracking-widest text-primary">Point of Sale</span>
           </div>
         </Link>

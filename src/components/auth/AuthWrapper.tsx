@@ -65,7 +65,7 @@ export function AuthWrapper({ children }: { children: React.ReactNode }) {
             </div>
           </div>
           <div className="text-center">
-            <h2 className="text-2xl font-black text-primary tracking-tighter uppercase">SmartSale POS</h2>
+            <h2 className="text-2xl font-black text-primary tracking-tighter uppercase">AltodelBosque POS</h2>
             <p className="text-[10px] text-muted-foreground font-black uppercase tracking-[0.2em] mt-1">
               Sincronizando Terminal
             </p>
