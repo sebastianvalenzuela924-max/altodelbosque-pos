@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
@@ -64,7 +65,7 @@ export default function ReportsPage() {
           return sd.toDateString() === d.toDateString();
         })
         .reduce((sum, s) => sum + (s.totalAmount || 0), 0);
-      return { name: dayStr, amount };
+      return { name: dayStr, amount: Math.round(amount) };
     });
   }, [sales, mounted]);
 
@@ -108,7 +109,7 @@ export default function ReportsPage() {
           <CardHeader className="pb-2">
             <CardDescription className="text-primary-foreground/70 font-black uppercase text-[10px] tracking-widest">Hoy</CardDescription>
             <CardTitle className="text-3xl font-black flex items-center justify-between">
-              ${stats.daily.toFixed(2)}
+              ${Math.round(stats.daily).toLocaleString('es-CL')}
               <DollarSign className="w-8 h-8 opacity-20" />
             </CardTitle>
           </CardHeader>
@@ -123,7 +124,7 @@ export default function ReportsPage() {
           <CardHeader className="pb-2">
             <CardDescription className="text-accent-foreground/70 font-black uppercase text-[10px] tracking-widest">Mensual</CardDescription>
             <CardTitle className="text-3xl font-black flex items-center justify-between">
-              ${stats.monthly.toFixed(2)}
+              ${Math.round(stats.monthly).toLocaleString('es-CL')}
               <TrendingUp className="w-8 h-8 opacity-20" />
             </CardTitle>
           </CardHeader>
@@ -180,6 +181,7 @@ export default function ReportsPage() {
                 <Tooltip 
                   cursor={{fill: 'hsl(var(--muted))', opacity: 0.4}} 
                   contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)'}}
+                  formatter={(value: any) => [`$${value.toLocaleString('es-CL')}`, 'Ingresos']}
                 />
                 <Bar dataKey="amount" fill="hsl(var(--primary))" radius={[8, 8, 0, 0]} barSize={40}>
                    {chartData.map((entry, index) => (

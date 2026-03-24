@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -31,7 +32,7 @@ export function ProductDialog({ product, open, onClose, onSaved }: ProductDialog
   useEffect(() => {
     if (product) {
       setFormData({
-        id: product.id,
+        id: product.id || "",
         name: product.name || "",
         price: product.price ? Math.round(product.price).toString() : "",
         stock: product.stock !== undefined ? product.stock.toString() : ""
@@ -65,6 +66,7 @@ export function ProductDialog({ product, open, onClose, onSaved }: ProductDialog
     
     toast({ title: "Guardado", description: "Producto actualizado correctamente." });
     setLoading(false);
+    onSaved();
     onClose();
   };
 
@@ -74,7 +76,7 @@ export function ProductDialog({ product, open, onClose, onSaved }: ProductDialog
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Package className="w-5 h-5 text-primary" />
-            {product?.id ? "Editar Producto" : "Nuevo Producto"}
+            {product?.id && product.name ? "Editar Producto" : "Nuevo Producto"}
           </DialogTitle>
         </DialogHeader>
         <div className="grid gap-4 py-4">
@@ -83,7 +85,7 @@ export function ProductDialog({ product, open, onClose, onSaved }: ProductDialog
             <Input 
               id="id" 
               value={formData.id} 
-              disabled={!!product?.id}
+              disabled={!!product?.id && !!product?.name}
               onChange={e => setFormData({ ...formData, id: e.target.value })} 
               placeholder="Ej: 7791234567890" 
             />
@@ -105,7 +107,7 @@ export function ProductDialog({ product, open, onClose, onSaved }: ProductDialog
                 type="number" 
                 value={formData.price} 
                 onChange={e => setFormData({ ...formData, price: e.target.value })} 
-                placeholder="Ingresar precio" 
+                placeholder="Monto" 
               />
             </div>
             <div className="grid gap-2">
@@ -123,8 +125,8 @@ export function ProductDialog({ product, open, onClose, onSaved }: ProductDialog
         <DialogFooter className="gap-2 sm:gap-0">
           <Button variant="outline" onClick={onClose} disabled={loading}>Cancelar</Button>
           <Button onClick={handleSave} disabled={loading} className="bg-primary hover:bg-primary/90">
-            {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-            {product?.id ? "Actualizar" : "Crear Producto"}
+            {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            {product?.id && product.name ? "Actualizar" : "Crear Producto"}
           </Button>
         </DialogFooter>
       </DialogContent>

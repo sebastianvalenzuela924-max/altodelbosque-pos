@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
@@ -32,7 +33,7 @@ export default function HistoryPage() {
         ID_Venta: s.id,
         Fecha: date.toLocaleDateString(),
         Hora: date.toLocaleTimeString(),
-        Total: s.totalAmount,
+        Total: Math.round(s.totalAmount),
         "Items Registrados": s.productSaleItemIds?.length || 0,
         "Items Manuales": s.manualSaleItemIds?.length || 0
       };
@@ -41,7 +42,6 @@ export default function HistoryPage() {
     toast({ title: "Exportación exitosa", description: "Se ha descargado el historial en Excel." });
   };
 
-  // Evitar cualquier renderizado dinámico hasta que el cliente esté montado
   if (!isMounted) {
     return <div className="min-h-screen bg-background" />;
   }
@@ -106,7 +106,7 @@ export default function HistoryPage() {
                   <div className="p-6 flex items-center justify-end md:min-w-[200px] bg-primary/5 border-l border-primary/5 group-hover:bg-primary/10 transition-colors">
                     <div className="text-right">
                       <p className="text-[10px] text-primary/60 font-black uppercase tracking-widest mb-1">Total</p>
-                      <p className="text-4xl font-black text-primary font-mono tracking-tighter">${sale.totalAmount?.toFixed(2)}</p>
+                      <p className="text-4xl font-black text-primary font-mono tracking-tighter">${Math.round(sale.totalAmount).toLocaleString('es-CL')}</p>
                     </div>
                   </div>
                 </div>

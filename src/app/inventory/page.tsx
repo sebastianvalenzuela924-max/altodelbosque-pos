@@ -9,7 +9,7 @@ import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Search, FileSpreadsheet, Edit3, AlertTriangle, Plus, Trash2, Package, Scan, Loader2 } from "lucide-react";
+import { Search, FileSpreadsheet, Edit3, AlertTriangle, Plus, Trash2, Package, Scan, Loader2, Check, X } from "lucide-react";
 import { exportToExcel } from "@/lib/export";
 import { useToast } from "@/hooks/use-toast";
 import { ProductDialog } from "@/components/inventory/ProductDialog";
@@ -23,6 +23,7 @@ export default function InventoryPage() {
   const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [pendingBarcode, setPendingBarcode] = useState<string | null>(null);
   const [productToDelete, setProductToDelete] = useState<any | null>(null);
   const { toast } = useToast();
 
@@ -55,15 +56,29 @@ export default function InventoryPage() {
     setIsDialogOpen(true);
   };
 
-  const handleAddNew = (barcode?: string) => {
+  const onBarcodeDetected = (barcode: string) => {
+    setPendingBarcode(barcode);
+    setIsScannerOpen(false);
+  };
+
+  const confirmPendingBarcode = () => {
+    if (!pendingBarcode) return;
+    
+    const barcode = pendingBarcode;
+    setPendingBarcode(null);
+    
     const existing = products?.find(p => p.id === barcode);
     if (existing) {
       handleEdit(existing);
     } else {
-      setSelectedProduct(barcode ? { id: barcode, name: "", price: "", stock: "" } : null);
+      setSelectedProduct({ id: barcode, name: "", price: "", stock: "" });
       setIsDialogOpen(true);
     }
-    setIsScannerOpen(false);
+  };
+
+  const handleAddNew = (barcode?: string) => {
+    setSelectedProduct(barcode ? { id: barcode, name: "", price: "", stock: "" } : null);
+    setIsDialogOpen(true);
   };
 
   const confirmDelete = () => {
@@ -190,10 +205,37 @@ export default function InventoryPage() {
             </DialogTitle>
           </DialogHeader>
           <div className="py-4">
-            <ScannerComponent onScan={handleAddNew} />
+            <ScannerComponent onScan={onBarcodeDetected} />
           </div>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!pendingBarcode} onOpenChange={() => setPendingBarcode(null)}>
+        <AlertDialogContent className="rounded-3xl border-none shadow-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-2xl font-black text-primary flex items-center gap-2">
+              <Scan className="w-6 h-6" />
+              Código Detectado
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-center py-6">
+              <span className="text-4xl font-mono font-black text-slate-800 tracking-tighter block my-2">
+                {pendingBarcode}
+              </span>
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                ¿Es este el código correcto?
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <AlertDialogCancel className="rounded-2xl h-12 flex-1 border-slate-200">
+              <X className="w-4 h-4 mr-2" /> Descartar
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={confirmPendingBarcode} className="rounded-2xl h-12 flex-1 bg-primary hover:bg-primary/90">
+              <Check className="w-4 h-4 mr-2" /> Aceptar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={!!productToDelete} onOpenChange={() => setProductToDelete(null)}>
         <AlertDialogContent>
