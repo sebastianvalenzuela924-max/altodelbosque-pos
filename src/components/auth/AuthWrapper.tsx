@@ -7,21 +7,16 @@ import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
 
 /**
- * AuthWrapper optimizado.
- * Maneja la autenticación y autorización en segundo plano de forma invisible.
- * Bloquea el renderizado de la app hasta que el usuario tiene permisos confirmados en el servidor.
+ * AuthWrapper optimizado para evitar errores de hidratación.
+ * Maneja la autenticación y autorización automática en segundo plano.
  */
 export function AuthWrapper({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const auth = useAuth();
-  const [isReady, setIsReady] = useState(false);
-  const [hasMounted, setHasMounted] = useState(false);
-
-  // Aseguramos que el componente se ha montado en el cliente para evitar errores de hidratación
-  useEffect(() => {
-    setHasMounted(true);
-  }, []);
+  
+  const [mounted, setMounted] = useState(false);
+  const [isAuthorized, setIsAuthorized] = useState(false);
 
   // Referencia al documento de autorización del usuario actual
   const authDocRef = useMemoFirebase(() => {
@@ -31,47 +26,49 @@ export function AuthWrapper({ children }: { children: React.ReactNode }) {
 
   const { data: authDoc, isLoading: isAuthDocLoading } = useDoc(authDocRef);
 
-  // 1. Iniciar sesión anónima automáticamente si no hay usuario
+  // 1. Evitar errores de hidratación: marcar como montado en el cliente
   useEffect(() => {
-    if (!isUserLoading && !user && auth) {
+    setMounted(true);
+  }, []);
+
+  // 2. Iniciar sesión anónima automáticamente si no hay usuario
+  useEffect(() => {
+    if (mounted && !isUserLoading && !user && auth) {
       initiateAnonymousSignIn(auth);
     }
-  }, [user, isUserLoading, auth]);
+  }, [mounted, user, isUserLoading, auth]);
 
-  // 2. Gestionar la autorización automática (DBAC)
+  // 3. Gestionar la autorización automática (DBAC)
   useEffect(() => {
-    let mounted = true;
+    if (!mounted || !user || !firestore || isAuthDocLoading) return;
 
-    async function ensureAuthorization() {
-      if (user && firestore && !isAuthDocLoading && !authDoc && !isReady) {
-        const docRef = doc(firestore, 'authorizedUsers', user.uid);
-        try {
-          await setDoc(docRef, { 
-            uid: user.uid,
-            activatedAt: serverTimestamp(),
-            autoActivated: true,
-            lastSession: serverTimestamp()
-          }, { merge: true });
-          
-          if (mounted) setIsReady(true);
-        } catch (error) {
-          // Error silencioso, manejado por las reglas de seguridad
-        }
-      } else if (authDoc) {
-        if (mounted) setIsReady(true);
-      }
+    if (authDoc) {
+      setIsAuthorized(true);
+    } else {
+      // Si el documento no existe, intentamos crearlo (Auto-activación)
+      const docRef = doc(firestore, 'authorizedUsers', user.uid);
+      setDoc(docRef, { 
+        uid: user.uid,
+        activatedAt: serverTimestamp(),
+        autoActivated: true,
+        lastSession: serverTimestamp()
+      }, { merge: true })
+      .then(() => setIsAuthorized(true))
+      .catch(() => {
+        // El error se manejará por las reglas de seguridad o el hook useDoc
+      });
     }
+  }, [mounted, user, firestore, authDoc, isAuthDocLoading]);
 
-    ensureAuthorization();
+  // Durante SSR y el primer render del cliente, mostramos un estado mínimo estable
+  if (!mounted) {
+    return <div className="min-h-screen bg-background" />;
+  }
 
-    return () => { mounted = false; };
-  }, [user, firestore, authDoc, isAuthDocLoading, isReady]);
-
-  // Pantalla de carga profesional e invisible
-  // Solo renderizamos el contenido real una vez que el cliente está listo y autorizado
-  if (!hasMounted || isUserLoading || isAuthDocLoading || !isReady) {
+  // Pantalla de carga mientras se verifica la identidad y autorización
+  if (isUserLoading || isAuthDocLoading || !isAuthorized) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[100vh] bg-background">
+      <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
         <div className="flex flex-col items-center gap-4 animate-in fade-in duration-700">
           <div className="relative">
             <Loader2 className="w-12 h-12 animate-spin text-primary" />
