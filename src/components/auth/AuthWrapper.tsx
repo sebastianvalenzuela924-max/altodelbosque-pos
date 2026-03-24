@@ -61,6 +61,7 @@ export function AuthWrapper({ children }: { children: React.ReactNode }) {
   }, [mounted, user, firestore, authDoc, isAuthDocLoading]);
 
   // Durante SSR y el primer render del cliente, mostramos un estado mínimo estable
+  // Usamos min-h-screen para que coincida con la estructura de carga posterior
   if (!mounted) {
     return <div className="min-h-screen bg-background" />;
   }
