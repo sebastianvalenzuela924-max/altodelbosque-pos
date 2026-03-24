@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { ScannerComponent } from "@/components/pos/ScannerComponent";
 import { CalculatorComponent } from "@/components/pos/CalculatorComponent";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Trash2, PlusCircle, MinusCircle, ShoppingCart, CheckCircle2, Scan, Calculator, Loader2, Clock, RotateCcw } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Trash2, PlusCircle, MinusCircle, ShoppingCart, CheckCircle2, Scan, Calculator, Loader2, Clock, RotateCcw, Search, Plus, PackageSearch } from "lucide-react";
 import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { doc, collection, serverTimestamp, increment, query } from "firebase/firestore";
@@ -21,6 +22,7 @@ export default function POSPage() {
   const [isScanLocked, setIsScanLocked] = useState(false);
   const [currentTime, setCurrentTime] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const lastScanRef = useRef<{ code: string; time: number } | null>(null);
   const { toast } = useToast();
 
@@ -41,6 +43,15 @@ export default function POSPage() {
     return map;
   }, [allProducts]);
 
+  // Búsqueda manual por nombre
+  const searchResults = useMemo(() => {
+    if (!searchQuery || !allProducts) return [];
+    const q = searchQuery.toLowerCase().trim();
+    return allProducts
+      .filter(p => p.name.toLowerCase().includes(q))
+      .slice(0, 5); // Limitamos a los primeros 5 para rapidez
+  }, [allProducts, searchQuery]);
+
   useEffect(() => {
     setMounted(true);
     const updateTime = () => {
@@ -55,6 +66,26 @@ export default function POSPage() {
     return items.reduce((sum, item) => sum + (item.price * item.quantity), 0) +
            manualProducts.reduce((sum, item) => sum + item.amount, 0);
   }, [items, manualProducts]);
+
+  const handleAddItem = (product: any) => {
+    setItems(prev => {
+      const existing = prev.find(i => i.id === product.id);
+      if (existing) {
+        return prev.map(i => i.id === product.id ? { ...i, quantity: i.quantity + 1 } : i);
+      }
+      return [...prev, { 
+        id: product.id, 
+        name: product.name, 
+        price: product.price, 
+        quantity: 1 
+      }];
+    });
+    
+    toast({ 
+      title: "Añadido", 
+      description: `${product.name} - $${Math.round(product.price).toLocaleString('es-CL')}` 
+    });
+  };
 
   const handleScan = (barcode: string) => {
     const cleanBarcode = String(barcode).trim();
@@ -71,23 +102,7 @@ export default function POSPage() {
     const product = productMap.get(cleanBarcode);
 
     if (product) {
-      setItems(prev => {
-        const existing = prev.find(i => i.id === cleanBarcode);
-        if (existing) {
-          return prev.map(i => i.id === cleanBarcode ? { ...i, quantity: i.quantity + 1 } : i);
-        }
-        return [...prev, { 
-          id: cleanBarcode, 
-          name: product.name, 
-          price: product.price, 
-          quantity: 1 
-        }];
-      });
-      
-      toast({ 
-        title: "Añadido", 
-        description: `${product.name} - $${Math.round(product.price).toLocaleString('es-CL')}` 
-      });
+      handleAddItem(product);
     } else {
       toast({ 
         variant: "destructive",
@@ -121,14 +136,12 @@ export default function POSPage() {
     const finalTotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0) +
                        currentManualItems.reduce((sum, item) => sum + item.amount, 0);
 
-    // Denormalizamos los items en el documento principal para facilitar reportes e historial
     const saleData = {
       id: saleId,
       totalAmount: Math.round(finalTotal),
       saleDateTime: serverTimestamp(),
       productSaleItemIds: items.map(i => i.id),
       manualSaleItemIds: currentManualItems.map((_, idx) => `manual-${idx}`),
-      // Resumen para reportes rápidos
       itemsSummary: [
         ...items.map(i => ({ 
           name: i.name, 
@@ -346,6 +359,64 @@ export default function POSPage() {
           <div className={cn("transition-opacity duration-300", isScanLocked ? "opacity-40 grayscale" : "opacity-100")}>
             <ScannerComponent onScan={handleScan} />
           </div>
+        </section>
+
+        {/* Nueva sección de Búsqueda Manual de Productos del Inventario */}
+        <section className="space-y-3">
+          <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 px-1">
+            <PackageSearch className="w-4 h-4" /> Búsqueda por Nombre
+          </h3>
+          <Card className="border-none shadow-xl bg-white rounded-3xl overflow-hidden">
+            <CardContent className="p-4 space-y-3">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <Input 
+                  className="pl-10 h-12 bg-slate-50 border-none rounded-2xl focus-visible:ring-primary shadow-inner font-bold" 
+                  placeholder="Ej: Bebida, Pan, Helado..." 
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+
+              {searchQuery.length > 0 && (
+                <div className="space-y-2 animate-in slide-in-from-top-2 duration-300">
+                  {searchResults.length > 0 ? (
+                    searchResults.map((p) => (
+                      <button
+                        key={p.id}
+                        onClick={() => {
+                          handleAddItem(p);
+                          setSearchQuery("");
+                        }}
+                        className="w-full flex items-center justify-between p-3 bg-white hover:bg-primary/5 border border-slate-100 rounded-2xl transition-all group active:scale-[0.98]"
+                      >
+                        <div className="text-left">
+                          <p className="font-bold text-slate-700 text-sm group-hover:text-primary transition-colors">{p.name}</p>
+                          <p className="text-[9px] font-mono text-slate-400 uppercase tracking-tighter">Stock: {p.stock}</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="text-primary font-black text-sm">${Math.round(p.price).toLocaleString('es-CL')}</span>
+                          <div className="bg-primary/10 p-2 rounded-xl text-primary group-hover:bg-primary group-hover:text-white transition-colors">
+                            <Plus className="w-3 h-3" />
+                          </div>
+                        </div>
+                      </button>
+                    ))
+                  ) : (
+                    <div className="text-center py-4 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Sin coincidencias</p>
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              {!searchQuery && (
+                <p className="text-[10px] text-center text-slate-400 font-bold uppercase tracking-widest px-4">
+                  Busca productos registrados para añadir rápido
+                </p>
+              )}
+            </CardContent>
+          </Card>
         </section>
 
         <section className="space-y-4">
