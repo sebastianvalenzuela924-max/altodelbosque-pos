@@ -178,10 +178,10 @@ export default function InventoryPage() {
                   <TableRow 
                     key={p.id} 
                     className={cn(
-                      "transition-colors", 
-                      status === "peligro" ? "bg-destructive/5" : 
-                      status === "precaución" ? "bg-amber-50" : 
-                      status === "ok" ? "bg-green-50/40 hover:bg-green-50/60" : "hover:bg-slate-50"
+                      "transition-colors border-b", 
+                      status === "peligro" ? "bg-red-100 hover:bg-red-200" : 
+                      status === "precaución" ? "bg-amber-100 hover:bg-amber-200" : 
+                      status === "ok" ? "bg-green-100 hover:bg-green-200" : "hover:bg-slate-50"
                     )}
                   >
                     <TableCell className="px-6">
@@ -202,7 +202,7 @@ export default function InventoryPage() {
 
                     <TableCell className="px-6">
                       {status === "peligro" ? (
-                        <Badge variant="destructive" className="flex items-center gap-1 rounded-full px-3 py-1 font-black text-[9px] uppercase">
+                        <Badge className="bg-destructive text-white border-none flex items-center gap-1 rounded-full px-3 py-1 font-black text-[9px] uppercase">
                           <ShieldAlert className="w-3 h-3" /> Peligro
                         </Badge>
                       ) : status === "precaución" ? (
@@ -210,14 +210,14 @@ export default function InventoryPage() {
                           <ShieldQuestion className="w-3 h-3" /> Precaución
                         </Badge>
                       ) : (
-                        <Badge className="bg-green-100 text-green-700 border-none flex items-center gap-1 rounded-full px-3 py-1 font-black text-[9px] uppercase">
+                        <Badge className="bg-green-600 text-white border-none flex items-center gap-1 rounded-full px-3 py-1 font-black text-[9px] uppercase">
                           <ShieldCheck className="w-3 h-3" /> OK
                         </Badge>
                       )}
                     </TableCell>
                     <TableCell className="px-6 text-right">
                       <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="icon" className="text-primary hover:bg-primary/10 rounded-full" onClick={() => { setSelectedProduct(p); setIsDialogOpen(true); }}>
+                        <Button variant="ghost" size="icon" className="text-primary hover:bg-primary/20 rounded-full" onClick={() => { setSelectedProduct(p); setIsDialogOpen(true); }}>
                           <Edit3 className="w-4 h-4" />
                         </Button>
                         <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 rounded-full" onClick={() => setProductToDelete(p)}>
@@ -228,7 +228,7 @@ export default function InventoryPage() {
                   </TableRow>
                 );
               })}
-            </TableBody>
+            </Body>
           </Table>
         </CardContent>
       </Card>
