@@ -4,7 +4,7 @@
 import { useCollection, useFirestore, useMemoFirebase, deleteDocumentNonBlocking } from "@/firebase";
 import { collection, query, orderBy, doc } from "firebase/firestore";
 import { Card } from "@/components/ui/card";
-import { FileSpreadsheet, Calendar, History, ShoppingBag, DollarSign, Loader2, Package, ChevronRight, Trash2, MoreVertical, Eraser, AlertCircle } from "lucide-react";
+import { FileSpreadsheet, Calendar, History, ShoppingBag, DollarSign, Loader2, Package, ChevronRight, Trash2, Eraser, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { exportToExcel } from "@/lib/export";
 import { useToast } from "@/hooks/use-toast";
@@ -18,7 +18,6 @@ export default function HistoryPage() {
   const firestore = useFirestore();
   const { toast } = useToast();
   
-  // Estados para diálogos de eliminación
   const [saleToDelete, setSaleToDelete] = useState<any | null>(null);
   const [bulkDeleteType, setBulkDeleteType] = useState<'day' | 'month' | 'all' | null>(null);
 
@@ -53,7 +52,7 @@ export default function HistoryPage() {
         ID_Venta: s.id,
         Fecha: date.toLocaleDateString(),
         Hora: date.toLocaleTimeString(),
-        Producto: "Venta sin desglose (antigua)",
+        Producto: "Venta sin desglose",
         Cantidad: 1,
         Precio_Unitario: Math.round(s.totalAmount),
         Subtotal: Math.round(s.totalAmount),
@@ -61,15 +60,15 @@ export default function HistoryPage() {
         Total_Venta: Math.round(s.totalAmount)
       }];
     });
-    exportToExcel("Historial_Detallado_SmartSale", flattened, "Ventas");
-    toast({ title: "Exportación exitosa", description: "Se ha descargado el historial detallado en Excel." });
+    exportToExcel("Historial_SmartSale", flattened, "Ventas");
+    toast({ title: "Exportación exitosa", description: "Se ha descargado el historial en Excel." });
   };
 
   const confirmDeleteIndividual = () => {
     if (!saleToDelete) return;
     const docRef = doc(firestore, "sales", saleToDelete.id);
     deleteDocumentNonBlocking(docRef);
-    toast({ title: "Venta eliminada", description: "El registro ha sido borrado individualmente." });
+    toast({ title: "Venta eliminada", description: "El registro ha sido borrado." });
     setSaleToDelete(null);
   };
 
@@ -81,26 +80,32 @@ export default function HistoryPage() {
 
     if (bulkDeleteType === 'day') {
       targets = sales.filter(s => {
-        const d = s.saleDateTime?.toDate?.() || new Date();
+        const d = s.saleDateTime?.toDate?.();
+        if (!d) return false;
         return d.toDateString() === now.toDateString();
       });
     } else if (bulkDeleteType === 'month') {
       targets = sales.filter(s => {
-        const d = s.saleDateTime?.toDate?.() || new Date();
+        const d = s.saleDateTime?.toDate?.();
+        if (!d) return false;
         return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
       });
     } else if (bulkDeleteType === 'all') {
       targets = sales;
     }
 
-    targets.forEach(t => {
-      deleteDocumentNonBlocking(doc(firestore, "sales", t.id));
-    });
-
-    toast({ 
-      title: "Limpieza completada", 
-      description: `Se han eliminado ${targets.length} registros del historial.` 
-    });
+    if (targets.length === 0) {
+      toast({ title: "Sin registros", description: "No se encontraron ventas para borrar en este rango." });
+    } else {
+      targets.forEach(t => {
+        deleteDocumentNonBlocking(doc(firestore, "sales", t.id));
+      });
+      toast({ 
+        title: "Limpieza completada", 
+        description: `Se han eliminado ${targets.length} registros.` 
+      });
+    }
+    
     setBulkDeleteType(null);
   };
 
@@ -116,32 +121,32 @@ export default function HistoryPage() {
             <History className="w-8 h-8" />
             Historial
           </h1>
-          <p className="text-muted-foreground">Gestiona tus ventas registradas y depura el historial.</p>
+          <p className="text-muted-foreground">Gestiona tus ventas y depura el historial.</p>
         </div>
         <div className="flex gap-2 w-full md:w-auto">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="flex-1 md:flex-none border-destructive text-destructive hover:bg-destructive/5">
+              <Button variant="outline" className="flex-1 md:flex-none border-destructive text-destructive hover:bg-destructive/5 h-11 rounded-2xl">
                 <Eraser className="w-4 h-4 mr-2" /> Limpiar Historial
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56 rounded-2xl p-2">
-              <DropdownMenuLabel className="font-black text-[10px] uppercase tracking-widest opacity-50">Opciones de Borrado</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => setBulkDeleteType('day')} className="rounded-xl py-2 cursor-pointer focus:bg-destructive/10 focus:text-destructive">
+            <DropdownMenuContent align="end" className="w-56 rounded-2xl p-2 border-none shadow-2xl">
+              <DropdownMenuLabel className="font-black text-[10px] uppercase tracking-widest opacity-50 px-3 py-2">Opciones de Borrado</DropdownMenuLabel>
+              <DropdownMenuSeparator className="bg-slate-100" />
+              <DropdownMenuItem onClick={() => setBulkDeleteType('day')} className="rounded-xl py-3 cursor-pointer focus:bg-destructive/10 focus:text-destructive">
                 <Calendar className="w-4 h-4 mr-2" /> Borrar Hoy
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setBulkDeleteType('month')} className="rounded-xl py-2 cursor-pointer focus:bg-destructive/10 focus:text-destructive">
+              <DropdownMenuItem onClick={() => setBulkDeleteType('month')} className="rounded-xl py-3 cursor-pointer focus:bg-destructive/10 focus:text-destructive">
                 <History className="w-4 h-4 mr-2" /> Borrar este Mes
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => setBulkDeleteType('all')} className="rounded-xl py-2 cursor-pointer text-destructive font-bold focus:bg-destructive focus:text-white">
+              <DropdownMenuSeparator className="bg-slate-100" />
+              <DropdownMenuItem onClick={() => setBulkDeleteType('all')} className="rounded-xl py-3 cursor-pointer text-destructive font-bold focus:bg-destructive focus:text-white">
                 <Trash2 className="w-4 h-4 mr-2" /> BORRAR TODO
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
           
-          <Button variant="outline" onClick={handleExport} disabled={!sales?.length} className="flex-1 md:flex-none">
+          <Button variant="outline" onClick={handleExport} disabled={!sales?.length} className="flex-1 md:flex-none h-11 rounded-2xl">
             <FileSpreadsheet className="w-4 h-4 mr-2 text-green-600" /> Exportar
           </Button>
         </div>
@@ -154,10 +159,10 @@ export default function HistoryPage() {
             <p>Cargando historial...</p>
           </div>
         ) : !sales || sales.length === 0 ? (
-          <div className="text-center py-32 bg-white rounded-3xl shadow-inner border-2 border-dashed">
+          <div className="text-center py-32 bg-white rounded-3xl shadow-inner border-2 border-dashed border-slate-200">
             <ShoppingBag className="w-16 h-16 mx-auto mb-4 text-slate-200" />
             <h3 className="text-xl font-bold text-slate-400">Sin Ventas Registradas</h3>
-            <p className="text-slate-400">Las ventas que realices aparecerán aquí.</p>
+            <p className="text-slate-400">Las ventas aparecerán aquí una vez que cobres.</p>
           </div>
         ) : (
           sales.map((sale) => {
@@ -167,7 +172,7 @@ export default function HistoryPage() {
                 <Accordion type="single" collapsible className="w-full">
                   <AccordionItem value="items" className="border-none">
                     <div className="flex flex-col md:flex-row">
-                      <div className="bg-slate-50 p-6 flex flex-col justify-center border-r md:min-w-[180px] group-hover:bg-primary/5 transition-colors">
+                      <div className="bg-slate-50 p-6 flex flex-col justify-center border-r border-slate-100 md:min-w-[180px] group-hover:bg-primary/5 transition-colors">
                         <div className="flex items-center gap-2 text-[10px] font-black uppercase text-slate-400 mb-1 tracking-widest">
                           <Calendar className="w-3 h-3" />
                           {date.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}
@@ -238,7 +243,7 @@ export default function HistoryPage() {
                             </div>
                           ))}
                           {!sale.itemsSummary && (
-                            <p className="text-xs text-slate-400 italic">No hay desglose disponible para esta venta antigua.</p>
+                            <p className="text-xs text-slate-400 italic">No hay desglose disponible para esta venta.</p>
                           )}
                         </div>
                       </div>
@@ -251,46 +256,44 @@ export default function HistoryPage() {
         )}
       </div>
 
-      {/* Alerta de eliminación individual */}
       <AlertDialog open={!!saleToDelete} onOpenChange={() => setSaleToDelete(null)}>
-        <AlertDialogContent className="rounded-3xl border-none shadow-2xl">
+        <AlertDialogContent className="rounded-3xl border-none shadow-2xl p-8">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-2xl font-black text-destructive flex items-center gap-2">
               <AlertCircle className="w-6 h-6" />
               ¿Eliminar Registro?
             </AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta acción borrará definitivamente la venta con ID: <span className="font-mono font-bold">#{saleToDelete?.id?.slice(-8)}</span> de tu historial. 
-              Los productos ya fueron descontados del stock y no se recuperarán al borrar el registro.
+            <AlertDialogDescription className="text-slate-500 pt-2">
+              Esta acción borrará definitivamente la venta con ID <span className="font-mono font-bold text-slate-800">#{saleToDelete?.id?.slice(-8)}</span>.
+              Los cambios en el stock no se revertirán.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="gap-2">
-            <AlertDialogCancel className="rounded-2xl h-12 flex-1">Cancelar</AlertDialogCancel>
+          <AlertDialogFooter className="gap-2 pt-4">
+            <AlertDialogCancel className="rounded-2xl h-12 flex-1 border-slate-200">Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={confirmDeleteIndividual} className="rounded-2xl h-12 flex-1 bg-destructive hover:bg-destructive/90 font-black">
-              ELIMINAR AHORA
+              ELIMINAR
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Alerta de eliminación masiva */}
       <AlertDialog open={!!bulkDeleteType} onOpenChange={() => setBulkDeleteType(null)}>
-        <AlertDialogContent className="rounded-3xl border-none shadow-2xl">
+        <AlertDialogContent className="rounded-3xl border-none shadow-2xl p-8">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-2xl font-black text-destructive flex items-center gap-2">
               <Eraser className="w-6 h-6" />
               Limpieza Masiva
             </AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogDescription className="text-slate-500 pt-2">
               {bulkDeleteType === 'day' && "¿Estás seguro de que quieres borrar TODAS las ventas de HOY?"}
               {bulkDeleteType === 'month' && "¿Estás seguro de que quieres borrar TODAS las ventas de ESTE MES?"}
-              {bulkDeleteType === 'all' && "¡ATENCIÓN! Esto borrará el HISTORIAL COMPLETO de ventas. Esta acción no se puede deshacer."}
+              {bulkDeleteType === 'all' && "¡ATENCIÓN! Esto borrará el HISTORIAL COMPLETO. Esta acción no se puede deshacer."}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="gap-2">
-            <AlertDialogCancel className="rounded-2xl h-12 flex-1">Cancelar</AlertDialogCancel>
+          <AlertDialogFooter className="gap-2 pt-4">
+            <AlertDialogCancel className="rounded-2xl h-12 flex-1 border-slate-200">Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={confirmBulkDelete} className="rounded-2xl h-12 flex-1 bg-destructive hover:bg-destructive/90 font-black">
-              CONFIRMAR BORRADO
+              CONFIRMAR
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

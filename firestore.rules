@@ -1,3 +1,4 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -35,22 +36,22 @@ service cloud.firestore {
       allow get: if isOwner(userId);
       allow list: if false;
       allow create: if isOwner(userId);
-      allow update: if isOwner(userId); // Permitimos actualizaciones para gestionar sesiones
+      allow update: if isOwner(userId);
       allow delete: if isExistingOwner(userId);
     }
 
     match /products/{productId} {
       allow get, list: if isAuthorized();
       allow create: if isAuthorized();
-      allow update: if isAuthorized() && resource != null;
-      allow delete: if isAuthorized() && resource != null;
+      allow update: if isAuthorized();
+      allow delete: if isAuthorized();
     }
 
     match /sales/{saleId} {
       allow get, list: if isAuthorized();
       allow create: if isAuthorized();
-      allow update: if false; // Ventas inmutables por integridad
-      allow delete: if isAuthorized(); // Permitir eliminación por gestión del usuario
+      allow update: if isAuthorized(); // Permitir actualizaciones para metadatos si fuera necesario
+      allow delete: if isAuthorized();
 
       match /productSaleItems/{itemId} {
         allow get, list: if isAuthorized();
