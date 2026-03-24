@@ -4,8 +4,7 @@
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import { collection, query, orderBy } from "firebase/firestore";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { PieChart, Pie, Tooltip, ResponsiveContainer, Cell, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
-import { DollarSign, Package, TrendingUp, Calendar, ShoppingBag, ArrowUpRight, Loader2, ListFilter, Table as TableIcon, CalendarDays, ChevronRight, Clock, Tag, AlertTriangle, Trophy, CheckCircle2, Filter, ChevronDown, ShieldAlert, ShieldCheck } from "lucide-react";
+import { DollarSign, Package, TrendingUp, Calendar, ShoppingBag, Loader2, ListFilter, Trophy, CheckCircle2, Filter, ShieldAlert, ShieldCheck, AlertTriangle } from "lucide-react";
 import { useMemo, useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -39,7 +38,7 @@ export default function ReportsPage() {
   const { data: allSales, isLoading: isLoadingSales } = useCollection(salesQuery);
   const { data: allProducts, isLoading: isLoadingProducts } = useCollection(productsQuery);
 
-  // Lógica de cálculo de estado de stock (coincidente con Inventario)
+  // Lógica de cálculo de estado de stock
   const getProductStatus = (stock: number, ideal: number) => {
     const idealVal = ideal || 10;
     if (stock < idealVal * 0.25) return "danger";
@@ -127,7 +126,7 @@ export default function ReportsPage() {
       });
     });
 
-    return Object.values(stats).sort((a, b) => b.totalRevenue - a.totalRevenue);
+    return Object.values(stats).sort((a: any, b: any) => b.totalRevenue - a.totalRevenue);
   }, [filteredSales, allProducts, mounted]);
 
   // Top productos vendidos
@@ -312,11 +311,12 @@ export default function ReportsPage() {
                     <AccordionContent className="px-6 pb-6 pt-2 bg-slate-50/50">
                       <div className="grid gap-2 mt-2">
                         <div className="flex items-center justify-between px-2 mb-2">
-                          <span className="text-[10px] font-black uppercase text-slate-400">Existencias en esta sección</span>
-                          <span className="text-[10px] font-bold text-slate-400">Total Vendido: {cat.unitsSold} u.</span>
+                          <span className="text-[10px] font-black uppercase text-slate-400">Desempeño por producto</span>
+                          <span className="text-[10px] font-bold text-slate-400">Unidades vendidas: {cat.unitsSold}</span>
                         </div>
                         {cat.products.map((p: any) => {
                           const status = getProductStatus(p.stock, p.idealStock);
+                          const productTotalRevenue = Math.round(p.price * p.soldThisPeriod);
                           return (
                             <div key={p.id} className={cn(
                               "bg-white p-4 rounded-2xl flex items-center justify-between border transition-all",
@@ -334,13 +334,14 @@ export default function ReportsPage() {
                                     </p>
                                     <p className="text-[9px] text-primary font-black uppercase tracking-widest flex items-center gap-1">
                                       <ShoppingBag className="w-2 h-2" />
-                                      Vendidos en periodo: {p.soldThisPeriod} u.
+                                      Llevados: {p.soldThisPeriod} u.
                                     </p>
                                   </div>
                                 </div>
                               </div>
                               <div className="text-right">
-                                <p className="text-sm font-black text-slate-700 font-mono">${Math.round(p.price).toLocaleString('es-CL')}</p>
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Ingreso Total</p>
+                                <p className="text-sm font-black text-slate-700 font-mono">${productTotalRevenue.toLocaleString('es-CL')}</p>
                               </div>
                             </div>
                           );
@@ -407,3 +408,4 @@ export default function ReportsPage() {
     </div>
   );
 }
+
