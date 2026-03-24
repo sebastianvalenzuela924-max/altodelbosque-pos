@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { useCollection, useFirestore, useMemoFirebase, deleteDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase";
 import { collection, doc, query, orderBy, increment } from "firebase/firestore";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
@@ -40,6 +40,13 @@ export default function InventoryPage() {
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
 
   const { toast } = useToast();
+
+  // Fail-safe para restaurar la navegación si algún diálogo se queda "pegado"
+  useEffect(() => {
+    if (!isDialogOpen && !isScannerOpen && !pendingBarcode && !productToDelete && !quickStockProduct) {
+      document.body.style.pointerEvents = 'auto';
+    }
+  }, [isDialogOpen, isScannerOpen, pendingBarcode, productToDelete, quickStockProduct]);
 
   const productsQuery = useMemoFirebase(() => {
     return query(collection(firestore, "products"), orderBy("name"));
@@ -105,12 +112,11 @@ export default function InventoryPage() {
     });
   }, [products, searchTerm, sortBy, categoryFilter]);
 
-  // Manejo de Pulsación Larga (Long Press)
   const handlePointerDown = (product: any) => {
     longPressTimer.current = setTimeout(() => {
       setQuickStockProduct(product);
       setQuickAddValue("");
-    }, 600); // 600ms para activar
+    }, 600);
   };
 
   const handlePointerUp = () => {
@@ -135,14 +141,13 @@ export default function InventoryPage() {
     setQuickStockProduct(null);
   };
 
-  // Función para manejar el escaneo con retardo para evitar bloqueos de UI
   const handleScanResult = (barcode: string) => {
     setIsScannerOpen(false);
-    // Damos un pequeño respiro al DOM (300ms) para que el primer modal se cierre completamente
-    // Esto evita que Radix UI deje el puntero bloqueado o impida reabrir el escáner.
+    // Un tiempo de espera un poco mayor (400ms) para que el modal se cierre físicamente del todo
+    // y no bloquee el puntero del siguiente diálogo.
     setTimeout(() => {
       setPendingBarcode(barcode);
-    }, 300);
+    }, 400);
   };
 
   return (
@@ -183,58 +188,9 @@ export default function InventoryPage() {
             <TableHeader className="bg-slate-50/30">
               <TableRow className="border-none">
                 <TableHead className="px-6 font-black uppercase text-[10px] tracking-widest">Producto</TableHead>
-                
-                <TableHead className="px-6">
-                  <DropdownMenu modal={false}>
-                    <DropdownMenuTrigger asChild>
-                      <button type="button" className="flex items-center gap-2 font-black uppercase text-[10px] tracking-widest focus:outline-none">
-                        Stock / Ideal <ChevronDown className="w-3 h-3" />
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className="rounded-xl border-none shadow-2xl p-1 z-[100]">
-                      <DropdownMenuItem onClick={() => setSortBy("stock-asc")} className="rounded-lg font-bold text-xs py-2">Menos stock primero</DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setSortBy("stock-desc")} className="rounded-lg font-bold text-xs py-2">Más stock primero</DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableHead>
-
-                <TableHead className="px-6">
-                  <DropdownMenu modal={false}>
-                    <DropdownMenuTrigger asChild>
-                      <button type="button" className="flex items-center gap-2 font-black uppercase text-[10px] tracking-widest focus:outline-none">
-                        Categoría <ChevronDown className="w-3 h-3" />
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className="rounded-xl border-none shadow-2xl p-1 z-[100]">
-                      <DropdownMenuItem onClick={() => setCategoryFilter("all")} className="rounded-lg font-bold text-xs py-2">Todas</DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuLabel className="text-[9px] uppercase tracking-widest opacity-50">Ordenar</DropdownMenuLabel>
-                      <DropdownMenuItem onClick={() => setSortBy("category-asc")} className="rounded-lg font-bold text-xs py-2">A-Z</DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setSortBy("category-desc")} className="rounded-lg font-bold text-xs py-2">Z-A</DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuLabel className="text-[9px] uppercase tracking-widest opacity-50">Filtrar</DropdownMenuLabel>
-                      {categories.map(cat => (
-                        <DropdownMenuItem key={cat} onClick={() => setCategoryFilter(cat)} className="rounded-lg font-bold text-xs py-2">{cat}</DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableHead>
-
-                <TableHead className="px-6">
-                  <DropdownMenu modal={false}>
-                    <DropdownMenuTrigger asChild>
-                      <button type="button" className="flex items-center gap-2 font-black uppercase text-[10px] tracking-widest focus:outline-none">
-                        Estado <ChevronDown className="w-3 h-3" />
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className="rounded-xl border-none shadow-2xl p-1 z-[100]">
-                      <DropdownMenuItem onClick={() => setSortBy("status-critical")} className="rounded-lg font-black text-xs py-2 text-destructive">
-                        <ShieldAlert className="w-3 h-3 mr-2" /> Críticos primero
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableHead>
-                
+                <TableHead className="px-6 font-black uppercase text-[10px] tracking-widest">Stock / Ideal</TableHead>
+                <TableHead className="px-6 font-black uppercase text-[10px] tracking-widest">Categoría</TableHead>
+                <TableHead className="px-6 font-black uppercase text-[10px] tracking-widest">Estado</TableHead>
                 <TableHead className="px-6 text-right font-black uppercase text-[10px] tracking-widest">Acciones</TableHead>
               </TableRow>
             </TableHeader>
@@ -260,18 +216,15 @@ export default function InventoryPage() {
                       <p className="font-bold text-sm">{p.name}</p>
                       <p className="text-[10px] font-mono text-slate-400">#{p.id}</p>
                     </TableCell>
-
                     <TableCell className="px-6">
                       <div className="flex flex-col">
                         <span className="font-black text-lg">{p.stock}</span>
                         <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Normal: {p.idealStock || 10}</span>
                       </div>
                     </TableCell>
-
                     <TableCell className="px-6">
                       <Badge variant="outline" className="text-[9px] font-black uppercase border-slate-300 bg-white/50">{p.category || "General"}</Badge>
                     </TableCell>
-
                     <TableCell className="px-6">
                       {status === "peligro" ? (
                         <Badge className="bg-destructive text-white border-none flex items-center gap-1 rounded-full px-3 py-1 font-black text-[9px] uppercase">
@@ -305,44 +258,21 @@ export default function InventoryPage() {
         </CardContent>
       </Card>
 
-      {/* Diálogo de Carga Rápida Optimizado */}
       <Dialog open={!!quickStockProduct} onOpenChange={() => setQuickStockProduct(null)}>
-        <DialogContent 
-          className="rounded-3xl border-none shadow-2xl max-w-[90vw] sm:max-w-sm p-0 overflow-hidden max-h-[90vh] flex flex-col gap-0"
-          onOpenAutoFocus={(e) => e.preventDefault()}
-        >
-          <DialogHeader className="p-6 pb-2 shrink-0 bg-white z-10">
-            <DialogTitle className="flex items-center gap-2 text-xl font-black text-primary uppercase tracking-tighter">
-              <PackagePlus className="w-6 h-6" />
-              Carga Rápida
-            </DialogTitle>
+        <DialogContent className="rounded-3xl border-none shadow-2xl max-w-[90vw] sm:max-w-sm p-6" onOpenAutoFocus={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl font-black text-primary uppercase">Carga Rápida</DialogTitle>
           </DialogHeader>
-          <div className="flex-1 min-h-0 overflow-hidden">
-            <ScrollArea className="h-full">
-              <div className="space-y-4 px-6 py-4">
-                <div className="text-center">
-                  <p className="font-bold text-slate-600 truncate">{quickStockProduct?.name}</p>
-                  <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mt-1">Stock Actual: {quickStockProduct?.stock}</p>
-                </div>
-                <div className="grid gap-2 pb-4">
-                  <Label className="font-black text-[10px] uppercase text-slate-400 tracking-widest text-center">¿Cuánto vas a sumar?</Label>
-                  <Input 
-                    type="number" 
-                    className="h-16 rounded-2xl bg-primary/5 border-none text-center text-4xl font-black text-primary focus-visible:ring-primary" 
-                    placeholder="+0"
-                    value={quickAddValue}
-                    onChange={e => setQuickAddValue(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleQuickAdd()}
-                  />
-                </div>
-              </div>
-            </ScrollArea>
+          <div className="space-y-4 text-center py-4">
+            <p className="font-bold text-slate-600">{quickStockProduct?.name}</p>
+            <div className="grid gap-2">
+              <Label className="font-black text-[10px] uppercase text-slate-400">¿Cuánto vas a sumar?</Label>
+              <Input type="number" className="h-16 rounded-2xl bg-primary/5 border-none text-center text-4xl font-black text-primary" placeholder="+0" value={quickAddValue} onChange={e => setQuickAddValue(e.target.value)} />
+            </div>
           </div>
-          <DialogFooter className="grid grid-cols-2 gap-2 p-6 pt-4 bg-white border-t shrink-0 z-10">
-            <Button variant="ghost" onClick={() => setQuickStockProduct(null)} className="rounded-xl h-12 font-bold uppercase text-[10px]">Cancelar</Button>
-            <Button onClick={handleQuickAdd} className="bg-primary hover:bg-primary/90 rounded-xl h-12 font-black uppercase text-[10px] shadow-lg shadow-primary/20">
-              Añadir
-            </Button>
+          <DialogFooter className="grid grid-cols-2 gap-2">
+            <Button variant="ghost" onClick={() => setQuickStockProduct(null)}>Cancelar</Button>
+            <Button onClick={handleQuickAdd} className="bg-primary hover:bg-primary/90 font-black">Añadir</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -359,14 +289,14 @@ export default function InventoryPage() {
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={!!pendingBarcode} onOpenChange={(open) => { if(!open) setPendingBarcode(null); }}>
+      <AlertDialog open={!!pendingBarcode} onOpenChange={(open) => { if(!open) { setPendingBarcode(null); document.body.style.pointerEvents = 'auto'; } }}>
         <AlertDialogContent className="rounded-3xl p-8 max-w-[90vw] sm:max-w-lg">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-2xl font-black">Código Detectado</AlertDialogTitle>
             <AlertDialogDescription className="text-center py-4 font-mono font-bold text-3xl">{pendingBarcode}</AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setPendingBarcode(null)} className="rounded-2xl h-12 flex-1">DESCARTAR</AlertDialogCancel>
+          <AlertDialogFooter className="flex flex-col sm:flex-row gap-2">
+            <AlertDialogCancel onClick={() => { setPendingBarcode(null); document.body.style.pointerEvents = 'auto'; }} className="rounded-2xl h-12 flex-1">DESCARTAR</AlertDialogCancel>
             <AlertDialogAction onClick={() => { 
               const existing = products?.find(p => p.id === pendingBarcode);
               if (existing) { setSelectedProduct(existing); setIsDialogOpen(true); }
