@@ -32,7 +32,7 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
     setIsLoading(true);
     setIsEnabled(true);
 
-    // Pequeño retardo para asegurar que el contenedor DOM existe
+    // Retardo para asegurar que el contenedor DOM esté listo
     setTimeout(async () => {
       try {
         if (!scannerRef.current) {
@@ -48,42 +48,49 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
           });
         }
 
+        // Configuración optimizada para evitar desenfoque (Macro issue)
         const config = {
-          fps: 25, // Mayor velocidad de procesamiento
+          fps: 30,
           qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
-            // Rectángulo optimizado para códigos de barras (ancho y bajo)
-            const width = Math.min(viewfinderWidth * 0.8, 400);
-            const height = Math.min(viewfinderHeight * 0.3, 150);
+            // Cuadro más grande para obligar al usuario a alejarse (evitando desenfoque)
+            const width = Math.min(viewfinderWidth * 0.9, 500);
+            const height = Math.min(viewfinderHeight * 0.4, 220);
             return { width, height };
           },
           aspectRatio: 1.0,
+          // Forzamos resolución HD para mejor nitidez en las barras
+          videoConstraints: {
+            facingMode: "environment",
+            width: { min: 640, ideal: 1280, max: 1920 },
+            height: { min: 480, ideal: 720, max: 1080 },
+            focusMode: "continuous",
+          },
           experimentalFeatures: {
-            useBarCodeDetectorIfSupported: true, // Usa hardware dedicado si está disponible
+            useBarCodeDetectorIfSupported: true,
           },
         };
 
-        // Solicitar cámara trasera con enfoque optimizado si el navegador lo permite
         await scannerRef.current.start(
           { facingMode: "environment" },
           config,
           (decodedText) => {
             onScan(decodedText);
           },
-          () => {} // Ignorar frames fallidos para no saturar la consola
+          () => {} 
         );
         setIsLoading(false);
       } catch (err: any) {
         console.error("Error iniciando escáner:", err);
-        setError("Error de cámara. Por favor, revisa los permisos del navegador.");
+        setError("Error de cámara. Por favor, revisa los permisos.");
         setIsEnabled(false);
         setIsLoading(false);
         toast({
           variant: "destructive",
           title: "Error de Cámara",
-          description: "No se pudo acceder a la cámara trasera.",
+          description: "Asegúrate de dar permisos de cámara en tu navegador.",
         });
       }
-    }, 300);
+    }, 400);
   };
 
   useEffect(() => {
@@ -106,7 +113,7 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
           <div className="space-y-1">
             <h3 className="text-white font-bold text-lg">Escáner de Productos</h3>
             <p className="text-slate-400 text-xs px-4">
-              Enfoca el código de barras dentro del recuadro.
+              Mantén el código a unos 15 cm de distancia para un mejor enfoque.
             </p>
           </div>
           
@@ -136,14 +143,11 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
       {isEnabled && !isLoading && (
         <>
           <div className="absolute inset-0 pointer-events-none z-20 flex items-center justify-center">
-             {/* Marco de enfoque */}
-             <div className="w-[80%] max-w-[400px] h-[30%] max-h-[150px] relative border-2 border-primary/50 rounded-lg bg-primary/5">
+             <div className="w-[90%] max-w-[500px] h-[40%] max-h-[220px] relative border-2 border-primary/50 rounded-lg bg-primary/5">
                 <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-primary"></div>
                 <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-primary"></div>
                 <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-primary"></div>
                 <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-primary"></div>
-                
-                {/* Línea de escaneo láser */}
                 <div className="absolute top-0 left-0 right-0 h-1 bg-primary/80 shadow-[0_0_15px_rgba(var(--primary),0.8)] animate-[scan_2s_ease-in-out_infinite]"></div>
              </div>
           </div>
@@ -171,10 +175,10 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
           0%, 100% { top: 5%; }
           50% { top: 95%; }
         }
-        #qr-reader__scan_region {
-          display: flex;
-          justify-content: center;
-          align-items: center;
+        #qr-reader video {
+          width: 100% !important;
+          height: 100% !important;
+          object-fit: cover !important;
         }
       `}</style>
     </div>
