@@ -41,10 +41,12 @@ export default function InventoryPage() {
 
   const { toast } = useToast();
 
-  // Fail-safe para restaurar la navegación si algún diálogo se queda "pegado"
+  // FAIL-SAFE CRÍTICO: Asegura que el body siempre recupere eventos si no hay diálogos abiertos
   useEffect(() => {
-    if (!isDialogOpen && !isScannerOpen && !pendingBarcode && !productToDelete && !quickStockProduct) {
+    const isAnyModalOpen = isDialogOpen || isScannerOpen || !!pendingBarcode || !!productToDelete || !!quickStockProduct;
+    if (!isAnyModalOpen) {
       document.body.style.pointerEvents = 'auto';
+      document.body.style.overflow = 'auto';
     }
   }, [isDialogOpen, isScannerOpen, pendingBarcode, productToDelete, quickStockProduct]);
 
@@ -142,12 +144,20 @@ export default function InventoryPage() {
   };
 
   const handleScanResult = (barcode: string) => {
+    // Cerramos el scanner primero
     setIsScannerOpen(false);
-    // Un tiempo de espera un poco mayor (400ms) para que el modal se cierre físicamente del todo
-    // y no bloquee el puntero del siguiente diálogo.
+    // Esperamos a que la animación de cierre termine para evitar colisión de capas
     setTimeout(() => {
       setPendingBarcode(barcode);
     }, 400);
+  };
+
+  const handleDiscardPending = () => {
+    setPendingBarcode(null);
+    // Aseguramos que el DOM quede limpio
+    setTimeout(() => {
+      document.body.style.pointerEvents = 'auto';
+    }, 50);
   };
 
   return (
@@ -258,7 +268,8 @@ export default function InventoryPage() {
         </CardContent>
       </Card>
 
-      <Dialog open={!!quickStockProduct} onOpenChange={() => setQuickStockProduct(null)}>
+      {/* Carga Rápida stock */}
+      <Dialog open={!!quickStockProduct} onOpenChange={(open) => !open && setQuickStockProduct(null)}>
         <DialogContent className="rounded-3xl border-none shadow-2xl max-w-[90vw] sm:max-w-sm p-6" onOpenAutoFocus={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-xl font-black text-primary uppercase">Carga Rápida</DialogTitle>
@@ -277,8 +288,10 @@ export default function InventoryPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Dialogo de Producto */}
       <ProductDialog open={isDialogOpen} onClose={() => setIsDialogOpen(false)} product={selectedProduct} categories={categories} onSaved={() => {}} />
 
+      {/* Dialogo Scanner */}
       <Dialog open={isScannerOpen} onOpenChange={setIsScannerOpen}>
         <DialogContent className="p-0 overflow-hidden rounded-3xl max-w-[90vw] sm:max-w-2xl">
           <DialogHeader className="sr-only">
@@ -289,25 +302,31 @@ export default function InventoryPage() {
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={!!pendingBarcode} onOpenChange={(open) => { if(!open) { setPendingBarcode(null); document.body.style.pointerEvents = 'auto'; } }}>
+      {/* Dialogo Código Detectado */}
+      <AlertDialog open={!!pendingBarcode} onOpenChange={(open) => !open && handleDiscardPending()}>
         <AlertDialogContent className="rounded-3xl p-8 max-w-[90vw] sm:max-w-lg">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-2xl font-black">Código Detectado</AlertDialogTitle>
-            <AlertDialogDescription className="text-center py-4 font-mono font-bold text-3xl">{pendingBarcode}</AlertDialogDescription>
+            <AlertDialogDescription className="text-center py-4 font-mono font-bold text-3xl text-primary">{pendingBarcode}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex flex-col sm:flex-row gap-2">
-            <AlertDialogCancel onClick={() => { setPendingBarcode(null); document.body.style.pointerEvents = 'auto'; }} className="rounded-2xl h-12 flex-1">DESCARTAR</AlertDialogCancel>
+            <AlertDialogCancel onClick={handleDiscardPending} className="rounded-2xl h-12 flex-1 border-slate-200">DESCARTAR</AlertDialogCancel>
             <AlertDialogAction onClick={() => { 
               const existing = products?.find(p => p.id === pendingBarcode);
-              if (existing) { setSelectedProduct(existing); setIsDialogOpen(true); }
-              else { setSelectedProduct({ id: pendingBarcode }); setIsDialogOpen(true); }
+              const barcode = pendingBarcode;
               setPendingBarcode(null);
+              // Pequeño timeout para dejar que el DOM respire antes de abrir el editor
+              setTimeout(() => {
+                if (existing) { setSelectedProduct(existing); setIsDialogOpen(true); }
+                else { setSelectedProduct({ id: barcode }); setIsDialogOpen(true); }
+              }, 100);
             }} className="rounded-2xl h-12 flex-1">EDITAR / CREAR</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={!!productToDelete} onOpenChange={() => setProductToDelete(null)}>
+      {/* Borrado Producto */}
+      <AlertDialog open={!!productToDelete} onOpenChange={(open) => !open && setProductToDelete(null)}>
         <AlertDialogContent className="rounded-3xl max-w-[90vw] sm:max-w-md">
           <AlertDialogHeader>
             <AlertDialogTitle>¿Eliminar producto?</AlertDialogTitle>
