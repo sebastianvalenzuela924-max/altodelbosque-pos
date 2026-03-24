@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
-import { Scan, Camera, XCircle, AlertCircle, Loader2 } from "lucide-react";
+import { Scan, Camera, XCircle, AlertCircle, Loader2, ZoomIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
@@ -27,12 +27,34 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
     setIsLoading(false);
   };
 
+  const applyAdvancedConstraints = async (videoTrack: MediaStreamTrack) => {
+    try {
+      const capabilities = videoTrack.getCapabilities() as any;
+      const constraints = {} as any;
+
+      // Intentar aplicar Zoom si el dispositivo lo soporta (evita acercarse demasiado y desenfocar)
+      if (capabilities.zoom) {
+        constraints.zoom = Math.min(2.0, capabilities.zoom.max);
+      }
+      
+      // Intentar forzar enfoque continuo
+      if (capabilities.focusMode?.includes('continuous')) {
+        constraints.focusMode = 'continuous';
+      }
+
+      if (Object.keys(constraints).length > 0) {
+        await videoTrack.applyConstraints({ advanced: [constraints] } as any);
+      }
+    } catch (e) {
+      console.warn("No se pudieron aplicar restricciones avanzadas de cámara:", e);
+    }
+  };
+
   const startScanner = async () => {
     setError(null);
     setIsLoading(true);
     setIsEnabled(true);
 
-    // Retardo para asegurar que el contenedor DOM esté listo
     setTimeout(async () => {
       try {
         if (!scannerRef.current) {
@@ -48,25 +70,21 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
           });
         }
 
-        // Configuración optimizada para evitar desenfoque (Macro issue)
+        // Configuración para forzar al usuario a alejarse (donde hay mejor enfoque)
         const config = {
           fps: 30,
           qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
-            // Cuadro más grande para obligar al usuario a alejarse (evitando desenfoque)
-            const width = Math.min(viewfinderWidth * 0.9, 500);
-            const height = Math.min(viewfinderHeight * 0.4, 220);
+            // Rectángulo ancho para códigos de barras, centrado
+            const width = Math.min(viewfinderWidth * 0.85, 450);
+            const height = Math.min(viewfinderHeight * 0.35, 200);
             return { width, height };
           },
           aspectRatio: 1.0,
-          // Forzamos resolución HD para mejor nitidez en las barras
           videoConstraints: {
             facingMode: "environment",
-            width: { min: 640, ideal: 1280, max: 1920 },
-            height: { min: 480, ideal: 720, max: 1080 },
-            focusMode: "continuous",
-          },
-          experimentalFeatures: {
-            useBarCodeDetectorIfSupported: true,
+            // Solicitamos alta resolución para capturar detalles finos desde lejos
+            width: { min: 1280, ideal: 1920 },
+            height: { min: 720, ideal: 1080 },
           },
         };
 
@@ -78,6 +96,17 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
           },
           () => {} 
         );
+
+        // Intentar aplicar zoom después de que la cámara se inicie
+        const videoElement = document.querySelector("#qr-reader video") as HTMLVideoElement;
+        if (videoElement && videoElement.srcObject) {
+          const stream = videoElement.srcObject as MediaStream;
+          const track = stream.getVideoTracks()[0];
+          if (track) {
+            await applyAdvancedConstraints(track);
+          }
+        }
+
         setIsLoading(false);
       } catch (err: any) {
         console.error("Error iniciando escáner:", err);
@@ -90,7 +119,7 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
           description: "Asegúrate de dar permisos de cámara en tu navegador.",
         });
       }
-    }, 400);
+    }, 500);
   };
 
   useEffect(() => {
@@ -111,9 +140,9 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
             <Scan className="w-10 h-10 text-primary" />
           </div>
           <div className="space-y-1">
-            <h3 className="text-white font-bold text-lg">Escáner de Productos</h3>
+            <h3 className="text-white font-bold text-lg">Escáner HD con Zoom</h3>
             <p className="text-slate-400 text-xs px-4">
-              Mantén el código a unos 15 cm de distancia para un mejor enfoque.
+              Mantén el código a unos 20-25 cm. <br/> El zoom automático ayudará a enfocar.
             </p>
           </div>
           
@@ -143,12 +172,16 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
       {isEnabled && !isLoading && (
         <>
           <div className="absolute inset-0 pointer-events-none z-20 flex items-center justify-center">
-             <div className="w-[90%] max-w-[500px] h-[40%] max-h-[220px] relative border-2 border-primary/50 rounded-lg bg-primary/5">
+             <div className="w-[85%] max-w-[450px] h-[35%] max-h-[200px] relative border-2 border-primary/50 rounded-lg bg-primary/5">
                 <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-primary"></div>
                 <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-primary"></div>
                 <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-primary"></div>
                 <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-primary"></div>
                 <div className="absolute top-0 left-0 right-0 h-1 bg-primary/80 shadow-[0_0_15px_rgba(var(--primary),0.8)] animate-[scan_2s_ease-in-out_infinite]"></div>
+             </div>
+             <div className="absolute bottom-16 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-md px-4 py-2 rounded-full flex items-center gap-2 text-white text-[10px] font-black uppercase tracking-widest border border-white/20">
+                <ZoomIn className="w-3 h-3 text-primary" />
+                Zoom 2x Aplicado
              </div>
           </div>
           
@@ -166,14 +199,17 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
       
       {isLoading && isEnabled && (
         <div className="absolute inset-0 z-40 bg-black flex items-center justify-center">
-             <Loader2 className="w-10 h-10 text-primary animate-spin" />
+             <div className="flex flex-col items-center gap-4">
+                <Loader2 className="w-12 h-12 text-primary animate-spin" />
+                <p className="text-white text-[10px] font-black tracking-[0.3em] uppercase">Iniciando Lente HD</p>
+             </div>
         </div>
       )}
 
       <style jsx global>{`
         @keyframes scan {
-          0%, 100% { top: 5%; }
-          50% { top: 95%; }
+          0%, 100% { top: 10%; }
+          50% { top: 90%; }
         }
         #qr-reader video {
           width: 100% !important;
