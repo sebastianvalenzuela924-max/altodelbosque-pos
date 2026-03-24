@@ -108,7 +108,7 @@ export default function NotesPage() {
                       <Button 
                         variant="ghost" 
                         size="icon" 
-                        className="text-destructive opacity-0 group-hover:opacity-100 transition-opacity rounded-full hover:bg-destructive/10"
+                        className="text-destructive transition-opacity rounded-full hover:bg-destructive/10"
                         onClick={() => handleDeleteNote(note.id)}
                       >
                         <Trash2 className="w-5 h-5" />
