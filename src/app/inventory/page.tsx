@@ -60,6 +60,21 @@ export default function InventoryPage() {
     return "ok";
   };
 
+  const handleExport = () => {
+    if (!products) return;
+    const data = products.map(p => ({
+      ID_Producto: p.id,
+      Nombre: p.name,
+      Precio_Venta: Math.round(p.price),
+      Stock_Actual: p.stock,
+      Stock_Ideal: p.idealStock || 10,
+      Categoria: p.category || "General",
+      Estado: getProductStatus(p.stock, p.idealStock).toUpperCase()
+    }));
+    exportToExcel("Inventario_AltodelBosque", data, "Productos");
+    toast({ title: "Exportación exitosa", description: "Se ha descargado el inventario en Excel." });
+  };
+
   const processedProducts = useMemo(() => {
     if (!products) return [];
 
@@ -134,6 +149,9 @@ export default function InventoryPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2 w-full md:w-auto">
+          <Button variant="outline" className="flex-1 md:flex-none h-11 rounded-2xl" onClick={handleExport} disabled={!products?.length}>
+            <FileSpreadsheet className="w-4 h-4 mr-2 text-green-600" /> Exportar
+          </Button>
           <Button variant="outline" className="flex-1 md:flex-none h-11 rounded-2xl" onClick={() => setIsScannerOpen(true)}>
             <Scan className="w-4 h-4 mr-2" /> Escanear
           </Button>
