@@ -61,17 +61,26 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
 
     setLoading(true);
     const docRef = doc(firestore, "products", formData.id);
+    
+    // Normalización de categoría: buscar coincidencia insensible a mayúsculas
+    const enteredCat = formData.category.trim();
+    const existingMatch = categories.find(c => c.toLowerCase() === enteredCat.toLowerCase());
+    
+    // Si existe una categoría igual pero con distinta capitalización, usamos la existente
+    // Si es nueva, capitalizamos la primera letra por estética
+    const finalCategory = existingMatch || (enteredCat ? (enteredCat.charAt(0).toUpperCase() + enteredCat.slice(1)) : "General");
+
     const data = {
       id: formData.id,
       name: formData.name,
       price: Math.round(parseFloat(formData.price)) || 0,
       stock: parseInt(formData.stock) || 0,
-      category: formData.category.trim() || "General"
+      category: finalCategory
     };
 
     setDocumentNonBlocking(docRef, data, { merge: true });
     
-    toast({ title: "Guardado", description: "Producto actualizado correctamente." });
+    toast({ title: "Guardado", description: `Producto actualizado en ${finalCategory}.` });
     setLoading(false);
     onSaved();
     onClose();
@@ -130,7 +139,7 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
                     {categories.map((cat) => (
                       <Badge 
                         key={cat} 
-                        variant={formData.category === cat ? "default" : "secondary"}
+                        variant={formData.category.toLowerCase() === cat.toLowerCase() ? "default" : "secondary"}
                         className="cursor-pointer rounded-lg px-3 py-1 font-bold text-[10px] uppercase transition-all"
                         onClick={() => selectCategory(cat)}
                       >

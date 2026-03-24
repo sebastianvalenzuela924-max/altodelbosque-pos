@@ -69,19 +69,24 @@ export function QuickAddDialog({
       return;
     }
     
+    // Normalización de categoría
+    const enteredCat = category.trim();
+    const existingMatch = existingCategories.find(c => c.toLowerCase() === enteredCat.toLowerCase());
+    const finalCategory = existingMatch || (enteredCat ? (enteredCat.charAt(0).toUpperCase() + enteredCat.slice(1)) : "General");
+
     const docRef = doc(firestore, "products", barcode);
     const data = {
       id: barcode,
       name,
       price: Math.round(parseFloat(price)) || 0,
       stock: parseInt(stock) || 0,
-      category: category.trim() || "General"
+      category: finalCategory
     };
 
     setDocumentNonBlocking(docRef, data, { merge: true });
     onAdded(data);
     onClose();
-    toast({ title: "Producto Guardado", description: "Se ha registrado en el inventario." });
+    toast({ title: "Producto Guardado", description: `Registrado en ${finalCategory}.` });
   };
 
   return (
@@ -135,7 +140,7 @@ export function QuickAddDialog({
                         {existingCategories.map((cat) => (
                           <Badge 
                             key={cat} 
-                            variant={category === cat ? "default" : "secondary"}
+                            variant={category.toLowerCase() === cat.toLowerCase() ? "default" : "secondary"}
                             className="cursor-pointer rounded-lg px-3 py-1 font-bold text-[10px] uppercase transition-all"
                             onClick={() => setCategory(cat)}
                           >

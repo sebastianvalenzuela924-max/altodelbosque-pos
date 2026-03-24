@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
@@ -45,30 +46,49 @@ export default function ReportsPage() {
 
   const categoryStats = useMemo(() => {
     if (!sales || !mounted) return [];
-    const stats: Record<string, { category: string, total: number, units: number }> = {};
+    
+    // Mapa para agrupar por nombre de categoría insensible a mayúsculas
+    const normalizedStats: Record<string, { category: string, total: number, units: number }> = {};
+    
     sales.forEach(sale => {
       sale.itemsSummary?.forEach((item: any) => {
-        const cat = item.category || (products?.find(p => p.id === item.id)?.category) || "General";
-        if (!stats[cat]) stats[cat] = { category: cat, total: 0, units: 0 };
-        stats[cat].total += Math.round(item.price * item.quantity) || 0;
-        stats[cat].units += item.quantity || 0;
+        const rawCat = item.category || (products?.find(p => p.id === item.id)?.category) || "General";
+        const normKey = rawCat.trim().toLowerCase();
+        
+        if (!normalizedStats[normKey]) {
+          normalizedStats[normKey] = { 
+            category: rawCat, // Usamos la primera versión encontrada como canonical
+            total: 0, 
+            units: 0 
+          };
+        }
+        normalizedStats[normKey].total += Math.round(item.price * item.quantity) || 0;
+        normalizedStats[normKey].units += item.quantity || 0;
       });
     });
-    return Object.values(stats).sort((a, b) => b.total - a.total);
+    
+    return Object.values(normalizedStats).sort((a, b) => b.total - a.total);
   }, [sales, products, mounted]);
 
   const stockAlertsByCategory = useMemo(() => {
     if (!products || !mounted) return [];
-    const alerts: Record<string, { category: string, lowStockCount: number, products: any[] }> = {};
+    
+    // Normalización también aquí para agrupar alertas de stock
+    const normalizedAlerts: Record<string, { category: string, lowStockCount: number, products: any[] }> = {};
+    
     products.forEach(p => {
       if (p.stock < 5) {
-        const cat = p.category || "General";
-        if (!alerts[cat]) alerts[cat] = { category: cat, lowStockCount: 0, products: [] };
-        alerts[cat].lowStockCount++;
-        alerts[cat].products.push(p);
+        const rawCat = p.category || "General";
+        const normKey = rawCat.trim().toLowerCase();
+        
+        if (!normalizedAlerts[normKey]) {
+          normalizedAlerts[normKey] = { category: rawCat, lowStockCount: 0, products: [] };
+        }
+        normalizedAlerts[normKey].lowStockCount++;
+        normalizedAlerts[normKey].products.push(p);
       }
     });
-    return Object.values(alerts).sort((a, b) => b.lowStockCount - a.lowStockCount);
+    return Object.values(normalizedAlerts).sort((a, b) => b.lowStockCount - a.lowStockCount);
   }, [products, mounted]);
 
   const COLORS = ['#3366CC', '#8B4ADF', '#10b981', '#f59e0b', '#ef4444', '#64748b', '#ec4899', '#8b5cf6', '#06b6d4', '#f97316'];
@@ -117,8 +137,6 @@ export default function ReportsPage() {
             <div className="text-xs text-slate-400">Productos con stock crítico</div>
           </CardContent>
         </Card>
-
-        {/* ... Otros stats ... */}
       </div>
 
       <Tabs defaultValue="categorias" className="w-full">
