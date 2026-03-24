@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useCollection, useFirestore, useMemoFirebase, deleteDocumentNonBlocking } from "@/firebase";
 import { collection, doc, query, orderBy } from "firebase/firestore";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
@@ -9,7 +9,8 @@ import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Search, FileSpreadsheet, Edit3, AlertTriangle, Plus, Trash2, Package, Scan, Loader2, Check, X } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Search, FileSpreadsheet, Edit3, AlertTriangle, Plus, Trash2, Package, Scan, Loader2, Check, X, ArrowUpDown, Filter } from "lucide-react";
 import { exportToExcel } from "@/lib/export";
 import { useToast } from "@/hooks/use-toast";
 import { ProductDialog } from "@/components/inventory/ProductDialog";
@@ -17,9 +18,12 @@ import { ScannerComponent } from "@/components/pos/ScannerComponent";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
+type SortOption = "name" | "stock-asc" | "stock-desc" | "status-critical";
+
 export default function InventoryPage() {
   const firestore = useFirestore();
   const [searchTerm, setSearchTerm] = useState("");
+  const [sortBy, setSortBy] = useState<SortOption>("name");
   const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
@@ -33,10 +37,32 @@ export default function InventoryPage() {
 
   const { data: products, isLoading } = useCollection(productsQuery);
 
-  const filtered = products?.filter(p => 
-    p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    p.id.includes(searchTerm)
-  ) || [];
+  const processedProducts = useMemo(() => {
+    if (!products) return [];
+
+    let filtered = products.filter(p => 
+      p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      p.id.includes(searchTerm)
+    );
+
+    return filtered.sort((a, b) => {
+      switch (sortBy) {
+        case "stock-asc":
+          return a.stock - b.stock;
+        case "stock-desc":
+          return b.stock - a.stock;
+        case "status-critical":
+          // Primero los que tienen stock < 5, luego orden alfabético
+          const aCritical = a.stock < 5 ? 0 : 1;
+          const bCritical = b.stock < 5 ? 0 : 1;
+          if (aCritical !== bCritical) return aCritical - bCritical;
+          return a.name.localeCompare(b.name);
+        case "name":
+        default:
+          return a.name.localeCompare(b.name);
+      }
+    });
+  }, [products, searchTerm, sortBy]);
 
   const handleExport = () => {
     if (!products) return;
@@ -97,85 +123,108 @@ export default function InventoryPage() {
             <Package className="w-8 h-8" />
             Inventario
           </h1>
+          <p className="text-muted-foreground text-sm font-bold">Gestiona tus existencias y alertas de stock.</p>
         </div>
         <div className="flex flex-wrap gap-2 w-full md:w-auto">
-          <Button variant="outline" className="flex-1 md:flex-none border-primary text-primary" onClick={() => setIsScannerOpen(true)}>
+          <Button variant="outline" className="flex-1 md:flex-none border-primary text-primary h-11 rounded-2xl" onClick={() => setIsScannerOpen(true)}>
             <Scan className="w-4 h-4 mr-2" /> Escanear
           </Button>
-          <Button variant="outline" className="flex-1 md:flex-none" onClick={handleExport} disabled={!products?.length}>
+          <Button variant="outline" className="flex-1 md:flex-none h-11 rounded-2xl" onClick={handleExport} disabled={!products?.length}>
             <FileSpreadsheet className="w-4 h-4 mr-2 text-green-600" /> Exportar
           </Button>
-          <Button className="flex-1 md:flex-none bg-accent hover:bg-accent/90" onClick={() => handleAddNew()}>
-            <Plus className="w-4 h-4 mr-2" /> Nuevo
+          <Button className="flex-1 md:flex-none bg-accent hover:bg-accent/90 h-11 rounded-2xl font-black" onClick={() => handleAddNew()}>
+            <Plus className="w-4 h-4 mr-2" /> NUEVO
           </Button>
         </div>
       </div>
 
-      <Card className="border-none shadow-xl">
-        <CardHeader className="bg-muted/30 pb-4">
-          <div className="flex items-center gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+      <Card className="border-none shadow-xl rounded-3xl overflow-hidden">
+        <CardHeader className="bg-slate-50/50 pb-6 border-b">
+          <div className="flex flex-col lg:flex-row items-center gap-4">
+            <div className="relative flex-1 w-full">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input 
-                className="pl-10 h-11 bg-white border-none shadow-sm" 
+                className="pl-12 h-12 bg-white border-none shadow-inner rounded-2xl font-bold" 
                 placeholder="Buscar por nombre o código..." 
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
               />
+            </div>
+            
+            <div className="flex items-center gap-2 w-full lg:w-auto">
+              <div className="bg-white p-1 rounded-2xl flex items-center border shadow-sm w-full lg:w-auto">
+                <div className="pl-3 text-muted-foreground">
+                  <ArrowUpDown className="w-4 h-4" />
+                </div>
+                <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
+                  <SelectTrigger className="border-none shadow-none focus:ring-0 w-full lg:w-[220px] font-bold h-10">
+                    <SelectValue placeholder="Ordenar por" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-2xl border-none shadow-2xl">
+                    <SelectItem value="name">Alfabético (Nombre)</SelectItem>
+                    <SelectItem value="status-critical">Stock Bajo Primero ⚠️</SelectItem>
+                    <SelectItem value="stock-asc">Stock (Menor a Mayor)</SelectItem>
+                    <SelectItem value="stock-desc">Stock (Mayor a Menor)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <Table>
-              <TableHeader className="bg-muted/10">
-                <TableRow>
-                  <TableHead className="font-bold py-4">Código</TableHead>
-                  <TableHead className="font-bold py-4">Nombre</TableHead>
-                  <TableHead className="font-bold py-4">Precio</TableHead>
-                  <TableHead className="font-bold py-4 text-center">Stock</TableHead>
-                  <TableHead className="font-bold py-4">Estado</TableHead>
-                  <TableHead className="font-bold py-4 text-right">Acciones</TableHead>
+              <TableHeader className="bg-slate-50/30">
+                <TableRow className="border-none hover:bg-transparent">
+                  <TableHead className="font-black py-4 uppercase text-[10px] tracking-widest px-6">Código</TableHead>
+                  <TableHead className="font-black py-4 uppercase text-[10px] tracking-widest px-6">Nombre del Producto</TableHead>
+                  <TableHead className="font-black py-4 uppercase text-[10px] tracking-widest px-6">Precio</TableHead>
+                  <TableHead className="font-black py-4 uppercase text-[10px] tracking-widest px-6 text-center">Stock</TableHead>
+                  <TableHead className="font-black py-4 uppercase text-[10px] tracking-widest px-6">Estado</TableHead>
+                  <TableHead className="font-black py-4 uppercase text-[10px] tracking-widest px-6 text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-48 text-center">
-                      <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
-                        <Loader2 className="w-8 h-8 animate-spin" />
-                        <p>Cargando...</p>
+                    <TableCell colSpan={6} className="h-64 text-center">
+                      <div className="flex flex-col items-center justify-center gap-3 text-primary">
+                        <Loader2 className="w-10 h-10 animate-spin" />
+                        <p className="font-black text-[10px] uppercase tracking-widest">Sincronizando inventario...</p>
                       </div>
                     </TableCell>
                   </TableRow>
-                ) : filtered.length === 0 ? (
+                ) : processedProducts.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-48 text-center text-muted-foreground">
-                      Sin resultados.
+                    <TableCell colSpan={6} className="h-64 text-center text-muted-foreground">
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <Package className="w-12 h-12 opacity-20" />
+                        <p className="font-bold">No se encontraron productos.</p>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filtered.map((p) => (
-                    <TableRow key={p.id} className={p.stock < 5 ? "bg-destructive/5" : ""}>
-                      <TableCell className="font-mono text-xs font-bold text-primary">{p.id}</TableCell>
-                      <TableCell className="font-bold">{p.name}</TableCell>
-                      <TableCell className="text-primary font-black text-lg">${Math.round(p.price).toLocaleString('es-CL')}</TableCell>
-                      <TableCell className="text-center font-bold">{p.stock}</TableCell>
-                      <TableCell>
+                  processedProducts.map((p) => (
+                    <TableRow key={p.id} className={p.stock < 5 ? "bg-destructive/5 hover:bg-destructive/10" : "hover:bg-slate-50"}>
+                      <TableCell className="font-mono text-xs font-black text-primary px-6">{p.id}</TableCell>
+                      <TableCell className="font-bold px-6">{p.name}</TableCell>
+                      <TableCell className="text-primary font-black text-lg px-6 font-mono">${Math.round(p.price).toLocaleString('es-CL')}</TableCell>
+                      <TableCell className="text-center font-black text-lg px-6">{p.stock}</TableCell>
+                      <TableCell className="px-6">
                         {p.stock < 5 ? (
-                          <Badge variant="destructive" className="flex items-center gap-1 w-fit">
-                            <AlertTriangle className="w-3 h-3" /> Bajo
+                          <Badge variant="destructive" className="flex items-center gap-1 w-fit rounded-full px-3 py-1 font-black text-[10px] uppercase tracking-tighter">
+                            <AlertTriangle className="w-3 h-3" /> Reponer
                           </Badge>
                         ) : (
-                          <Badge variant="secondary" className="bg-green-100 text-green-700 hover:bg-green-100 border-none w-fit">OK</Badge>
+                          <Badge variant="secondary" className="bg-green-100 text-green-700 hover:bg-green-100 border-none w-fit rounded-full px-3 py-1 font-black text-[10px] uppercase tracking-tighter">OK</Badge>
                         )}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right px-6">
                         <div className="flex justify-end gap-1">
-                          <Button variant="ghost" size="icon" className="text-primary" onClick={() => handleEdit(p)}>
+                          <Button variant="ghost" size="icon" className="text-primary hover:bg-primary/10 rounded-xl" onClick={() => handleEdit(p)}>
                             <Edit3 className="w-4 h-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setProductToDelete(p)}>
+                          <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 rounded-xl" onClick={() => setProductToDelete(p)}>
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
@@ -197,21 +246,21 @@ export default function InventoryPage() {
       />
 
       <Dialog open={isScannerOpen} onOpenChange={setIsScannerOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Scan className="w-5 h-5 text-primary" />
+        <DialogContent className="sm:max-w-lg border-none rounded-3xl shadow-2xl overflow-hidden p-0">
+          <DialogHeader className="p-6 bg-primary text-white">
+            <DialogTitle className="flex items-center gap-2 text-xl font-black">
+              <Scan className="w-6 h-6" />
               Escanear para Inventario
             </DialogTitle>
           </DialogHeader>
-          <div className="py-4">
+          <div className="p-4 bg-slate-50">
             <ScannerComponent onScan={onBarcodeDetected} />
           </div>
         </DialogContent>
       </Dialog>
 
       <AlertDialog open={!!pendingBarcode} onOpenChange={() => setPendingBarcode(null)}>
-        <AlertDialogContent className="rounded-3xl border-none shadow-2xl">
+        <AlertDialogContent className="rounded-3xl border-none shadow-2xl p-8">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-2xl font-black text-primary flex items-center gap-2">
               <Scan className="w-6 h-6" />
@@ -222,33 +271,33 @@ export default function InventoryPage() {
                 {pendingBarcode}
               </span>
               <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                ¿Es este el código correcto?
+                ¿Es este el código que quieres registrar?
               </span>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col sm:flex-row gap-2">
             <AlertDialogCancel className="rounded-2xl h-12 flex-1 border-slate-200">
-              <X className="w-4 h-4 mr-2" /> Descartar
+              <X className="w-4 h-4 mr-2" /> DESCARTAR
             </AlertDialogCancel>
-            <AlertDialogAction onClick={confirmPendingBarcode} className="rounded-2xl h-12 flex-1 bg-primary hover:bg-primary/90">
-              <Check className="w-4 h-4 mr-2" /> Aceptar
+            <AlertDialogAction onClick={confirmPendingBarcode} className="rounded-2xl h-12 flex-1 bg-primary hover:bg-primary/90 font-black">
+              <Check className="w-4 h-4 mr-2" /> ACEPTAR
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
       <AlertDialog open={!!productToDelete} onOpenChange={() => setProductToDelete(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent className="rounded-3xl border-none shadow-2xl">
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Eliminar producto?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Se borrará <strong>{productToDelete?.name}</strong> definitivamente.
+            <AlertDialogTitle className="text-xl font-black text-destructive">¿Eliminar producto?</AlertDialogTitle>
+            <AlertDialogDescription className="pt-2">
+              Se borrará <strong>{productToDelete?.name}</strong> definitivamente del inventario. Esta acción no se puede deshacer.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>No</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Sí, eliminar
+          <AlertDialogFooter className="gap-2 pt-4">
+            <AlertDialogCancel className="rounded-2xl h-12 flex-1 border-slate-200">No, cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="rounded-2xl h-12 flex-1 bg-destructive hover:bg-destructive/90 font-black">
+              SÍ, ELIMINAR
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
