@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
@@ -101,7 +102,6 @@ export default function POSPage() {
   };
 
   const handleFinalize = (manualFinalAmount?: number) => {
-    // Si viene de la calculadora, calcular la diferencia manual primero
     let currentManualItems = [...manualProducts];
     let currentCartTotal = total;
 
@@ -121,12 +121,30 @@ export default function POSPage() {
     const finalTotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0) +
                        currentManualItems.reduce((sum, item) => sum + item.amount, 0);
 
+    // Denormalizamos los items en el documento principal para facilitar reportes e historial
     const saleData = {
       id: saleId,
       totalAmount: Math.round(finalTotal),
       saleDateTime: serverTimestamp(),
       productSaleItemIds: items.map(i => i.id),
-      manualSaleItemIds: currentManualItems.map((_, idx) => `manual-${idx}`)
+      manualSaleItemIds: currentManualItems.map((_, idx) => `manual-${idx}`),
+      // Resumen para reportes rápidos
+      itemsSummary: [
+        ...items.map(i => ({ 
+          name: i.name, 
+          quantity: i.quantity, 
+          price: i.price, 
+          id: i.id,
+          type: 'product'
+        })),
+        ...currentManualItems.map(m => ({
+          name: m.description,
+          quantity: 1,
+          price: m.amount,
+          id: 'manual',
+          type: 'manual'
+        }))
+      ]
     };
 
     addDocumentNonBlocking(salesRef, saleData);
