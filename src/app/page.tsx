@@ -7,7 +7,7 @@ import { ScannerComponent } from "@/components/pos/ScannerComponent";
 import { CalculatorComponent } from "@/components/pos/CalculatorComponent";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
-import { Trash2, PlusCircle, MinusCircle, ShoppingCart, CheckCircle2, Scan, Calculator, Loader2, Clock, RotateCcw, Search, Plus, PackageSearch } from "lucide-react";
+import { Trash2, PlusCircle, MinusCircle, ShoppingCart, CheckCircle2, Scan, Calculator, Loader2, Clock, RotateCcw, Search, Plus, PackageSearch, Check } from "lucide-react";
 import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { doc, collection, serverTimestamp, increment, query } from "firebase/firestore";
@@ -87,6 +87,7 @@ export default function POSPage() {
   const [manualProducts, setManualProducts] = useState<any[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isScanLocked, setIsScanLocked] = useState(false);
+  const [scanSuccess, setScanSuccess] = useState(false);
   const [currentTime, setCurrentTime] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -159,7 +160,6 @@ export default function POSPage() {
 
     const now = Date.now();
     
-    // Cooldown de 2 segundos para evitar lecturas duplicadas inmediatas
     if (lastScanRef.current && lastScanRef.current.code === cleanBarcode && (now - lastScanRef.current.time < 2000)) {
       return;
     }
@@ -171,6 +171,8 @@ export default function POSPage() {
 
     if (product) {
       handleAddItem(product);
+      setScanSuccess(true);
+      setTimeout(() => setScanSuccess(false), 800);
     } else {
       toast({ 
         variant: "destructive",
@@ -437,8 +439,23 @@ export default function POSPage() {
               </span>
             )}
           </div>
-          <div className={cn("transition-opacity duration-300", isScanLocked ? "opacity-40 grayscale" : "opacity-100")}>
-            <ScannerComponent onScan={handleScan} />
+          <div className="relative group overflow-hidden rounded-3xl">
+            <div className={cn(
+              "transition-all duration-300",
+              isScanLocked && !scanSuccess ? "opacity-40 grayscale" : "opacity-100"
+            )}>
+              <ScannerComponent onScan={handleScan} />
+            </div>
+            
+            {/* Overlay de éxito verde */}
+            <div className={cn(
+              "absolute inset-0 z-50 pointer-events-none transition-all duration-500 flex items-center justify-center bg-green-500/20 border-[8px] border-green-500 rounded-3xl",
+              scanSuccess ? "opacity-100 scale-100" : "opacity-0 scale-110"
+            )}>
+              <div className="bg-green-500 text-white p-6 rounded-full shadow-2xl animate-in zoom-in-50 duration-300">
+                <Check className="w-16 h-16 stroke-[4]" />
+              </div>
+            </div>
           </div>
         </section>
 
