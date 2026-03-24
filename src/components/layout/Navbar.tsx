@@ -41,7 +41,6 @@ export function Navbar() {
           </div>
           <div className="flex flex-col leading-none">
             <span className="font-headline font-black text-xl tracking-tighter text-slate-800">AltodelBosque</span>
-            <span className="text-[10px] font-black uppercase tracking-widest text-primary">Point of Sale</span>
           </div>
         </Link>
         <div className="flex items-center gap-2">
