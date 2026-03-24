@@ -24,12 +24,23 @@ export default function POSPage() {
   const [mounted, setMounted] = useState(false);
   const { toast } = useToast();
 
-  // Suscribirse a todos los productos para comparación instantánea
+  // Suscribirse a todos los productos para comparación instantánea local
   const productsQuery = useMemoFirebase(() => {
     return query(collection(firestore, "products"));
   }, [firestore]);
   
   const { data: allProducts, isLoading: isLoadingInventory } = useCollection(productsQuery);
+
+  // Crear un mapa para búsquedas O(1) ultra rápidas y precisas
+  const productMap = useMemo(() => {
+    const map = new Map();
+    if (allProducts) {
+      allProducts.forEach(p => {
+        map.set(p.id.toString().trim(), p);
+      });
+    }
+    return map;
+  }, [allProducts]);
 
   useEffect(() => {
     setMounted(true);
@@ -42,15 +53,16 @@ export default function POSPage() {
   }, []);
 
   const handleScan = (barcode: string) => {
-    const cleanBarcode = barcode.trim();
+    const cleanBarcode = barcode.toString().trim();
+    if (!cleanBarcode) return;
     
-    // Si el inventario aún no carga, evitamos acciones erróneas
-    if (isLoadingInventory) {
-      toast({ title: "Sincronizando...", description: "Espera a que cargue el inventario." });
+    // Si el inventario aún no carga, evitamos acciones que puedan abrir el diálogo de "Nuevo" erróneamente
+    if (isLoadingInventory && productMap.size === 0) {
+      toast({ title: "Sincronizando...", description: "Espera un segundo a que cargue el inventario." });
       return;
     }
 
-    // 1. Verificar si ya está en el carrito
+    // 1. Verificar si ya está en el carrito para solo sumar cantidad
     const existingInCart = items.find(i => i.id === cleanBarcode);
     if (existingInCart) {
       updateQuantity(cleanBarcode, 1);
@@ -58,8 +70,8 @@ export default function POSPage() {
       return;
     }
 
-    // 2. Buscar en el inventario cargado por ID (Barcode)
-    const product = allProducts?.find(p => p.id === cleanBarcode);
+    // 2. Buscar en el Mapa de Inventario (Búsqueda exacta)
+    const product = productMap.get(cleanBarcode);
 
     if (product) {
       // PRODUCTO ENCONTRADO: Se agrega directamente al carrito
@@ -72,7 +84,12 @@ export default function POSPage() {
       toast({ title: "Producto Agregado", description: product.name });
     } else {
       // PRODUCTO NO ENCONTRADO: Solo aquí se abre el registro rápido
-      setQuickAddBarcode(cleanBarcode);
+      // Bloqueamos la apertura si el mapa está vacío por error de carga
+      if (allProducts && allProducts.length > 0) {
+        setQuickAddBarcode(cleanBarcode);
+      } else {
+        toast({ title: "Cargando datos...", description: "Reintentando conexión con inventario." });
+      }
     }
   };
 
@@ -121,7 +138,7 @@ export default function POSPage() {
 
     addDocumentNonBlocking(salesRef, saleData);
 
-    // Procesar cada item para registrar detalle y descontar stock
+    // Procesar cada item para registrar detalle y descontar stock real
     items.forEach(item => {
       const itemRef = collection(doc(firestore, "sales", saleId), "productSaleItems");
       addDocumentNonBlocking(itemRef, {
@@ -134,7 +151,7 @@ export default function POSPage() {
         subtotal: item.price * item.quantity
       });
 
-      // Descontar del inventario
+      // DESCUENTO DE INVENTARIO: Se resta la cantidad vendida del stock actual
       const productRef = doc(firestore, "products", item.id);
       updateDocumentNonBlocking(productRef, {
         stock: increment(-item.quantity)
@@ -151,7 +168,7 @@ export default function POSPage() {
       });
     });
 
-    toast({ title: "Venta Procesada", description: "La transacción se ha registrado correctamente." });
+    toast({ title: "Venta Procesada", description: "La transacción se ha registrado y el stock se ha actualizado." });
     setItems([]);
     setManualProducts([]);
     setIsProcessing(false);
@@ -183,7 +200,7 @@ export default function POSPage() {
               <div className="absolute inset-0 z-10 bg-white/60 backdrop-blur-sm flex items-center justify-center">
                 <div className="flex flex-col items-center gap-2">
                   <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                  <p className="text-xs font-black text-primary uppercase tracking-widest">Cargando Inventario...</p>
+                  <p className="text-xs font-black text-primary uppercase tracking-widest">Sincronizando Inventario...</p>
                 </div>
               </div>
             )}
@@ -196,8 +213,8 @@ export default function POSPage() {
                       <ShoppingCart className="w-12 h-12" />
                     </div>
                     <div>
-                      <h3 className="text-lg font-bold text-slate-400 uppercase tracking-wider">Carrito Vacío</h3>
-                      <p className="text-slate-400 text-sm">Escanea un producto para empezar.</p>
+                      <h3 className="text-lg font-bold text-slate-400 uppercase tracking-wider">Listo para vender</h3>
+                      <p className="text-slate-400 text-sm">Escanea códigos de barras o usa la calculadora.</p>
                     </div>
                   </div>
                 )}
@@ -275,7 +292,7 @@ export default function POSPage() {
       <div className="lg:col-span-5 flex flex-col gap-6">
         <section className="space-y-4">
           <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 px-1">
-            <Scan className="w-4 h-4" /> Escáner de Barras
+            <Scan className="w-4 h-4" /> Escáner de Venta
           </h3>
           <ScannerComponent onScan={handleScan} />
         </section>
