@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
@@ -9,17 +8,15 @@ import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Search, FileSpreadsheet, Edit3, AlertTriangle, Plus, Trash2, Package, Scan, Loader2, Check, X, ArrowUp, ArrowDown, ChevronDown, ListFilter, ShieldAlert, ShieldCheck, ShieldQuestion, DollarSign, PackagePlus, MousePointer2 } from "lucide-react";
+import { Search, FileSpreadsheet, Edit3, Plus, Trash2, Package, Scan, Loader2, ShieldAlert, ShieldCheck, ShieldQuestion, MousePointer2 } from "lucide-react";
 import { exportToExcel } from "@/lib/export";
 import { useToast } from "@/hooks/use-toast";
 import { ProductDialog } from "@/components/inventory/ProductDialog";
 import { ScannerComponent } from "@/components/pos/ScannerComponent";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 type SortOption = "name" | "stock-asc" | "stock-desc" | "status-critical" | "price-asc" | "price-desc" | "category-asc" | "category-desc";
 
@@ -34,14 +31,13 @@ export default function InventoryPage() {
   const [pendingBarcode, setPendingBarcode] = useState<string | null>(null);
   const [productToDelete, setProductToDelete] = useState<any | null>(null);
   
-  // Estados para Carga Rápida
   const [quickStockProduct, setQuickStockProduct] = useState<any | null>(null);
   const [quickAddValue, setQuickAddValue] = useState("");
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
 
   const { toast } = useToast();
 
-  // FAIL-SAFE CRÍTICO: Asegura que el body siempre recupere eventos si no hay diálogos abiertos
+  // FAIL-SAFE CRÍTICO: Limpia el bloqueo de puntero de Radix si algo sale mal
   useEffect(() => {
     const isAnyModalOpen = isDialogOpen || isScannerOpen || !!pendingBarcode || !!productToDelete || !!quickStockProduct;
     if (!isAnyModalOpen) {
@@ -144,19 +140,16 @@ export default function InventoryPage() {
   };
 
   const handleScanResult = (barcode: string) => {
-    // Cerramos el scanner primero
     setIsScannerOpen(false);
-    // Esperamos a que la animación de cierre termine para evitar colisión de capas
-    setTimeout(() => {
-      setPendingBarcode(barcode);
-    }, 400);
+    setPendingBarcode(barcode);
   };
 
   const handleDiscardPending = () => {
     setPendingBarcode(null);
-    // Aseguramos que el DOM quede limpio
+    // Limpieza forzada de estado del body para asegurar navegación
     setTimeout(() => {
       document.body.style.pointerEvents = 'auto';
+      document.body.style.overflow = 'auto';
     }, 50);
   };
 
@@ -170,14 +163,17 @@ export default function InventoryPage() {
           </h1>
           <p className="text-muted-foreground text-sm font-bold flex items-center gap-2">
             <MousePointer2 className="w-4 h-4 text-accent" />
-            Mantén presionado un producto para carga rápida de stock.
+            Mantén presionado un producto para carga rápida.
           </p>
         </div>
         <div className="flex flex-wrap gap-2 w-full md:w-auto">
           <Button variant="outline" className="flex-1 md:flex-none h-11 rounded-2xl" onClick={handleExport} disabled={!products?.length}>
             <FileSpreadsheet className="w-4 h-4 mr-2 text-green-600" /> Exportar
           </Button>
-          <Button variant="outline" className="flex-1 md:flex-none h-11 rounded-2xl" onClick={() => setIsScannerOpen(true)}>
+          <Button variant="outline" className="flex-1 md:flex-none h-11 rounded-2xl" onClick={() => {
+             setPendingBarcode(null);
+             setIsScannerOpen(true);
+          }}>
             <Scan className="w-4 h-4 mr-2" /> Escanear
           </Button>
           <Button className="flex-1 md:flex-none bg-accent hover:bg-accent/90 h-11 rounded-2xl font-black" onClick={() => { setSelectedProduct(null); setIsDialogOpen(true); }}>
@@ -229,7 +225,7 @@ export default function InventoryPage() {
                     <TableCell className="px-6">
                       <div className="flex flex-col">
                         <span className="font-black text-lg">{p.stock}</span>
-                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Normal: {p.idealStock || 10}</span>
+                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Ideal: {p.idealStock || 10}</span>
                       </div>
                     </TableCell>
                     <TableCell className="px-6">
@@ -293,7 +289,7 @@ export default function InventoryPage() {
 
       {/* Dialogo Scanner */}
       <Dialog open={isScannerOpen} onOpenChange={setIsScannerOpen}>
-        <DialogContent className="p-0 overflow-hidden rounded-3xl max-w-[90vw] sm:max-w-2xl">
+        <DialogContent className="p-0 overflow-hidden rounded-3xl max-w-[90vw] sm:max-w-2xl border-none shadow-2xl">
           <DialogHeader className="sr-only">
             <DialogTitle>Escáner de Inventario</DialogTitle>
             <DialogDescription>Escanea un código de barras para buscar o registrar un producto.</DialogDescription>
@@ -304,37 +300,43 @@ export default function InventoryPage() {
 
       {/* Dialogo Código Detectado */}
       <AlertDialog open={!!pendingBarcode} onOpenChange={(open) => !open && handleDiscardPending()}>
-        <AlertDialogContent className="rounded-3xl p-8 max-w-[90vw] sm:max-w-lg">
+        <AlertDialogContent className="rounded-3xl p-8 max-w-[90vw] sm:max-w-lg border-none shadow-2xl">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-2xl font-black">Código Detectado</AlertDialogTitle>
-            <AlertDialogDescription className="text-center py-4 font-mono font-bold text-3xl text-primary">{pendingBarcode}</AlertDialogDescription>
+            <AlertDialogTitle className="text-2xl font-black text-primary text-center">Código Detectado</AlertDialogTitle>
+            <AlertDialogDescription className="text-center py-4">
+              <span className="font-mono font-bold text-3xl text-slate-800 bg-slate-100 px-6 py-3 rounded-2xl inline-block border-2 border-slate-200">
+                {pendingBarcode}
+              </span>
+            </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="flex flex-col sm:flex-row gap-2">
-            <AlertDialogCancel onClick={handleDiscardPending} className="rounded-2xl h-12 flex-1 border-slate-200">DESCARTAR</AlertDialogCancel>
+          <AlertDialogFooter className="flex flex-col sm:flex-row gap-2 mt-4">
+            <AlertDialogCancel onClick={handleDiscardPending} className="rounded-2xl h-14 flex-1 border-slate-200 font-bold">
+              DESCARTAR
+            </AlertDialogCancel>
             <AlertDialogAction onClick={() => { 
               const existing = products?.find(p => p.id === pendingBarcode);
               const barcode = pendingBarcode;
               setPendingBarcode(null);
-              // Pequeño timeout para dejar que el DOM respire antes de abrir el editor
-              setTimeout(() => {
-                if (existing) { setSelectedProduct(existing); setIsDialogOpen(true); }
-                else { setSelectedProduct({ id: barcode }); setIsDialogOpen(true); }
-              }, 100);
-            }} className="rounded-2xl h-12 flex-1">EDITAR / CREAR</AlertDialogAction>
+              if (existing) { setSelectedProduct(existing); }
+              else { setSelectedProduct({ id: barcode }); }
+              setIsDialogOpen(true);
+            }} className="rounded-2xl h-14 flex-1 font-black bg-primary">
+              EDITAR / CREAR
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
       {/* Borrado Producto */}
       <AlertDialog open={!!productToDelete} onOpenChange={(open) => !open && setProductToDelete(null)}>
-        <AlertDialogContent className="rounded-3xl max-w-[90vw] sm:max-w-md">
+        <AlertDialogContent className="rounded-3xl max-w-[90vw] sm:max-w-md border-none shadow-2xl">
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Eliminar producto?</AlertDialogTitle>
+            <AlertDialogTitle className="font-black text-destructive">¿Eliminar producto?</AlertDialogTitle>
             <AlertDialogDescription>Se borrará {productToDelete?.name} definitivamente.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-2xl">Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { deleteDocumentNonBlocking(doc(firestore, "products", productToDelete.id)); setProductToDelete(null); }} className="rounded-2xl bg-destructive">ELIMINAR</AlertDialogAction>
+            <AlertDialogCancel className="rounded-2xl font-bold">Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { deleteDocumentNonBlocking(doc(firestore, "products", productToDelete.id)); setProductToDelete(null); }} className="rounded-2xl bg-destructive font-black">ELIMINAR</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

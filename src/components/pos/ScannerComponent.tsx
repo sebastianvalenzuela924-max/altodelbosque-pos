@@ -12,9 +12,8 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
   const [error, setError] = useState<string | null>(null);
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const isInitializingRef = useRef(false);
+  const hasScannedRef = useRef(false);
   
-  // Usamos una referencia para la función onScan para evitar que el useEffect 
-  // se reinicie cada vez que el componente padre (la terminal) se re-renderiza.
   const onScanRef = useRef(onScan);
   useEffect(() => {
     onScanRef.current = onScan;
@@ -32,6 +31,7 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
     setIsEnabled(false);
     setIsLoading(false);
     isInitializingRef.current = false;
+    hasScannedRef.current = false;
   };
 
   const applyAdvancedConstraints = async (videoTrack: MediaStreamTrack) => {
@@ -60,7 +60,6 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
     let checkInterval: NodeJS.Timeout;
 
     async function initScanner() {
-      // Importante: No incluimos onScan en las dependencias para que no se reinicie la cámara
       if (!isEnabled || !isMounted || isInitializingRef.current) return;
 
       checkInterval = setInterval(async () => {
@@ -98,8 +97,15 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
               await scannerRef.current.start(
                 { facingMode: "environment" },
                 config,
-                (decodedText) => {
-                  // Llamamos a la referencia actual de onScan
+                async (decodedText) => {
+                  if (hasScannedRef.current) return;
+                  hasScannedRef.current = true;
+                  
+                  // Detener el escaneo inmediatamente para evitar duplicados
+                  if (scannerRef.current?.isScanning) {
+                    await scannerRef.current.stop().catch(() => {});
+                  }
+                  
                   onScanRef.current(decodedText);
                 },
                 () => {} 
@@ -120,7 +126,6 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
               isInitializingRef.current = false;
             }
           } catch (err: any) {
-            console.error("Scanner Error:", err);
             if (isMounted) {
               setError("No se pudo acceder a la cámara. Por favor, revisa los permisos del navegador.");
               setIsEnabled(false);
@@ -137,9 +142,8 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
     return () => {
       isMounted = false;
       if (checkInterval) clearInterval(checkInterval);
-      // El scanner solo se detiene si el componente se desmonta o si isEnabled cambia a false
     };
-  }, [isEnabled]); // Eliminamos onScan de aquí para evitar el parpadeo negro
+  }, [isEnabled]);
 
   const handleToggleScanner = () => {
     if (isEnabled) {
@@ -148,6 +152,7 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
       setError(null);
       setIsLoading(true);
       setIsEnabled(true);
+      hasScannedRef.current = false;
     }
   };
 
