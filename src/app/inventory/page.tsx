@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Search, FileSpreadsheet, Edit3, AlertTriangle, Plus, Trash2, Package, Scan, Loader2, Check, X, ArrowUp, ArrowDown, ChevronDown, ListFilter } from "lucide-react";
+import { Search, FileSpreadsheet, Edit3, AlertTriangle, Plus, Trash2, Package, Scan, Loader2, Check, X, ArrowUp, ArrowDown, ChevronDown, ListFilter, ShieldAlert, ShieldCheck, ShieldQuestion } from "lucide-react";
 import { exportToExcel } from "@/lib/export";
 import { useToast } from "@/hooks/use-toast";
 import { ProductDialog } from "@/components/inventory/ProductDialog";
@@ -45,6 +45,13 @@ export default function InventoryPage() {
     return Array.from(cats).sort();
   }, [products]);
 
+  const getProductStatus = (stock: number, ideal: number) => {
+    const idealVal = ideal || 10;
+    if (stock < idealVal * 0.25) return "peligro";
+    if (stock < idealVal * 0.5) return "precaución";
+    return "ok";
+  };
+
   const processedProducts = useMemo(() => {
     if (!products) return [];
 
@@ -56,79 +63,22 @@ export default function InventoryPage() {
 
     return filtered.sort((a, b) => {
       switch (sortBy) {
-        case "stock-asc":
-          return a.stock - b.stock;
-        case "stock-desc":
-          return b.stock - a.stock;
-        case "price-asc":
-          return a.price - b.price;
-        case "price-desc":
-          return b.price - a.price;
-        case "category-asc":
-          return (a.category || "General").localeCompare(b.category || "General");
-        case "category-desc":
-          return (b.category || "General").localeCompare(b.category || "General");
+        case "stock-asc": return a.stock - b.stock;
+        case "stock-desc": return b.stock - a.stock;
+        case "price-asc": return a.price - b.price;
+        case "price-desc": return b.price - a.price;
         case "status-critical":
-          const aCritical = a.stock < 5 ? 0 : 1;
-          const bCritical = b.stock < 5 ? 0 : 1;
-          if (aCritical !== bCritical) return aCritical - bCritical;
-          return a.name.localeCompare(b.name);
+          const aStatus = getProductStatus(a.stock, a.idealStock);
+          const bStatus = getProductStatus(b.stock, b.idealStock);
+          if (aStatus === "peligro" && bStatus !== "peligro") return -1;
+          if (aStatus !== "peligro" && bStatus === "peligro") return 1;
+          if (aStatus === "precaución" && bStatus === "ok") return -1;
+          return 0;
         case "name":
-        default:
-          return a.name.localeCompare(b.name);
+        default: return a.name.localeCompare(b.name);
       }
     });
   }, [products, searchTerm, sortBy, categoryFilter]);
-
-  const handleExport = () => {
-    if (!products) return;
-    const dataForExport = products.map(p => ({
-      "Código Barras": p.id,
-      "Nombre": p.name,
-      "Categoría": p.category || "General",
-      "Precio ($)": Math.round(p.price),
-      "Stock": p.stock,
-      "Estado": p.stock < 5 ? "Stock Bajo" : "Normal"
-    }));
-    exportToExcel("Inventario_SmartSale", dataForExport, "Inventario");
-    toast({ title: "Exportación exitosa", description: "Se ha descargado el archivo Excel." });
-  };
-
-  const handleEdit = (product: any) => {
-    setSelectedProduct(product);
-    setIsDialogOpen(true);
-  };
-
-  const onBarcodeDetected = (barcode: string) => {
-    setPendingBarcode(barcode);
-    setIsScannerOpen(false);
-  };
-
-  const confirmPendingBarcode = () => {
-    if (!pendingBarcode) return;
-    const barcode = pendingBarcode;
-    setPendingBarcode(null);
-    const existing = products?.find(p => p.id === barcode);
-    if (existing) {
-      handleEdit(existing);
-    } else {
-      setSelectedProduct({ id: barcode, name: "", price: "", stock: "", category: "" });
-      setIsDialogOpen(true);
-    }
-  };
-
-  const handleAddNew = (barcode?: string) => {
-    setSelectedProduct(barcode ? { id: barcode, name: "", price: "", stock: "", category: "" } : null);
-    setIsDialogOpen(true);
-  };
-
-  const confirmDelete = () => {
-    if (!productToDelete) return;
-    const docRef = doc(firestore, "products", productToDelete.id);
-    deleteDocumentNonBlocking(docRef);
-    toast({ title: "Eliminado", description: "Producto eliminado correctamente." });
-    setProductToDelete(null);
-  };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -138,16 +88,13 @@ export default function InventoryPage() {
             <Package className="w-8 h-8" />
             Inventario
           </h1>
-          <p className="text-muted-foreground text-sm font-bold">Gestiona tus existencias y alertas de stock.</p>
+          <p className="text-muted-foreground text-sm font-bold">Gestión de stock inteligente.</p>
         </div>
         <div className="flex flex-wrap gap-2 w-full md:w-auto">
-          <Button variant="outline" className="flex-1 md:flex-none border-primary text-primary h-11 rounded-2xl" onClick={() => setIsScannerOpen(true)}>
+          <Button variant="outline" className="flex-1 md:flex-none h-11 rounded-2xl" onClick={() => setIsScannerOpen(true)}>
             <Scan className="w-4 h-4 mr-2" /> Escanear
           </Button>
-          <Button variant="outline" className="flex-1 md:flex-none h-11 rounded-2xl" onClick={handleExport} disabled={!products?.length}>
-            <FileSpreadsheet className="w-4 h-4 mr-2 text-green-600" /> Exportar
-          </Button>
-          <Button className="flex-1 md:flex-none bg-accent hover:bg-accent/90 h-11 rounded-2xl font-black" onClick={() => handleAddNew()}>
+          <Button className="flex-1 md:flex-none bg-accent hover:bg-accent/90 h-11 rounded-2xl font-black" onClick={() => { setSelectedProduct(null); setIsDialogOpen(true); }}>
             <Plus className="w-4 h-4 mr-2" /> NUEVO
           </Button>
         </div>
@@ -155,270 +102,131 @@ export default function InventoryPage() {
 
       <Card className="border-none shadow-xl rounded-3xl overflow-hidden">
         <CardHeader className="bg-slate-50/50 pb-6 border-b">
-          <div className="relative w-full">
+          <div className="relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input 
-              className="pl-12 h-12 bg-white border-none shadow-inner rounded-2xl font-bold" 
-              placeholder="Buscar por nombre o código..." 
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-            />
+            <Input className="pl-12 h-12 bg-white rounded-2xl font-bold" placeholder="Buscar..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
           </div>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader className="bg-slate-50/30">
-                <TableRow className="border-none hover:bg-transparent">
-                  <TableHead className="font-black py-4 uppercase text-[10px] tracking-widest px-6">Código</TableHead>
-                  
-                  {/* Nombre */}
-                  <TableHead className="px-6">
-                    <DropdownMenu modal={false}>
-                      <DropdownMenuTrigger asChild>
-                        <button 
-                          type="button" 
-                          className="flex items-center gap-2 font-black uppercase text-[10px] tracking-widest hover:text-primary transition-colors focus:outline-none"
-                        >
-                          Nombre
-                          <ChevronDown className="w-3 h-3" />
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start" className="rounded-xl border-none shadow-2xl p-1 z-[100]">
-                        <DropdownMenuItem onClick={() => setSortBy("name")} className="rounded-lg font-bold text-xs py-2 cursor-pointer">
-                          <ArrowUp className="w-3 h-3 mr-2" /> Ordenar A-Z
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableHead>
-
-                  {/* Categoría */}
-                  <TableHead className="px-6">
-                    <DropdownMenu modal={false}>
-                      <DropdownMenuTrigger asChild>
-                        <button 
-                          type="button" 
-                          className="flex items-center gap-2 font-black uppercase text-[10px] tracking-widest hover:text-primary transition-colors focus:outline-none"
-                        >
-                          Categoría
-                          <ChevronDown className="w-3 h-3" />
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start" className="rounded-xl border-none shadow-2xl p-1 max-h-64 overflow-y-auto z-[100]">
-                        <DropdownMenuLabel className="text-[9px] font-black uppercase opacity-40 px-3 py-1.5 tracking-widest">Filtrar por</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={() => setCategoryFilter("all")} className="rounded-lg font-bold text-xs py-2 cursor-pointer">
-                          <ListFilter className="w-3 h-3 mr-2" /> Todas
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        {categories.map(cat => (
-                          <DropdownMenuItem key={cat} onClick={() => setCategoryFilter(cat)} className="rounded-lg font-bold text-xs py-2 cursor-pointer">
-                            {cat}
-                          </DropdownMenuItem>
-                        ))}
-                        <DropdownMenuSeparator />
-                        <DropdownMenuLabel className="text-[9px] font-black uppercase opacity-40 px-3 py-1.5 tracking-widest">Ordenar por</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={() => setSortBy("category-asc")} className="rounded-lg font-bold text-xs py-2 cursor-pointer">
-                          <ArrowUp className="w-3 h-3 mr-2" /> A-Z
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setSortBy("category-desc")} className="rounded-lg font-bold text-xs py-2 cursor-pointer">
-                          <ArrowDown className="w-3 h-3 mr-2" /> Z-A
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableHead>
-                  
-                  {/* Precio */}
-                  <TableHead className="px-6">
-                    <DropdownMenu modal={false}>
-                      <DropdownMenuTrigger asChild>
-                        <button 
-                          type="button" 
-                          className="flex items-center gap-2 font-black uppercase text-[10px] tracking-widest hover:text-primary transition-colors focus:outline-none"
-                        >
-                          Precio
-                          <ChevronDown className="w-3 h-3" />
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start" className="rounded-xl border-none shadow-2xl p-1 z-[100]">
-                        <DropdownMenuItem onClick={() => setSortBy("price-asc")} className="rounded-lg font-bold text-xs py-2 cursor-pointer">
-                          <ArrowUp className="w-3 h-3 mr-2" /> Menor a Mayor
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setSortBy("price-desc")} className="rounded-lg font-bold text-xs py-2 cursor-pointer">
-                          <ArrowDown className="w-3 h-3 mr-2" /> Mayor a Menor
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableHead>
-
-                  {/* Stock */}
-                  <TableHead className="px-6 text-center">
-                    <div className="flex justify-center">
-                      <DropdownMenu modal={false}>
-                        <DropdownMenuTrigger asChild>
-                          <button 
-                            type="button" 
-                            className="flex items-center gap-2 font-black uppercase text-[10px] tracking-widest hover:text-primary transition-colors focus:outline-none"
-                          >
-                            Stock
-                            <ChevronDown className="w-3 h-3" />
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="center" className="rounded-xl border-none shadow-2xl p-1 z-[100]">
-                          <DropdownMenuItem onClick={() => setSortBy("stock-asc")} className="rounded-lg font-bold text-xs py-2 cursor-pointer">
-                            <ArrowUp className="w-3 h-3 mr-2" /> Menor Stock
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setSortBy("stock-desc")} className="rounded-lg font-bold text-xs py-2 cursor-pointer">
-                            <ArrowDown className="w-3 h-3 mr-2" /> Mayor Stock
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </TableHead>
-
-                  {/* Estado */}
-                  <TableHead className="px-6">
-                    <DropdownMenu modal={false}>
-                      <DropdownMenuTrigger asChild>
-                        <button 
-                          type="button" 
-                          className="flex items-center gap-2 font-black uppercase text-[10px] tracking-widest hover:text-primary transition-colors focus:outline-none"
-                        >
-                          Estado
-                          <ChevronDown className="w-3 h-3" />
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start" className="rounded-xl border-none shadow-2xl p-1 z-[100]">
-                        <DropdownMenuItem onClick={() => setSortBy("status-critical")} className="rounded-lg font-black text-xs py-2 text-destructive hover:text-destructive cursor-pointer">
-                          <AlertTriangle className="w-3 h-3 mr-2" /> Ver Críticos Primero
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableHead>
-
-                  <TableHead className="font-black py-4 uppercase text-[10px] tracking-widest px-6 text-right">Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="h-64 text-center">
-                      <div className="flex flex-col items-center justify-center gap-3 text-primary">
-                        <Loader2 className="w-10 h-10 animate-spin" />
-                        <p className="font-black text-[10px] uppercase tracking-widest">Sincronizando inventario...</p>
+          <Table>
+            <TableHeader className="bg-slate-50/30">
+              <TableRow className="border-none">
+                <TableHead className="px-6 font-black uppercase text-[10px] tracking-widest">Producto</TableHead>
+                <TableHead className="px-6">
+                  <DropdownMenu modal={false}>
+                    <DropdownMenuTrigger className="flex items-center gap-2 font-black uppercase text-[10px] tracking-widest focus:outline-none">
+                      Categoría <ChevronDown className="w-3 h-3" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="rounded-xl border-none shadow-2xl p-1 z-[100]">
+                      <DropdownMenuItem onClick={() => setCategoryFilter("all")} className="rounded-lg font-bold text-xs py-2">Todas</DropdownMenuItem>
+                      {categories.map(cat => (
+                        <DropdownMenuItem key={cat} onClick={() => setCategoryFilter(cat)} className="rounded-lg font-bold text-xs py-2">{cat}</DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableHead>
+                <TableHead className="px-6 text-center font-black uppercase text-[10px] tracking-widest">Stock / Ideal</TableHead>
+                <TableHead className="px-6">
+                  <DropdownMenu modal={false}>
+                    <DropdownMenuTrigger className="flex items-center gap-2 font-black uppercase text-[10px] tracking-widest focus:outline-none">
+                      Estado <ChevronDown className="w-3 h-3" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="rounded-xl border-none shadow-2xl p-1 z-[100]">
+                      <DropdownMenuItem onClick={() => setSortBy("status-critical")} className="rounded-lg font-black text-xs py-2 text-destructive">
+                        <ShieldAlert className="w-3 h-3 mr-2" /> Críticos primero
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableHead>
+                <TableHead className="px-6 text-right font-black uppercase text-[10px] tracking-widest">Acciones</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                <TableRow><TableCell colSpan={5} className="h-64 text-center"><Loader2 className="w-8 h-8 animate-spin mx-auto" /></TableCell></TableRow>
+              ) : processedProducts.map((p) => {
+                const status = getProductStatus(p.stock, p.idealStock);
+                return (
+                  <TableRow key={p.id} className={cn("transition-colors", status === "peligro" ? "bg-destructive/5" : status === "precaución" ? "bg-amber-50" : "hover:bg-slate-50")}>
+                    <TableCell className="px-6">
+                      <p className="font-bold text-sm">{p.name}</p>
+                      <p className="text-[10px] font-mono text-slate-400">#{p.id}</p>
+                    </TableCell>
+                    <TableCell className="px-6">
+                      <Badge variant="outline" className="text-[9px] font-black uppercase border-slate-200">{p.category || "General"}</Badge>
+                    </TableCell>
+                    <TableCell className="px-6 text-center">
+                      <div className="flex flex-col">
+                        <span className="font-black text-lg">{p.stock}</span>
+                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Normal: {p.idealStock || 10}</span>
                       </div>
                     </TableCell>
-                  </TableRow>
-                ) : processedProducts.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="h-64 text-center text-muted-foreground">
-                      <div className="flex flex-col items-center justify-center gap-2">
-                        <Package className="w-12 h-12 opacity-20" />
-                        <p className="font-bold">No se encontraron productos.</p>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  processedProducts.map((p) => (
-                    <TableRow key={p.id} className={cn("transition-colors", p.stock < 5 ? "bg-destructive/5 hover:bg-destructive/10" : "hover:bg-slate-50")}>
-                      <TableCell className="font-mono text-xs font-black text-primary px-6">{p.id}</TableCell>
-                      <TableCell className="font-bold px-6">{p.name}</TableCell>
-                      <TableCell className="px-6">
-                        <Badge variant="outline" className="rounded-full px-2 py-0.5 text-[10px] font-bold border-slate-200 text-slate-500 uppercase">
-                          {p.category || "General"}
+                    <TableCell className="px-6">
+                      {status === "peligro" ? (
+                        <Badge variant="destructive" className="flex items-center gap-1 rounded-full px-3 py-1 font-black text-[9px] uppercase">
+                          <ShieldAlert className="w-3 h-3" /> Peligro
                         </Badge>
-                      </TableCell>
-                      <TableCell className="text-primary font-black text-lg px-6 font-mono">${Math.round(p.price).toLocaleString('es-CL')}</TableCell>
-                      <TableCell className="text-center font-black text-lg px-6">{p.stock}</TableCell>
-                      <TableCell className="px-6">
-                        {p.stock < 5 ? (
-                          <Badge variant="destructive" className="flex items-center gap-1 w-fit rounded-full px-3 py-1 font-black text-[10px] uppercase tracking-tighter">
-                            <AlertTriangle className="w-3 h-3" /> Reponer
-                          </Badge>
-                        ) : (
-                          <Badge variant="secondary" className="bg-green-100 text-green-700 hover:bg-green-100 border-none w-fit rounded-full px-3 py-1 font-black text-[10px] uppercase tracking-tighter">OK</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right px-6">
-                        <div className="flex justify-end gap-1">
-                          <Button variant="ghost" size="icon" className="text-primary hover:bg-primary/10 rounded-xl" onClick={() => handleEdit(p)}>
-                            <Edit3 className="w-4 h-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 rounded-xl" onClick={() => setProductToDelete(p)}>
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                      ) : status === "precaución" ? (
+                        <Badge className="bg-amber-500 hover:bg-amber-600 border-none flex items-center gap-1 rounded-full px-3 py-1 font-black text-[9px] uppercase">
+                          <ShieldQuestion className="w-3 h-3" /> Precaución
+                        </Badge>
+                      ) : (
+                        <Badge className="bg-green-100 text-green-700 border-none flex items-center gap-1 rounded-full px-3 py-1 font-black text-[9px] uppercase">
+                          <ShieldCheck className="w-3 h-3" /> OK
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="px-6 text-right">
+                      <div className="flex justify-end gap-1">
+                        <Button variant="ghost" size="icon" className="text-primary" onClick={() => { setSelectedProduct(p); setIsDialogOpen(true); }}>
+                          <Edit3 className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setProductToDelete(p)}>
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
 
-      <ProductDialog 
-        open={isDialogOpen} 
-        onClose={() => setIsDialogOpen(false)} 
-        product={selectedProduct}
-        categories={categories}
-        onSaved={() => {}} 
-      />
+      <ProductDialog open={isDialogOpen} onClose={() => setIsDialogOpen(false)} product={selectedProduct} categories={categories} onSaved={() => {}} />
 
       <Dialog open={isScannerOpen} onOpenChange={setIsScannerOpen}>
-        <DialogContent className="sm:max-w-lg border-none rounded-3xl shadow-2xl overflow-hidden p-0">
-          <DialogHeader className="p-6 bg-primary text-white">
-            <DialogTitle className="flex items-center gap-2 text-xl font-black">
-              <Scan className="w-6 h-6" />
-              Escanear para Inventario
-            </DialogTitle>
-          </DialogHeader>
-          <div className="p-4 bg-slate-50">
-            <ScannerComponent onScan={onBarcodeDetected} />
-          </div>
-        </DialogContent>
+        <DialogContent className="p-0 overflow-hidden rounded-3xl"><ScannerComponent onScan={(b) => { setPendingBarcode(b); setIsScannerOpen(false); }} /></DialogContent>
       </Dialog>
 
       <AlertDialog open={!!pendingBarcode} onOpenChange={() => setPendingBarcode(null)}>
-        <AlertDialogContent className="rounded-3xl border-none shadow-2xl p-8">
+        <AlertDialogContent className="rounded-3xl p-8">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-2xl font-black text-primary flex items-center gap-2">
-              <Scan className="w-6 h-6" />
-              Código Detectado
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-center py-6">
-              <span className="text-4xl font-mono font-black text-slate-800 tracking-tighter block my-2">
-                {pendingBarcode}
-              </span>
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                ¿Es este el código que quieres registrar?
-              </span>
-            </AlertDialogDescription>
+            <AlertDialogTitle className="text-2xl font-black">Código Detectado</AlertDialogTitle>
+            <AlertDialogDescription className="text-center py-4 font-mono font-bold text-3xl">{pendingBarcode}</AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
-            <AlertDialogCancel className="rounded-2xl h-12 flex-1 border-slate-200">
-              <X className="w-4 h-4 mr-2" /> DESCARTAR
-            </AlertDialogCancel>
-            <AlertDialogAction onClick={confirmPendingBarcode} className="rounded-2xl h-12 flex-1 bg-primary hover:bg-primary/90 font-black">
-              <Check className="w-4 h-4 mr-2" /> ACEPTAR
-            </AlertDialogAction>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-2xl h-12 flex-1">DESCARTAR</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { 
+              const existing = products?.find(p => p.id === pendingBarcode);
+              if (existing) { setSelectedProduct(existing); setIsDialogOpen(true); }
+              else { setSelectedProduct({ id: pendingBarcode }); setIsDialogOpen(true); }
+              setPendingBarcode(null);
+            }} className="rounded-2xl h-12 flex-1">EDITAR / CREAR</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
       <AlertDialog open={!!productToDelete} onOpenChange={() => setProductToDelete(null)}>
-        <AlertDialogContent className="rounded-3xl border-none shadow-2xl">
+        <AlertDialogContent className="rounded-3xl">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-xl font-black text-destructive">¿Eliminar producto?</AlertDialogTitle>
-            <AlertDialogDescription className="pt-2">
-              Se borrará <strong>{productToDelete?.name}</strong> definitivamente del inventario. Esta acción no se puede deshacer.
-            </AlertDialogDescription>
+            <AlertDialogTitle>¿Eliminar producto?</AlertDialogTitle>
+            <AlertDialogDescription>Se borrará {productToDelete?.name} definitivamente.</AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="gap-2 pt-4">
-            <AlertDialogCancel className="rounded-2xl h-12 flex-1 border-slate-200">No, cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="rounded-2xl h-12 flex-1 bg-destructive hover:bg-destructive/90 font-black">
-              SÍ, ELIMINAR
-            </AlertDialogAction>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-2xl">Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { deleteDocumentNonBlocking(doc(firestore, "products", productToDelete.id)); setProductToDelete(null); }} className="rounded-2xl bg-destructive">ELIMINAR</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

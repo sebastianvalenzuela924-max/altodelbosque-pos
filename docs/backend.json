@@ -17,82 +17,69 @@
         },
         "price": {
           "type": "number",
-          "description": "The current selling price of a single unit of the product. This value is used for sales and can be edited."
+          "description": "The current selling price of a single unit of the product."
         },
         "stock": {
           "type": "number",
-          "description": "The available quantity of the product currently in stock. This value is updated upon sale finalization."
+          "description": "The available quantity of the product currently in stock."
+        },
+        "idealStock": {
+          "type": "number",
+          "description": "The desired amount of stock for this product to be considered in optimal state."
         },
         "category": {
           "type": "string",
-          "description": "The category the product belongs to (e.g., 'Bebidas', 'Snacks', 'Lácteos')."
+          "description": "The category the product belongs to."
         }
       },
       "required": [
         "id",
         "name",
         "price",
-        "stock"
+        "stock",
+        "idealStock"
       ]
     },
     "Sale": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Sale",
       "type": "object",
-      "description": "Represents a completed sales transaction, including products sold and manual entries.",
+      "description": "Represents a completed sales transaction.",
       "properties": {
         "id": {
-          "type": "string",
-          "description": "Unique identifier for the Sale entity."
+          "type": "string"
         },
         "saleDateTime": {
           "type": "string",
-          "description": "The date and time when the sale was finalized.",
           "format": "date-time"
         },
         "totalAmount": {
-          "type": "number",
-          "description": "The total monetary amount of the sale, including all products and manual items."
+          "type": "number"
         },
         "productSaleItemIds": {
           "type": "array",
-          "description": "References to ProductSaleItem entities associated with this sale, detailing each product sold.",
-          "items": {
-            "type": "string"
-          }
+          "items": { "type": "string" }
         },
         "manualSaleItemIds": {
           "type": "array",
-          "description": "References to ManualSaleItem entities associated with this sale, detailing calculator-added items.",
-          "items": {
-            "type": "string"
-          }
+          "items": { "type": "string" }
         }
       },
       "required": [
         "id",
         "saleDateTime",
-        "totalAmount",
-        "productSaleItemIds",
-        "manualSaleItemIds"
+        "totalAmount"
       ]
     },
     "Note": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Note",
       "type": "object",
-      "description": "A simple note or reminder for the terminal user.",
+      "description": "A simple note or reminder.",
       "properties": {
-        "id": {
-          "type": "string"
-        },
-        "content": {
-          "type": "string"
-        },
-        "createdAt": {
-          "type": "string",
-          "format": "date-time"
-        }
+        "id": { "type": "string" },
+        "content": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "content", "createdAt"]
     }
@@ -109,9 +96,6 @@
         "path": "/authorizedUsers/{userId}",
         "definition": {
           "entityName": "User",
-          "schema": {
-            "$ref": "#/backend/entities/User"
-          },
           "description": "Authorized users of the POS system."
         }
       },
@@ -119,9 +103,6 @@
         "path": "/products/{productId}",
         "definition": {
           "entityName": "Product",
-          "schema": {
-            "$ref": "#/backend/entities/Product"
-          },
           "description": "Main inventory collection."
         }
       },
@@ -129,9 +110,6 @@
         "path": "/sales/{saleId}",
         "definition": {
           "entityName": "Sale",
-          "schema": {
-            "$ref": "#/backend/entities/Sale"
-          },
           "description": "Completed sales transactions."
         }
       },
@@ -139,9 +117,6 @@
         "path": "/notes/{noteId}",
         "definition": {
           "entityName": "Note",
-          "schema": {
-            "$ref": "#/backend/entities/Note"
-          },
           "description": "System reminders and notes."
         }
       }
