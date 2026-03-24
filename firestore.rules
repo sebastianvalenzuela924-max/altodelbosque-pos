@@ -49,18 +49,19 @@ service cloud.firestore {
     match /sales/{saleId} {
       allow get, list: if isAuthorized();
       allow create: if isAuthorized();
-      allow update, delete: if false; // Ventas inmutables por integridad contable
+      allow update: if false; // Ventas inmutables por integridad
+      allow delete: if isAuthorized(); // Permitir eliminación por gestión del usuario
 
       match /productSaleItems/{itemId} {
         allow get, list: if isAuthorized();
         allow create: if isAuthorized();
-        allow update, delete: if false;
+        allow update, delete: if isAuthorized();
       }
 
       match /manualSaleItems/{itemId} {
         allow get, list: if isAuthorized();
         allow create: if isAuthorized();
-        allow update, delete: if false;
+        allow update, delete: if isAuthorized();
       }
     }
   }

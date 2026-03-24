@@ -1,20 +1,26 @@
 
 "use client";
 
-import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import { collection, query, orderBy } from "firebase/firestore";
+import { useCollection, useFirestore, useMemoFirebase, deleteDocumentNonBlocking } from "@/firebase";
+import { collection, query, orderBy, doc } from "firebase/firestore";
 import { Card } from "@/components/ui/card";
-import { FileSpreadsheet, Calendar, History, ShoppingBag, DollarSign, Loader2, Package, ChevronRight } from "lucide-react";
+import { FileSpreadsheet, Calendar, History, ShoppingBag, DollarSign, Loader2, Package, ChevronRight, Trash2, MoreVertical, Eraser, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { exportToExcel } from "@/lib/export";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useState } from "react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 export default function HistoryPage() {
   const [isMounted, setIsMounted] = useState(false);
   const firestore = useFirestore();
   const { toast } = useToast();
+  
+  // Estados para diálogos de eliminación
+  const [saleToDelete, setSaleToDelete] = useState<any | null>(null);
+  const [bulkDeleteType, setBulkDeleteType] = useState<'day' | 'month' | 'all' | null>(null);
 
   useEffect(() => {
     setIsMounted(true);
@@ -59,6 +65,45 @@ export default function HistoryPage() {
     toast({ title: "Exportación exitosa", description: "Se ha descargado el historial detallado en Excel." });
   };
 
+  const confirmDeleteIndividual = () => {
+    if (!saleToDelete) return;
+    const docRef = doc(firestore, "sales", saleToDelete.id);
+    deleteDocumentNonBlocking(docRef);
+    toast({ title: "Venta eliminada", description: "El registro ha sido borrado individualmente." });
+    setSaleToDelete(null);
+  };
+
+  const confirmBulkDelete = () => {
+    if (!bulkDeleteType || !sales) return;
+    
+    const now = new Date();
+    let targets: any[] = [];
+
+    if (bulkDeleteType === 'day') {
+      targets = sales.filter(s => {
+        const d = s.saleDateTime?.toDate?.() || new Date();
+        return d.toDateString() === now.toDateString();
+      });
+    } else if (bulkDeleteType === 'month') {
+      targets = sales.filter(s => {
+        const d = s.saleDateTime?.toDate?.() || new Date();
+        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+      });
+    } else if (bulkDeleteType === 'all') {
+      targets = sales;
+    }
+
+    targets.forEach(t => {
+      deleteDocumentNonBlocking(doc(firestore, "sales", t.id));
+    });
+
+    toast({ 
+      title: "Limpieza completada", 
+      description: `Se han eliminado ${targets.length} registros del historial.` 
+    });
+    setBulkDeleteType(null);
+  };
+
   if (!isMounted) {
     return <div className="min-h-screen bg-background" />;
   }
@@ -71,11 +116,35 @@ export default function HistoryPage() {
             <History className="w-8 h-8" />
             Historial
           </h1>
-          <p className="text-muted-foreground">Revisa qué productos se vendieron en cada transacción.</p>
+          <p className="text-muted-foreground">Gestiona tus ventas registradas y depura el historial.</p>
         </div>
-        <Button variant="outline" onClick={handleExport} disabled={!sales?.length} className="w-full md:w-auto">
-          <FileSpreadsheet className="w-4 h-4 mr-2 text-green-600" /> Exportar Historial Detallado
-        </Button>
+        <div className="flex gap-2 w-full md:w-auto">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="flex-1 md:flex-none border-destructive text-destructive hover:bg-destructive/5">
+                <Eraser className="w-4 h-4 mr-2" /> Limpiar Historial
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 rounded-2xl p-2">
+              <DropdownMenuLabel className="font-black text-[10px] uppercase tracking-widest opacity-50">Opciones de Borrado</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => setBulkDeleteType('day')} className="rounded-xl py-2 cursor-pointer focus:bg-destructive/10 focus:text-destructive">
+                <Calendar className="w-4 h-4 mr-2" /> Borrar Hoy
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setBulkDeleteType('month')} className="rounded-xl py-2 cursor-pointer focus:bg-destructive/10 focus:text-destructive">
+                <History className="w-4 h-4 mr-2" /> Borrar este Mes
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => setBulkDeleteType('all')} className="rounded-xl py-2 cursor-pointer text-destructive font-bold focus:bg-destructive focus:text-white">
+                <Trash2 className="w-4 h-4 mr-2" /> BORRAR TODO
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          
+          <Button variant="outline" onClick={handleExport} disabled={!sales?.length} className="flex-1 md:flex-none">
+            <FileSpreadsheet className="w-4 h-4 mr-2 text-green-600" /> Exportar
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-4">
@@ -112,15 +181,21 @@ export default function HistoryPage() {
                       </div>
                       
                       <div className="flex-1 p-6 flex flex-col justify-center gap-3">
-                        <div className="flex flex-wrap gap-2">
-                          <div className="flex items-center gap-2 bg-primary/10 text-primary text-[10px] font-bold px-3 py-1.5 rounded-full border border-primary/10">
-                            <ShoppingBag className="w-3 h-3" />
-                            {sale.productSaleItemIds?.length || 0} Prod.
+                        <div className="flex items-center justify-between">
+                          <div className="flex flex-wrap gap-2">
+                            <div className="flex items-center gap-2 bg-primary/10 text-primary text-[10px] font-bold px-3 py-1.5 rounded-full border border-primary/10">
+                              <ShoppingBag className="w-3 h-3" />
+                              {sale.productSaleItemIds?.length || 0} Prod.
+                            </div>
+                            <div className="flex items-center gap-2 bg-accent/10 text-accent text-[10px] font-bold px-3 py-1.5 rounded-full border border-accent/10">
+                              <DollarSign className="w-3 h-3" />
+                              {sale.manualSaleItemIds?.length || 0} Manuales
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2 bg-accent/10 text-accent text-[10px] font-bold px-3 py-1.5 rounded-full border border-accent/10">
-                            <DollarSign className="w-3 h-3" />
-                            {sale.manualSaleItemIds?.length || 0} Manuales
-                          </div>
+                          
+                          <Button variant="ghost" size="icon" className="text-destructive opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => setSaleToDelete(sale)}>
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
                         </div>
                         
                         {sale.itemsSummary && (
@@ -175,6 +250,51 @@ export default function HistoryPage() {
           })
         )}
       </div>
+
+      {/* Alerta de eliminación individual */}
+      <AlertDialog open={!!saleToDelete} onOpenChange={() => setSaleToDelete(null)}>
+        <AlertDialogContent className="rounded-3xl border-none shadow-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-2xl font-black text-destructive flex items-center gap-2">
+              <AlertCircle className="w-6 h-6" />
+              ¿Eliminar Registro?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción borrará definitivamente la venta con ID: <span className="font-mono font-bold">#{saleToDelete?.id?.slice(-8)}</span> de tu historial. 
+              Los productos ya fueron descontados del stock y no se recuperarán al borrar el registro.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel className="rounded-2xl h-12 flex-1">Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteIndividual} className="rounded-2xl h-12 flex-1 bg-destructive hover:bg-destructive/90 font-black">
+              ELIMINAR AHORA
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Alerta de eliminación masiva */}
+      <AlertDialog open={!!bulkDeleteType} onOpenChange={() => setBulkDeleteType(null)}>
+        <AlertDialogContent className="rounded-3xl border-none shadow-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-2xl font-black text-destructive flex items-center gap-2">
+              <Eraser className="w-6 h-6" />
+              Limpieza Masiva
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {bulkDeleteType === 'day' && "¿Estás seguro de que quieres borrar TODAS las ventas de HOY?"}
+              {bulkDeleteType === 'month' && "¿Estás seguro de que quieres borrar TODAS las ventas de ESTE MES?"}
+              {bulkDeleteType === 'all' && "¡ATENCIÓN! Esto borrará el HISTORIAL COMPLETO de ventas. Esta acción no se puede deshacer."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel className="rounded-2xl h-12 flex-1">Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmBulkDelete} className="rounded-2xl h-12 flex-1 bg-destructive hover:bg-destructive/90 font-black">
+              CONFIRMAR BORRADO
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
