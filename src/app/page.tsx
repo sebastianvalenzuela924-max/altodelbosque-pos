@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ScannerComponent } from "@/components/pos/ScannerComponent";
 import { CalculatorComponent } from "@/components/pos/CalculatorComponent";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Trash2, PlusCircle, MinusCircle, ShoppingCart, CheckCircle2, Scan, Calculator, Loader2, AlertCircle } from "lucide-react";
+import { Trash2, PlusCircle, MinusCircle, ShoppingCart, CheckCircle2, Scan, Calculator, Loader2 } from "lucide-react";
 import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { doc, collection, serverTimestamp, increment, query } from "firebase/firestore";
@@ -22,19 +22,18 @@ export default function POSPage() {
   const [mounted, setMounted] = useState(false);
   const { toast } = useToast();
 
-  // Sincronización en tiempo real del inventario completo para reconocimiento instantáneo
+  // Cargamos el inventario completo para reconocimiento instantáneo
   const productsQuery = useMemoFirebase(() => {
     return query(collection(firestore, "products"));
   }, [firestore]);
   
   const { data: allProducts, isLoading: isLoadingInventory } = useCollection(productsQuery);
 
-  // Mapa de búsqueda O(1) para reconocimiento ultra-rápido por código de barras
+  // Mapa de búsqueda ultra-rápido por ID (Barcode EAN)
   const productMap = useMemo(() => {
     const map = new Map();
     if (allProducts) {
       allProducts.forEach(p => {
-        // Aseguramos que la clave sea un string limpio para la comparación
         const key = p.id.toString().trim();
         map.set(key, p);
       });
@@ -56,42 +55,35 @@ export default function POSPage() {
     const cleanBarcode = barcode.toString().trim();
     if (!cleanBarcode) return;
     
-    // Verificamos si el inventario está disponible
-    if (isLoadingInventory && productMap.size === 0) {
-      toast({ 
-        title: "Sincronizando...", 
-        description: "El inventario se está cargando. Intenta de nuevo en un segundo.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    // 1. Si ya está en el carrito, simplemente incrementamos la cantidad
+    // Verificamos si ya está en el carrito
     const existingInCart = items.find(i => i.id === cleanBarcode);
     if (existingInCart) {
       updateQuantity(cleanBarcode, 1);
-      toast({ title: "Cantidad actualizada", description: `${existingInCart.name} +1` });
+      toast({ title: "Cantidad añadida", description: `${existingInCart.name} +1` });
       return;
     }
 
-    // 2. BUSCADOR: Intentamos reconocer el producto en el inventario
+    // Buscamos en el inventario cargado
     const product = productMap.get(cleanBarcode);
 
     if (product) {
-      // PRODUCTO RECONOCIDO: Se añade directamente a la caja registradora
+      // PRODUCTO ENCONTRADO: Añadir directamente al carrito
       setItems(prev => [...prev, { 
         id: cleanBarcode, 
         name: product.name, 
         price: product.price, 
         quantity: 1 
       }]);
-      toast({ title: "Producto Añadido", description: `${product.name} - $${product.price.toFixed(2)}` });
+      toast({ 
+        title: "Añadido a la Caja", 
+        description: `${product.name} - $${product.price.toFixed(2)}` 
+      });
     } else {
-      // PRODUCTO NO RECONOCIDO: No permitimos añadir. Informamos al usuario.
+      // PRODUCTO NO ENCONTRADO: Error
       toast({ 
         variant: "destructive",
-        title: "Producto No Registrado", 
-        description: `El código ${cleanBarcode} no existe en el inventario. Regístralo primero en la sección de Inventario.`
+        title: "No en Inventario", 
+        description: `El código ${cleanBarcode} no está registrado en el inventario.`
       });
     }
   };
@@ -141,7 +133,7 @@ export default function POSPage() {
 
     addDocumentNonBlocking(salesRef, saleData);
 
-    // Procesamos cada item para el historial y descuento real de stock
+    // Guardamos los items de la venta y actualizamos el stock real
     items.forEach(item => {
       const itemRef = collection(doc(firestore, "sales", saleId), "productSaleItems");
       addDocumentNonBlocking(itemRef, {
@@ -154,7 +146,7 @@ export default function POSPage() {
         subtotal: item.price * item.quantity
       });
 
-      // ACTUALIZACIÓN DE STOCK: Descontamos las unidades vendidas
+      // DESCUENTO DE STOCK
       const productRef = doc(firestore, "products", item.id);
       updateDocumentNonBlocking(productRef, {
         stock: increment(-item.quantity)
@@ -171,7 +163,7 @@ export default function POSPage() {
       });
     });
 
-    toast({ title: "Venta Exitosa", description: "Venta registrada y stock actualizado." });
+    toast({ title: "Venta Finalizada", description: "Venta guardada y stock descontado." });
     setItems([]);
     setManualProducts([]);
     setIsProcessing(false);
@@ -205,7 +197,7 @@ export default function POSPage() {
               <div className="absolute inset-0 z-10 bg-white/60 backdrop-blur-sm flex items-center justify-center">
                 <div className="flex flex-col items-center gap-2">
                   <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                  <p className="text-xs font-black text-primary uppercase tracking-widest">Sincronizando Productos...</p>
+                  <p className="text-xs font-black text-primary uppercase tracking-widest">Sincronizando Inventario...</p>
                 </div>
               </div>
             )}
@@ -218,8 +210,8 @@ export default function POSPage() {
                       <ShoppingCart className="w-12 h-12" />
                     </div>
                     <div>
-                      <h3 className="text-lg font-bold text-slate-400 uppercase tracking-wider">Esperando Escaneo</h3>
-                      <p className="text-slate-400 text-sm">Escanea el código de barras de un producto registrado.</p>
+                      <h3 className="text-lg font-bold text-slate-400 uppercase tracking-wider">Caja Vacía</h3>
+                      <p className="text-slate-400 text-sm">Escanea productos para empezar a cobrar.</p>
                     </div>
                   </div>
                 )}
@@ -228,7 +220,7 @@ export default function POSPage() {
                   <div key={item.id} className="p-4 flex items-center gap-4 bg-white hover:bg-slate-50 transition-colors">
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="bg-primary/10 text-primary text-[10px] font-black px-1.5 py-0.5 rounded uppercase">EAN</span>
+                        <span className="bg-primary/10 text-primary text-[10px] font-black px-1.5 py-0.5 rounded uppercase">Producto</span>
                         <p className="font-bold text-lg text-slate-800 line-clamp-1">{item.name}</p>
                       </div>
                       <p className="text-primary font-black text-xl mt-1 font-mono">${(item.price * item.quantity).toFixed(2)}</p>
@@ -255,7 +247,7 @@ export default function POSPage() {
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <span className="bg-accent/10 text-accent text-[10px] font-black px-1.5 py-0.5 rounded uppercase">Manual</span>
-                        <p className="font-bold text-lg text-slate-800">Monto Ingresado</p>
+                        <p className="font-bold text-lg text-slate-800">Monto Directo</p>
                       </div>
                       <p className="text-accent font-black text-xl mt-1 font-mono">${item.amount.toFixed(2)}</p>
                     </div>
@@ -271,23 +263,21 @@ export default function POSPage() {
           </CardContent>
 
           <CardFooter className="flex flex-col gap-6 bg-white border-t p-8">
-            <div className="w-full flex justify-between items-end">
-              <div className="text-right w-full">
-                <p className="text-xs font-black uppercase text-primary tracking-widest">Total a Cobrar</p>
-                <p className="text-6xl font-black text-primary font-mono tracking-tighter leading-none">${total.toFixed(2)}</p>
-              </div>
+            <div className="w-full text-right">
+              <p className="text-xs font-black uppercase text-primary tracking-widest">Total General</p>
+              <p className="text-6xl font-black text-primary font-mono tracking-tighter leading-none">${total.toFixed(2)}</p>
             </div>
             
             <Button 
               className={cn(
                 "w-full h-24 text-2xl font-black rounded-3xl shadow-2xl transition-all active:scale-95 flex items-center justify-center gap-4",
-                isProcessing ? "bg-slate-400 cursor-not-allowed" : "bg-primary hover:bg-primary/90 shadow-primary/20"
+                isProcessing ? "bg-slate-400" : "bg-primary hover:bg-primary/90"
               )}
               onClick={handleFinalize}
-              disabled={(items.length === 0 && manualProducts.length === 0) || isProcessing || isLoadingInventory}
+              disabled={(items.length === 0 && manualProducts.length === 0) || isProcessing}
             >
               <CheckCircle2 className="w-10 h-10" />
-              {isProcessing ? "PROCESANDO..." : "FINALIZAR COBRO"}
+              {isProcessing ? "PROCESANDO..." : "COBRAR TOTAL"}
             </Button>
           </CardFooter>
         </Card>
@@ -295,20 +285,15 @@ export default function POSPage() {
 
       <div className="lg:col-span-5 flex flex-col gap-6">
         <section className="space-y-4">
-          <div className="flex items-center justify-between px-1">
-            <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
-              <Scan className="w-4 h-4" /> Escáner de Productos
-            </h3>
-            {items.length > 0 && (
-              <span className="text-[10px] font-bold text-primary animate-pulse">LISTO PARA COBRAR</span>
-            )}
-          </div>
+          <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 px-1">
+            <Scan className="w-4 h-4" /> Escáner de Productos
+          </h3>
           <ScannerComponent onScan={handleScan} />
         </section>
 
         <section className="space-y-4">
           <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 px-1">
-            <Calculator className="w-4 h-4" /> Calculadora de Montos
+            <Calculator className="w-4 h-4" /> Montos Manuales
           </h3>
           <div className="bg-white rounded-3xl p-6 shadow-xl shadow-slate-200/50">
             <CalculatorComponent onAddManual={addManual} />
