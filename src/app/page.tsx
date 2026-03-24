@@ -260,11 +260,17 @@ export default function POSPage() {
       });
     });
 
-    toast({ title: "Venta Finalizada", description: "Venta guardada correctamente." });
+    // Limpiar estados de la caja
     setItems([]);
     setManualProducts([]);
-    setIsProcessing(false);
     setSearchQuery("");
+    
+    toast({ title: "Venta Finalizada", description: "Venta guardada correctamente." });
+    
+    // Pequeño delay para asegurar que el feedback visual sea claro
+    setTimeout(() => {
+      setIsProcessing(false);
+    }, 500);
   };
 
   const updateQuantity = (id: string, delta: number) => {

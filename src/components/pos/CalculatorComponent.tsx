@@ -23,6 +23,7 @@ export function CalculatorComponent({
   const [equation, setEquation] = useState("");
   const [isReset, setIsReset] = useState(true);
 
+  // Sincronizar con el valor base de la caja (total del carrito)
   useEffect(() => {
     if (isReset) {
       setDisplay(Math.round(baseValue).toString());
@@ -72,7 +73,9 @@ export function CalculatorComponent({
   const handleFinalizeNormal = () => {
     const amount = parseInt(display);
     if (!isNaN(amount)) {
-      setIsReset(true); // Permitir que se resetee al nuevo baseValue (0)
+      // Forzar reset total: volver a la base (que será 0 tras el cobro)
+      setIsReset(true);
+      setEquation("");
       onFinalize(amount);
     }
   };
@@ -80,7 +83,8 @@ export function CalculatorComponent({
   const handleFinalizeKeepAmount = () => {
     const amount = parseInt(display);
     if (!isNaN(amount)) {
-      setIsReset(false); // Mantener el número actual aunque la base cambie
+      // No resetear: mantener el número actual en pantalla ignorando el cambio de baseValue
+      setIsReset(false);
       onFinalize(amount);
     }
   };
