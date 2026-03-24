@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -9,9 +8,10 @@ import { Label } from "@/components/ui/label";
 import { useFirestore, setDocumentNonBlocking } from "@/firebase";
 import { doc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Package, Tag, Target } from "lucide-react";
+import { Loader2, Package, Tag, Target, HelpCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface ProductDialogProps {
   product?: any | null;
@@ -57,20 +57,25 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
   }, [product, open]);
 
   const handleSave = () => {
-    if (!formData.id || !formData.name || !formData.price || !formData.idealStock) {
-      toast({ title: "Error", description: "Completa los campos obligatorios.", variant: "destructive" });
+    // Validamos campos mínimos excepto el ID, que puede ser auto-generado
+    if (!formData.name || !formData.price || !formData.idealStock) {
+      toast({ title: "Faltan datos", description: "El nombre, precio y stock ideal son obligatorios.", variant: "destructive" });
       return;
     }
 
     setLoading(true);
-    const docRef = doc(firestore, "products", formData.id);
+    
+    // Si no hay ID, generamos uno interno basado en timestamp y un corto aleatorio
+    const finalId = formData.id.trim() || `INT-${Date.now().toString().slice(-6)}-${Math.random().toString(36).substring(2, 5).toUpperCase()}`;
+    
+    const docRef = doc(firestore, "products", finalId);
     
     const enteredCat = formData.category.trim();
     const existingMatch = categories.find(c => c.toLowerCase() === enteredCat.toLowerCase());
     const finalCategory = existingMatch || (enteredCat ? (enteredCat.charAt(0).toUpperCase() + enteredCat.slice(1)) : "General");
 
     const data = {
-      id: formData.id,
+      id: finalId,
       name: formData.name,
       price: Math.round(parseFloat(formData.price)) || 0,
       stock: parseInt(formData.stock) || 0,
@@ -80,7 +85,11 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
 
     setDocumentNonBlocking(docRef, data, { merge: true });
     
-    toast({ title: "Guardado", description: `Producto actualizado.` });
+    toast({ 
+      title: product?.id ? "Producto Actualizado" : "Producto Creado", 
+      description: `Se guardó correctamente con el código: ${finalId}` 
+    });
+    
     setLoading(false);
     onSaved();
     onClose();
@@ -102,8 +111,27 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="id" className="font-bold text-slate-500 text-xs uppercase tracking-widest">Código</Label>
-              <Input id="id" value={formData.id} disabled={!!product?.id && !!product?.name} className="h-12 rounded-xl bg-slate-50 border-none font-mono font-bold" onChange={e => setFormData({ ...formData, id: e.target.value })} placeholder="EAN" />
+              <div className="flex items-center gap-2">
+                <Label htmlFor="id" className="font-bold text-slate-500 text-xs uppercase tracking-widest">Código</Label>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <HelpCircle className="w-3 h-3 text-slate-300 cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent className="bg-slate-800 text-white border-none rounded-xl text-[10px]">
+                      Si lo dejas vacío, se generará uno automático.
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              <Input 
+                id="id" 
+                value={formData.id} 
+                disabled={!!product?.id && !!product?.name} 
+                className="h-12 rounded-xl bg-slate-50 border-none font-mono font-bold" 
+                onChange={e => setFormData({ ...formData, id: e.target.value })} 
+                placeholder="Opcional (EAN)" 
+              />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="price" className="font-bold text-slate-500 text-xs uppercase tracking-widest">Precio ($)</Label>
@@ -112,8 +140,8 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
           </div>
           
           <div className="grid gap-2">
-            <Label htmlFor="name" className="font-bold text-slate-500 text-xs uppercase tracking-widest">Nombre</Label>
-            <Input id="name" value={formData.name} className="h-12 rounded-xl bg-slate-50 border-none font-bold" onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="Ej: Bebida 1.5L" />
+            <Label htmlFor="name" className="font-bold text-slate-500 text-xs uppercase tracking-widest">Nombre del Producto</Label>
+            <Input id="name" value={formData.name} className="h-12 rounded-xl bg-slate-50 border-none font-bold text-lg" onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="Ej: Empanada de Pino" />
           </div>
 
           <div className="grid gap-2">
@@ -137,7 +165,7 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
 
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="stock" className="font-bold text-slate-500 text-xs uppercase tracking-widest">Stock Actual</Label>
+              <Label htmlFor="stock" className="font-bold text-slate-500 text-xs uppercase tracking-widest">Stock Inicial</Label>
               <Input id="stock" type="number" className="h-12 rounded-xl bg-slate-50 border-none font-black" value={formData.stock} onChange={e => setFormData({ ...formData, stock: e.target.value })} placeholder="0" />
             </div>
             <div className="grid gap-2">
@@ -148,14 +176,14 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
             </div>
           </div>
           
-          <div className="h-4" /> {/* Espaciador final para asegurar visibilidad en el scroll */}
+          <div className="h-4" />
         </div>
 
         <DialogFooter className="gap-2 p-6 shrink-0 bg-white border-t z-10 flex flex-row items-center">
-          <Button variant="ghost" onClick={onClose} disabled={loading} className="rounded-xl flex-1 h-12">Cancelar</Button>
-          <Button onClick={handleSave} disabled={loading} className="bg-primary hover:bg-primary/90 rounded-xl flex-1 h-12 font-black">
+          <Button variant="ghost" onClick={onClose} disabled={loading} className="rounded-xl flex-1 h-12 font-bold">Cancelar</Button>
+          <Button onClick={handleSave} disabled={loading} className="bg-primary hover:bg-primary/90 rounded-xl flex-1 h-12 font-black shadow-lg shadow-primary/20">
             {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            GUARDAR
+            GUARDAR PRODUCTO
           </Button>
         </DialogFooter>
       </DialogContent>
