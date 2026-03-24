@@ -12,8 +12,8 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
   const [error, setError] = useState<string | null>(null);
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const isInitializingRef = useRef(false);
-  const hasScannedRef = useRef(false);
   
+  // Referencia para el callback de escaneo para evitar clausuras obsoletas
   const onScanRef = useRef(onScan);
   useEffect(() => {
     onScanRef.current = onScan;
@@ -31,7 +31,6 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
     setIsEnabled(false);
     setIsLoading(false);
     isInitializingRef.current = false;
-    hasScannedRef.current = false;
   };
 
   const applyAdvancedConstraints = async (videoTrack: MediaStreamTrack) => {
@@ -62,6 +61,7 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
     async function initScanner() {
       if (!isEnabled || !isMounted || isInitializingRef.current) return;
 
+      // Esperar a que el elemento DOM esté listo
       checkInterval = setInterval(async () => {
         const element = document.getElementById("qr-reader");
         if (element && isMounted && !isInitializingRef.current) {
@@ -86,6 +86,7 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
             const config = {
               fps: 20,
               qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
+                // Asegurar tamaño mínimo de 50px para evitar errores de la librería
                 const width = Math.max(50, Math.min(viewfinderWidth * 0.8, 400));
                 const height = Math.max(50, Math.min(viewfinderHeight * 0.4, 200));
                 return { width, height };
@@ -97,20 +98,15 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
               await scannerRef.current.start(
                 { facingMode: "environment" },
                 config,
-                async (decodedText) => {
-                  if (hasScannedRef.current) return;
-                  hasScannedRef.current = true;
-                  
-                  // Detener el escaneo inmediatamente para liberar recursos y evitar duplicados
-                  if (scannerRef.current?.isScanning) {
-                    await scannerRef.current.stop().catch(() => {});
-                  }
-                  
+                (decodedText) => {
+                  // NO detuvimos el scanner aquí para evitar que la pantalla quede en negro
+                  // El control de duplicados y "lentitud" se delega al padre o se gestiona por tiempo
                   onScanRef.current(decodedText);
                 },
-                () => {} 
+                () => {} // Ignorar errores de frame no detectado
               );
 
+              // Intentar mejorar el enfoque y zoom en dispositivos compatibles
               const videoElement = document.querySelector("#qr-reader video") as HTMLVideoElement;
               if (videoElement && videoElement.srcObject) {
                 const stream = videoElement.srcObject as MediaStream;
@@ -126,6 +122,7 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
               isInitializingRef.current = false;
             }
           } catch (err: any) {
+            console.error("Scanner Initialization Error:", err);
             if (isMounted) {
               setError("No se pudo acceder a la cámara. Por favor, revisa los permisos del navegador.");
               setIsEnabled(false);
@@ -142,6 +139,7 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
     return () => {
       isMounted = false;
       if (checkInterval) clearInterval(checkInterval);
+      // No detenemos el scanner en el cleanup del effect si el componente sigue montado (dependencia isEnabled)
     };
   }, [isEnabled]);
 
@@ -152,7 +150,6 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
       setError(null);
       setIsLoading(true);
       setIsEnabled(true);
-      hasScannedRef.current = false;
     }
   };
 
@@ -168,9 +165,9 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
             <Scan className="w-10 h-10 text-primary" />
           </div>
           <div className="space-y-1">
-            <h3 className="text-white font-bold text-lg">Escáner de Productos</h3>
+            <h3 className="text-white font-bold text-lg">Escáner Continuo</h3>
             <p className="text-slate-400 text-xs px-4">
-              Apunta al código de barras del producto.
+              Apunta al código de barras. La cámara se mantendrá activa entre escaneos.
             </p>
           </div>
           
@@ -199,12 +196,14 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
 
       {isEnabled && !isLoading && (
         <>
+          {/* Overlay de visor */}
           <div className="absolute inset-0 pointer-events-none z-20 flex items-center justify-center">
              <div className="w-[80%] max-w-[400px] h-[40%] max-h-[200px] relative border-2 border-primary/50 rounded-lg bg-primary/5">
                 <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-primary"></div>
                 <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-primary"></div>
                 <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-primary"></div>
                 <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-primary"></div>
+                {/* Línea de escaneo animada */}
                 <div className="absolute top-0 left-0 right-0 h-1 bg-primary/80 shadow-[0_0_15px_rgba(var(--primary),0.8)] animate-[scan_2s_ease-in-out_infinite]"></div>
              </div>
           </div>

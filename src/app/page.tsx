@@ -80,7 +80,6 @@ export default function POSPage() {
   const [items, setItems] = useState<any[]>([]);
   const [manualProducts, setManualProducts] = useState<any[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [isScanLocked, setIsScanLocked] = useState(false);
   const [scanSuccess, setScanSuccess] = useState(false);
   const [currentTime, setCurrentTime] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
@@ -143,14 +142,17 @@ export default function POSPage() {
       }];
     });
     
+    // Feedback visual de escaneo exitoso
     setScanSuccess(true);
     setTimeout(() => setScanSuccess(false), 800);
   };
 
   const handleScan = (barcode: string) => {
     const cleanBarcode = String(barcode).trim();
-    if (!cleanBarcode || isLoadingInventory || isScanLocked) return;
+    if (!cleanBarcode || isLoadingInventory) return;
 
+    // LÓGICA DE LENTITUD Y DUPLICADOS:
+    // Evita registrar el mismo producto más de una vez cada 2 segundos.
     const now = Date.now();
     if (lastScanRef.current && lastScanRef.current.code === cleanBarcode && (now - lastScanRef.current.time < 2000)) {
       return;
@@ -161,17 +163,13 @@ export default function POSPage() {
     const product = productMap.get(cleanBarcode);
 
     if (product) {
-      setIsScanLocked(true);
       handleAddItem(product);
-      setTimeout(() => setIsScanLocked(false), 1000);
     } else {
-      setIsScanLocked(true);
       toast({ 
         variant: "destructive",
         title: "Producto no encontrado", 
         description: `El código ${cleanBarcode} no existe.`
       });
-      setTimeout(() => setIsScanLocked(false), 800);
     }
   };
 
@@ -300,13 +298,10 @@ export default function POSPage() {
             </h3>
           </div>
           <div className="relative group overflow-hidden rounded-3xl">
-            <div className={cn(
-              "transition-all duration-300",
-              isScanLocked && !scanSuccess ? "opacity-40 grayscale" : "opacity-100"
-            )}>
-              <ScannerComponent onScan={handleScan} />
-            </div>
+            {/* El escáner se mantiene encendido */}
+            <ScannerComponent onScan={handleScan} />
             
+            {/* Feedback visual persistente sobre la cámara */}
             <div className={cn(
               "absolute inset-0 z-50 pointer-events-none transition-all duration-500 flex items-center justify-center bg-green-500/20 border-[8px] border-green-500 rounded-3xl",
               scanSuccess ? "opacity-100 scale-100" : "opacity-0 scale-110"
