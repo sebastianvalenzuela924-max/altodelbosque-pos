@@ -16,6 +16,12 @@ export function AuthWrapper({ children }: { children: React.ReactNode }) {
   const firestore = useFirestore();
   const auth = useAuth();
   const [isReady, setIsReady] = useState(false);
+  const [hasMounted, setHasMounted] = useState(false);
+
+  // Aseguramos que el componente se ha montado en el cliente para evitar errores de hidratación
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
 
   // Referencia al documento de autorización del usuario actual
   const authDocRef = useMemoFirebase(() => {
@@ -38,8 +44,6 @@ export function AuthWrapper({ children }: { children: React.ReactNode }) {
 
     async function ensureAuthorization() {
       if (user && firestore && !isAuthDocLoading && !authDoc && !isReady) {
-        // El usuario está logueado pero no tiene documento de autorización.
-        // Lo creamos y ESPERAMOS la confirmación del servidor para evitar errores de permisos en los hijos.
         const docRef = doc(firestore, 'authorizedUsers', user.uid);
         try {
           await setDoc(docRef, { 
@@ -51,10 +55,9 @@ export function AuthWrapper({ children }: { children: React.ReactNode }) {
           
           if (mounted) setIsReady(true);
         } catch (error) {
-          console.error("Error al auto-autorizar terminal:", error);
+          // Error silencioso, manejado por las reglas de seguridad
         }
       } else if (authDoc) {
-        // El documento ya existe, el usuario está autorizado.
         if (mounted) setIsReady(true);
       }
     }
@@ -65,7 +68,8 @@ export function AuthWrapper({ children }: { children: React.ReactNode }) {
   }, [user, firestore, authDoc, isAuthDocLoading, isReady]);
 
   // Pantalla de carga profesional e invisible
-  if (isUserLoading || isAuthDocLoading || !isReady) {
+  // Solo renderizamos el contenido real una vez que el cliente está listo y autorizado
+  if (!hasMounted || isUserLoading || isAuthDocLoading || !isReady) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[100vh] bg-background">
         <div className="flex flex-col items-center gap-4 animate-in fade-in duration-700">
