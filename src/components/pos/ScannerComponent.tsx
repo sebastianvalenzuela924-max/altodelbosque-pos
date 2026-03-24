@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useRef, useState } from "react";
@@ -19,7 +18,7 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
         await scannerRef.current.stop();
         scannerRef.current.clear();
       } catch (err) {
-        // Silently ignore stop errors during manual stop
+        // Ignorar errores al detener manualmente
       }
     }
     setIsEnabled(false);
@@ -43,19 +42,19 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
         await videoTrack.applyConstraints({ advanced: [constraints] } as any);
       }
     } catch (e) {
-      // Advanced constraints not supported, ignore
+      // Constraints avanzados no soportados
     }
   };
 
-  // Effect to start scanner after the DOM element is rendered
   useEffect(() => {
     let isMounted = true;
+    let checkInterval: NodeJS.Timeout;
 
     async function initScanner() {
       if (!isEnabled || !isMounted) return;
 
-      // We wait for the next frame to ensure the div#qr-reader is in the DOM
-      const checkInterval = setInterval(async () => {
+      // Esperar a que el elemento "qr-reader" exista en el DOM antes de iniciar
+      checkInterval = setInterval(async () => {
         const element = document.getElementById("qr-reader");
         if (element && isMounted) {
           clearInterval(checkInterval);
@@ -105,22 +104,25 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
 
             if (isMounted) setIsLoading(false);
           } catch (err: any) {
+            console.error("Scanner Error:", err);
             if (isMounted) {
-              setError("Error de cámara. Por favor, revisa los permisos.");
+              setError("No se pudo acceder a la cámara. Por favor, revisa los permisos del navegador.");
               setIsEnabled(false);
               setIsLoading(false);
             }
           }
         }
       }, 100);
-
-      return () => clearInterval(checkInterval);
     }
 
     initScanner();
 
     return () => {
       isMounted = false;
+      if (checkInterval) clearInterval(checkInterval);
+      if (scannerRef.current && scannerRef.current.isScanning) {
+        scannerRef.current.stop().catch(() => {});
+      }
     };
   }, [isEnabled, onScan]);
 
@@ -133,15 +135,6 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
       setIsEnabled(true);
     }
   };
-
-  useEffect(() => {
-    return () => {
-      // Ensure scanner is stopped on unmount
-      if (scannerRef.current && scannerRef.current.isScanning) {
-        scannerRef.current.stop().catch(() => {});
-      }
-    };
-  }, []);
 
   return (
     <div className="relative w-full aspect-square md:aspect-video rounded-3xl overflow-hidden bg-slate-950 border-4 border-white shadow-2xl flex flex-col items-center justify-center">
@@ -157,7 +150,7 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
           <div className="space-y-1">
             <h3 className="text-white font-bold text-lg">Escáner de Productos</h3>
             <p className="text-slate-400 text-xs px-4">
-              Apunta al código de barras. <br/> Listo para detectar productos.
+              Apunta al código de barras del producto.
             </p>
           </div>
           
@@ -175,10 +168,10 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
           </Button>
           
           {error && (
-            <Alert variant="destructive" className="mt-4 mx-4">
+            <Alert variant="destructive" className="mt-4 mx-4 border-destructive/50 bg-destructive/10">
               <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Error</AlertTitle>
-              <AlertDescription className="text-[10px]">{error}</AlertDescription>
+              <AlertTitle>Error de Cámara</AlertTitle>
+              <AlertDescription className="text-[10px] leading-tight">{error}</AlertDescription>
             </Alert>
           )}
         </div>
@@ -209,11 +202,9 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
       )}
       
       {isLoading && isEnabled && (
-        <div className="absolute inset-0 z-40 bg-black flex items-center justify-center">
-             <div className="flex flex-col items-center gap-4">
-                <Loader2 className="w-12 h-12 text-primary animate-spin" />
-                <p className="text-white text-[10px] font-black tracking-[0.3em] uppercase">Iniciando Cámara...</p>
-             </div>
+        <div className="absolute inset-0 z-40 bg-black flex flex-col items-center justify-center gap-4">
+            <Loader2 className="w-12 h-12 text-primary animate-spin" />
+            <p className="text-white text-[10px] font-black tracking-[0.3em] uppercase">Iniciando Cámara...</p>
         </div>
       )}
 
