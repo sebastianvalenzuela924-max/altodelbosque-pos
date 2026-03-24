@@ -6,7 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/componen
 import { Button } from "@/components/ui/button";
 import { ScannerComponent } from "@/components/pos/ScannerComponent";
 import { CalculatorComponent } from "@/components/pos/CalculatorComponent";
-import { QuickAddDialog } from "@/components/pos/QuickAddDialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Trash2, PlusCircle, MinusCircle, ShoppingCart, CheckCircle2, Scan, Calculator, Loader2, Clock, RotateCcw, Search, Plus, PackageSearch, Check } from "lucide-react";
@@ -93,7 +92,6 @@ export default function POSPage() {
   const [currentTime, setCurrentTime] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [pendingBarcode, setPendingBarcode] = useState<string | null>(null);
   const lastScanRef = useRef<{ code: string; time: number } | null>(null);
   const { toast } = useToast();
 
@@ -178,11 +176,11 @@ export default function POSPage() {
       setScanSuccess(true);
       setTimeout(() => setScanSuccess(false), 800);
     } else {
-      setPendingBarcode(cleanBarcode);
+      // Si el código no existe, solo mostramos un aviso. No abrimos ninguna pestaña.
       toast({ 
         variant: "destructive",
-        title: "Nuevo Código", 
-        description: `El código ${cleanBarcode} no está en inventario.`
+        title: "Producto no encontrado", 
+        description: `El código ${cleanBarcode} no existe en el inventario.`
       });
     }
 
@@ -275,7 +273,6 @@ export default function POSPage() {
     
     toast({ title: "Venta Finalizada", description: "Venta guardada correctamente." });
     
-    // Pequeño delay para asegurar que el feedback visual sea claro
     setTimeout(() => {
       setIsProcessing(false);
     }, 500);
@@ -462,7 +459,6 @@ export default function POSPage() {
               <ScannerComponent onScan={handleScan} />
             </div>
             
-            {/* Overlay de éxito verde */}
             <div className={cn(
               "absolute inset-0 z-50 pointer-events-none transition-all duration-500 flex items-center justify-center bg-green-500/20 border-[8px] border-green-500 rounded-3xl",
               scanSuccess ? "opacity-100 scale-100" : "opacity-0 scale-110"
@@ -500,19 +496,6 @@ export default function POSPage() {
           </div>
         </section>
       </div>
-
-      {pendingBarcode && (
-        <QuickAddDialog 
-          barcode={pendingBarcode} 
-          open={!!pendingBarcode} 
-          onClose={() => setPendingBarcode(null)}
-          onAdded={(p) => {
-            handleAddItem(p);
-            setScanSuccess(true);
-            setTimeout(() => setScanSuccess(false), 800);
-          }}
-        />
-      )}
     </div>
   );
 }
