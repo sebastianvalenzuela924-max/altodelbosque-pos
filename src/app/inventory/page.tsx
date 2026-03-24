@@ -179,9 +179,9 @@ export default function InventoryPage() {
                     key={p.id} 
                     className={cn(
                       "transition-colors border-b", 
-                      status === "peligro" ? "bg-red-100 hover:bg-red-200" : 
-                      status === "precaución" ? "bg-amber-100 hover:bg-amber-200" : 
-                      status === "ok" ? "bg-green-100 hover:bg-green-200" : "hover:bg-slate-50"
+                      status === "peligro" ? "bg-red-200 hover:bg-red-300" : 
+                      status === "precaución" ? "bg-amber-200 hover:bg-amber-300" : 
+                      status === "ok" ? "bg-green-200 hover:bg-green-300" : "hover:bg-slate-50"
                     )}
                   >
                     <TableCell className="px-6">
@@ -197,7 +197,7 @@ export default function InventoryPage() {
                     </TableCell>
 
                     <TableCell className="px-6">
-                      <Badge variant="outline" className="text-[9px] font-black uppercase border-slate-200 bg-white/50">{p.category || "General"}</Badge>
+                      <Badge variant="outline" className="text-[9px] font-black uppercase border-slate-300 bg-white/50">{p.category || "General"}</Badge>
                     </TableCell>
 
                     <TableCell className="px-6">
@@ -206,11 +206,11 @@ export default function InventoryPage() {
                           <ShieldAlert className="w-3 h-3" /> Peligro
                         </Badge>
                       ) : status === "precaución" ? (
-                        <Badge className="bg-amber-500 hover:bg-amber-600 border-none flex items-center gap-1 rounded-full px-3 py-1 font-black text-[9px] uppercase text-white">
+                        <Badge className="bg-amber-600 hover:bg-amber-700 border-none flex items-center gap-1 rounded-full px-3 py-1 font-black text-[9px] uppercase text-white">
                           <ShieldQuestion className="w-3 h-3" /> Precaución
                         </Badge>
                       ) : (
-                        <Badge className="bg-green-600 text-white border-none flex items-center gap-1 rounded-full px-3 py-1 font-black text-[9px] uppercase">
+                        <Badge className="bg-green-700 text-white border-none flex items-center gap-1 rounded-full px-3 py-1 font-black text-[9px] uppercase">
                           <ShieldCheck className="w-3 h-3" /> OK
                         </Badge>
                       )}
@@ -228,7 +228,7 @@ export default function InventoryPage() {
                   </TableRow>
                 );
               })}
-            </Body>
+            </TableBody>
           </Table>
         </CardContent>
       </Card>
