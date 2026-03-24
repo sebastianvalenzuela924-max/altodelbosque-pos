@@ -98,7 +98,7 @@ export default function InventoryPage() {
           if (aStatus === "precaución" && bStatus === "ok") return -1;
           return 0;
         case "category-asc": return (a.category || "").localeCompare(b.category || "");
-        case "category-desc": return (b.category || "").localeCompare(a.category || "");
+        case "category-desc": return (b.category || "").localeCompare(b.category || "");
         case "name":
         default: return a.name.localeCompare(b.name);
       }
@@ -356,7 +356,7 @@ export default function InventoryPage() {
             <AlertDialogDescription className="text-center py-4 font-mono font-bold text-3xl">{pendingBarcode}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-2xl h-12 flex-1">DESCARTAR</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setPendingBarcode(null)} className="rounded-2xl h-12 flex-1">DESCARTAR</AlertDialogCancel>
             <AlertDialogAction onClick={() => { 
               const existing = products?.find(p => p.id === pendingBarcode);
               if (existing) { setSelectedProduct(existing); setIsDialogOpen(true); }
