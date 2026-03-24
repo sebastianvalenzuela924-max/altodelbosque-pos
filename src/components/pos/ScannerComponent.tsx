@@ -6,16 +6,12 @@ import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
 import { Scan, Camera, XCircle, AlertCircle, Loader2, ZoomIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { useToast } from "@/hooks/use-toast";
 
 export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => void }) {
   const [isEnabled, setIsEnabled] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const scannerRef = useRef<Html5Qrcode | null>(null);
-  const lastDetectedText = useRef<string | null>(null);
-  const lastDetectedTime = useRef<number>(0);
-  const { toast } = useToast();
 
   const stopScanner = async () => {
     if (scannerRef.current && scannerRef.current.isScanning) {
@@ -72,10 +68,10 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
         }
 
         const config = {
-          fps: 30,
+          fps: 20,
           qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
             const width = Math.min(viewfinderWidth * 0.85, 450);
-            const height = Math.min(viewfinderHeight * 0.35, 200);
+            const height = Math.min(viewfinderHeight * 0.5, 250);
             return { width, height };
           },
           aspectRatio: 1.0,
@@ -90,13 +86,7 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
           { facingMode: "environment" },
           config,
           (decodedText) => {
-            const now = Date.now();
-            // Evitar duplicados inmediatos muy rápidos (cooldown reducido a 1s para mejor respuesta)
-            if (decodedText === lastDetectedText.current && (now - lastDetectedTime.current < 1000)) {
-              return;
-            }
-            lastDetectedText.current = decodedText;
-            lastDetectedTime.current = now;
+            // El debounce ahora lo maneja el padre para evitar conflictos
             onScan(decodedText);
           },
           () => {} 
@@ -118,7 +108,7 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
         setIsEnabled(false);
         setIsLoading(false);
       }
-    }, 500);
+    }, 300);
   };
 
   useEffect(() => {
@@ -171,7 +161,7 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
       {isEnabled && !isLoading && (
         <>
           <div className="absolute inset-0 pointer-events-none z-20 flex items-center justify-center">
-             <div className="w-[85%] max-w-[450px] h-[35%] max-h-[200px] relative border-2 border-primary/50 rounded-lg bg-primary/5">
+             <div className="w-[85%] max-w-[450px] h-[50%] max-h-[250px] relative border-2 border-primary/50 rounded-lg bg-primary/5">
                 <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-primary"></div>
                 <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-primary"></div>
                 <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-primary"></div>

@@ -2,20 +2,19 @@
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScannerComponent } from "@/components/pos/ScannerComponent";
 import { CalculatorComponent } from "@/components/pos/CalculatorComponent";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
-import { Trash2, PlusCircle, MinusCircle, ShoppingCart, CheckCircle2, Scan, Calculator, Loader2, Clock, RotateCcw, Search, Plus, PackageSearch, Check, ReceiptText } from "lucide-react";
+import { Trash2, PlusCircle, MinusCircle, ShoppingCart, Scan, RotateCcw, Search, Plus, PackageSearch, Check, ReceiptText } from "lucide-react";
 import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { doc, collection, serverTimestamp, increment, query } from "firebase/firestore";
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
 
-// Componente de búsqueda extraído para evitar pérdida de foco al re-renderizar
 function ProductSearchBox({ 
   query, 
   setQuery, 
@@ -154,35 +153,33 @@ export default function POSPage() {
     if (!cleanBarcode || isLoadingInventory || isScanLocked) return;
 
     const now = Date.now();
+    // Debounce de 800ms para evitar lecturas duplicadas accidentales
     if (lastScanRef.current && lastScanRef.current.code === cleanBarcode && (now - lastScanRef.current.time < 800)) {
       return;
     }
 
     lastScanRef.current = { code: cleanBarcode, time: now };
-    setIsScanLocked(true);
     
     const product = productMap.get(cleanBarcode);
 
     if (product) {
       handleAddItem(product);
     } else {
+      // Bloqueo temporal para que el usuario pueda leer el toast sin que sigan llegando errores
+      setIsScanLocked(true);
       toast({ 
         variant: "destructive",
         title: "Producto no encontrado", 
         description: `El código ${cleanBarcode} no existe.`
       });
+      setTimeout(() => setIsScanLocked(false), 2000);
     }
-
-    setTimeout(() => {
-      setIsScanLocked(false);
-    }, 500);
   };
 
   const handleFinalize = (manualFinalAmount?: number) => {
     let currentManualItems = [...manualProducts];
     let currentCartTotal = total;
 
-    // Si viene de la calculadora y hay una diferencia, la tratamos como ajuste manual
     if (manualFinalAmount !== undefined) {
       const diff = Math.round(manualFinalAmount) - Math.round(currentCartTotal);
       if (diff !== 0) {
@@ -296,7 +293,6 @@ export default function POSPage() {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in fade-in duration-500">
-      {/* Columna Izquierda: Escaneo y Búsqueda */}
       <div className="lg:col-span-5 flex flex-col gap-6">
         <section className="space-y-4">
           <div className="flex items-center justify-between px-1">
@@ -336,7 +332,6 @@ export default function POSPage() {
         </section>
       </div>
 
-      {/* Columna Derecha: Terminal Unificado (Caja + Calculadora) */}
       <div className="lg:col-span-7 flex flex-col gap-6">
         <Card className="flex-1 flex flex-col border-none shadow-2xl bg-white overflow-hidden rounded-3xl min-h-[700px]">
           <CardHeader className="bg-primary text-white py-4 md:py-6 relative z-10">
@@ -365,7 +360,6 @@ export default function POSPage() {
           </CardHeader>
 
           <CardContent className="flex-1 p-0 flex flex-col relative bg-slate-50">
-            {/* Lista de productos (Caja) integrada arriba */}
             <ScrollArea className="flex-1 max-h-[350px]">
               <div className="divide-y divide-slate-100">
                 {items.length === 0 && manualProducts.length === 0 && (
@@ -421,7 +415,6 @@ export default function POSPage() {
 
             <Separator className="bg-slate-200" />
 
-            {/* Calculadora y Total integrada abajo */}
             <div className="p-4 sm:p-6 bg-white">
                <CalculatorComponent 
                 baseValue={Math.round(total)} 
