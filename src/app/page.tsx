@@ -224,9 +224,71 @@ export default function POSPage() {
     return <div className="min-h-screen bg-background" />;
   }
 
+  const SearchBoxUI = () => (
+    <Card className="border-none shadow-xl bg-white rounded-3xl overflow-hidden">
+      <CardContent className="p-4 space-y-3">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Input 
+            className="pl-10 h-12 bg-slate-50 border-none rounded-2xl focus-visible:ring-primary shadow-inner font-bold" 
+            placeholder="Ej: Bebida, Pan, Helado..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+
+        {searchQuery.length > 0 && (
+          <div className="space-y-2 animate-in slide-in-from-top-2 duration-300">
+            {searchResults.length > 0 ? (
+              searchResults.map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => {
+                    handleAddItem(p);
+                    setSearchQuery("");
+                  }}
+                  className="w-full flex items-center justify-between p-3 bg-white hover:bg-primary/5 border border-slate-100 rounded-2xl transition-all group active:scale-[0.98]"
+                >
+                  <div className="text-left">
+                    <p className="font-bold text-slate-700 text-sm group-hover:text-primary transition-colors">{p.name}</p>
+                    <p className="text-[9px] font-mono text-slate-400 uppercase tracking-tighter">Stock: {p.stock}</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-primary font-black text-sm">${Math.round(p.price).toLocaleString('es-CL')}</span>
+                    <div className="bg-primary/10 p-2 rounded-xl text-primary group-hover:bg-primary group-hover:text-white transition-colors">
+                      <Plus className="w-3 h-3" />
+                    </div>
+                  </div>
+                </button>
+              ))
+            ) : (
+              <div className="text-center py-4 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Sin coincidencias</p>
+              </div>
+            )}
+          </div>
+        )}
+        
+        {!searchQuery && (
+          <p className="text-[10px] text-center text-slate-400 font-bold uppercase tracking-widest px-4">
+            Busca productos registrados para añadir rápido
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in fade-in duration-500">
-      <div className="lg:col-span-7 flex flex-col h-full gap-4">
+      <div className="lg:col-span-7 flex flex-col h-full gap-6">
+        {/* Búsqueda por Nombre Arriba de la Caja */}
+        <section className="space-y-3">
+          <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 px-1">
+            <PackageSearch className="w-4 h-4" /> Búsqueda Rápida de Inventario
+          </h3>
+          <SearchBoxUI />
+        </section>
+
         <Card className="flex-1 flex flex-col border-none shadow-2xl bg-white overflow-hidden rounded-3xl min-h-[600px]">
           <CardHeader className="bg-primary text-white py-4 md:py-6 relative z-10">
             <div className="flex justify-between items-center gap-4">
@@ -361,62 +423,12 @@ export default function POSPage() {
           </div>
         </section>
 
-        {/* Nueva sección de Búsqueda Manual de Productos del Inventario */}
+        {/* Búsqueda Manual de Productos debajo del Escáner */}
         <section className="space-y-3">
           <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 px-1">
             <PackageSearch className="w-4 h-4" /> Búsqueda por Nombre
           </h3>
-          <Card className="border-none shadow-xl bg-white rounded-3xl overflow-hidden">
-            <CardContent className="p-4 space-y-3">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <Input 
-                  className="pl-10 h-12 bg-slate-50 border-none rounded-2xl focus-visible:ring-primary shadow-inner font-bold" 
-                  placeholder="Ej: Bebida, Pan, Helado..." 
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-
-              {searchQuery.length > 0 && (
-                <div className="space-y-2 animate-in slide-in-from-top-2 duration-300">
-                  {searchResults.length > 0 ? (
-                    searchResults.map((p) => (
-                      <button
-                        key={p.id}
-                        onClick={() => {
-                          handleAddItem(p);
-                          setSearchQuery("");
-                        }}
-                        className="w-full flex items-center justify-between p-3 bg-white hover:bg-primary/5 border border-slate-100 rounded-2xl transition-all group active:scale-[0.98]"
-                      >
-                        <div className="text-left">
-                          <p className="font-bold text-slate-700 text-sm group-hover:text-primary transition-colors">{p.name}</p>
-                          <p className="text-[9px] font-mono text-slate-400 uppercase tracking-tighter">Stock: {p.stock}</p>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className="text-primary font-black text-sm">${Math.round(p.price).toLocaleString('es-CL')}</span>
-                          <div className="bg-primary/10 p-2 rounded-xl text-primary group-hover:bg-primary group-hover:text-white transition-colors">
-                            <Plus className="w-3 h-3" />
-                          </div>
-                        </div>
-                      </button>
-                    ))
-                  ) : (
-                    <div className="text-center py-4 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
-                      <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Sin coincidencias</p>
-                    </div>
-                  )}
-                </div>
-              )}
-              
-              {!searchQuery && (
-                <p className="text-[10px] text-center text-slate-400 font-bold uppercase tracking-widest px-4">
-                  Busca productos registrados para añadir rápido
-                </p>
-              )}
-            </CardContent>
-          </Card>
+          <SearchBoxUI />
         </section>
 
         <section className="space-y-4">
