@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
@@ -55,7 +56,6 @@ export default function ReportsPage() {
       }
 
       if (dateFilter === "custom" && customDate) {
-        // customDate viene en formato YYYY-MM-DD
         const [year, month, day] = customDate.split('-').map(Number);
         const selectedDate = new Date(year, month - 1, day);
         return saleDate.toDateString() === selectedDate.toDateString();

@@ -178,7 +178,6 @@ export default function InventoryPage() {
                       <DropdownMenuTrigger asChild>
                         <button 
                           type="button" 
-                          onClick={(e) => e.stopPropagation()}
                           className="flex items-center gap-2 font-black uppercase text-[10px] tracking-widest hover:text-primary transition-colors focus:outline-none"
                         >
                           Nombre
@@ -199,7 +198,6 @@ export default function InventoryPage() {
                       <DropdownMenuTrigger asChild>
                         <button 
                           type="button" 
-                          onClick={(e) => e.stopPropagation()}
                           className="flex items-center gap-2 font-black uppercase text-[10px] tracking-widest hover:text-primary transition-colors focus:outline-none"
                         >
                           Categoría
@@ -235,7 +233,6 @@ export default function InventoryPage() {
                       <DropdownMenuTrigger asChild>
                         <button 
                           type="button" 
-                          onClick={(e) => e.stopPropagation()}
                           className="flex items-center gap-2 font-black uppercase text-[10px] tracking-widest hover:text-primary transition-colors focus:outline-none"
                         >
                           Precio
@@ -260,7 +257,6 @@ export default function InventoryPage() {
                         <DropdownMenuTrigger asChild>
                           <button 
                             type="button" 
-                            onClick={(e) => e.stopPropagation()}
                             className="flex items-center gap-2 font-black uppercase text-[10px] tracking-widest hover:text-primary transition-colors focus:outline-none"
                           >
                             Stock
@@ -285,7 +281,6 @@ export default function InventoryPage() {
                       <DropdownMenuTrigger asChild>
                         <button 
                           type="button" 
-                          onClick={(e) => e.stopPropagation()}
                           className="flex items-center gap-2 font-black uppercase text-[10px] tracking-widest hover:text-primary transition-colors focus:outline-none"
                         >
                           Estado
