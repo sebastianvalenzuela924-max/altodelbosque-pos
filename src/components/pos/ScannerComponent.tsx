@@ -32,31 +32,27 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
     setIsLoading(true);
     setIsEnabled(true);
 
+    // Pequeño delay para asegurar que el div "qr-reader" esté montado
     setTimeout(async () => {
       try {
         if (!scannerRef.current) {
           scannerRef.current = new Html5Qrcode("qr-reader");
         }
 
-        // Configuración optimizada para mayor distancia y nitidez
         const config = {
-          fps: 20, // Mayor frecuencia de escaneo
+          fps: 15,
           qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
-            // Área de escaneo ancha y más grande para facilitar detección lejana
-            const width = Math.min(viewfinderWidth * 0.85, 450);
-            const height = Math.min(viewfinderHeight * 0.45, 250);
+            // Área de escaneo ancha ideal para códigos de barras
+            const width = Math.min(viewfinderWidth * 0.8, 400);
+            const height = Math.min(viewfinderHeight * 0.4, 200);
             return { width, height };
           },
-          aspectRatio: 1.777778, // Forzar 16:9 para mejor campo de visión
+          aspectRatio: 1.777778, // Sugerir 16:9
         };
 
+        // Usamos una configuración de cámara más compatible para evitar errores de hardware
         await scannerRef.current.start(
-          { 
-            facingMode: "environment",
-            // Solicitamos resolución HD para permitir detección desde más lejos
-            width: { min: 640, ideal: 1280, max: 1920 },
-            height: { min: 480, ideal: 720, max: 1080 }
-          },
+          { facingMode: "environment" },
           config,
           (decodedText) => {
             onScan(decodedText);
@@ -66,16 +62,16 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
         setIsLoading(false);
       } catch (err: any) {
         console.error("Error iniciando escáner:", err);
-        setError(err.message || "No se pudo acceder a la cámara.");
+        setError("No se pudo acceder a la cámara. Asegúrate de dar los permisos necesarios.");
         setIsEnabled(false);
         setIsLoading(false);
         toast({
           variant: "destructive",
           title: "Error de Cámara",
-          description: "Permite el acceso a la cámara y asegúrate de estar en un sitio iluminado.",
+          description: "Por favor, permite el acceso a la cámara en los ajustes del navegador.",
         });
       }
-    }, 300);
+    }, 500);
   };
 
   useEffect(() => {
@@ -98,7 +94,7 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
           <div className="space-y-1">
             <h3 className="text-white font-bold text-lg">Escáner de Barra</h3>
             <p className="text-slate-400 text-xs px-4">
-              Enfoca el código de barras. No acerques demasiado el teléfono para evitar desenfoque.
+              Enfoca el código de barras dentro del recuadro.
             </p>
           </div>
           
@@ -116,7 +112,7 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
           </Button>
           
           {error && (
-            <Alert variant="destructive" className="mt-4">
+            <Alert variant="destructive" className="mt-4 mx-4">
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>Error</AlertTitle>
               <AlertDescription className="text-[10px]">{error}</AlertDescription>
@@ -129,7 +125,7 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
         <>
           <div className="absolute inset-0 pointer-events-none z-20">
              <div className="absolute inset-0 border-[30px] border-black/40 flex items-center justify-center">
-                <div className="w-[85%] max-w-[450px] h-[45%] max-h-[250px] relative border-2 border-primary/50 rounded-lg bg-primary/5">
+                <div className="w-[85%] max-w-[400px] h-[45%] max-h-[200px] relative border-2 border-primary/50 rounded-lg bg-primary/5">
                     <div className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-primary"></div>
                     <div className="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-primary"></div>
                     <div className="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-primary"></div>
