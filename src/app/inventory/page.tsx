@@ -174,7 +174,7 @@ export default function InventoryPage() {
                   
                   {/* Nombre */}
                   <TableHead className="px-6">
-                    <DropdownMenu>
+                    <DropdownMenu modal={false}>
                       <DropdownMenuTrigger asChild>
                         <button 
                           type="button" 
@@ -184,7 +184,7 @@ export default function InventoryPage() {
                           <ChevronDown className="w-3 h-3" />
                         </button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start" className="rounded-xl border-none shadow-2xl p-1 z-50">
+                      <DropdownMenuContent align="start" className="rounded-xl border-none shadow-2xl p-1 z-[100]">
                         <DropdownMenuItem onClick={() => setSortBy("name")} className="rounded-lg font-bold text-xs py-2 cursor-pointer">
                           <ArrowUp className="w-3 h-3 mr-2" /> Ordenar A-Z
                         </DropdownMenuItem>
@@ -194,7 +194,7 @@ export default function InventoryPage() {
 
                   {/* Categoría */}
                   <TableHead className="px-6">
-                    <DropdownMenu>
+                    <DropdownMenu modal={false}>
                       <DropdownMenuTrigger asChild>
                         <button 
                           type="button" 
@@ -204,7 +204,7 @@ export default function InventoryPage() {
                           <ChevronDown className="w-3 h-3" />
                         </button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start" className="rounded-xl border-none shadow-2xl p-1 max-h-64 overflow-y-auto z-50">
+                      <DropdownMenuContent align="start" className="rounded-xl border-none shadow-2xl p-1 max-h-64 overflow-y-auto z-[100]">
                         <DropdownMenuLabel className="text-[9px] font-black uppercase opacity-40 px-3 py-1.5 tracking-widest">Filtrar por</DropdownMenuLabel>
                         <DropdownMenuItem onClick={() => setCategoryFilter("all")} className="rounded-lg font-bold text-xs py-2 cursor-pointer">
                           <ListFilter className="w-3 h-3 mr-2" /> Todas
@@ -229,7 +229,7 @@ export default function InventoryPage() {
                   
                   {/* Precio */}
                   <TableHead className="px-6">
-                    <DropdownMenu>
+                    <DropdownMenu modal={false}>
                       <DropdownMenuTrigger asChild>
                         <button 
                           type="button" 
@@ -239,7 +239,7 @@ export default function InventoryPage() {
                           <ChevronDown className="w-3 h-3" />
                         </button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start" className="rounded-xl border-none shadow-2xl p-1 z-50">
+                      <DropdownMenuContent align="start" className="rounded-xl border-none shadow-2xl p-1 z-[100]">
                         <DropdownMenuItem onClick={() => setSortBy("price-asc")} className="rounded-lg font-bold text-xs py-2 cursor-pointer">
                           <ArrowUp className="w-3 h-3 mr-2" /> Menor a Mayor
                         </DropdownMenuItem>
@@ -253,7 +253,7 @@ export default function InventoryPage() {
                   {/* Stock */}
                   <TableHead className="px-6 text-center">
                     <div className="flex justify-center">
-                      <DropdownMenu>
+                      <DropdownMenu modal={false}>
                         <DropdownMenuTrigger asChild>
                           <button 
                             type="button" 
@@ -263,7 +263,7 @@ export default function InventoryPage() {
                             <ChevronDown className="w-3 h-3" />
                           </button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="center" className="rounded-xl border-none shadow-2xl p-1 z-50">
+                        <DropdownMenuContent align="center" className="rounded-xl border-none shadow-2xl p-1 z-[100]">
                           <DropdownMenuItem onClick={() => setSortBy("stock-asc")} className="rounded-lg font-bold text-xs py-2 cursor-pointer">
                             <ArrowUp className="w-3 h-3 mr-2" /> Menor Stock
                           </DropdownMenuItem>
@@ -277,7 +277,7 @@ export default function InventoryPage() {
 
                   {/* Estado */}
                   <TableHead className="px-6">
-                    <DropdownMenu>
+                    <DropdownMenu modal={false}>
                       <DropdownMenuTrigger asChild>
                         <button 
                           type="button" 
@@ -287,7 +287,7 @@ export default function InventoryPage() {
                           <ChevronDown className="w-3 h-3" />
                         </button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start" className="rounded-xl border-none shadow-2xl p-1 z-50">
+                      <DropdownMenuContent align="start" className="rounded-xl border-none shadow-2xl p-1 z-[100]">
                         <DropdownMenuItem onClick={() => setSortBy("status-critical")} className="rounded-lg font-black text-xs py-2 text-destructive hover:text-destructive cursor-pointer">
                           <AlertTriangle className="w-3 h-3 mr-2" /> Ver Críticos Primero
                         </DropdownMenuItem>
