@@ -22,6 +22,7 @@ export function CalculatorComponent({
   const [display, setDisplay] = useState(Math.round(baseValue).toString());
   const [equation, setEquation] = useState("");
   const [isReset, setIsReset] = useState(true);
+  const [startedFromBase, setStartedFromBase] = useState(true);
   
   // Estados para el cálculo de vuelto
   const [isCashMode, setIsCashMode] = useState(false);
@@ -29,10 +30,11 @@ export function CalculatorComponent({
 
   // Sincronizar con el valor base de la caja (total del carrito)
   useEffect(() => {
-    if (isReset && !isCashMode) {
+    if (isReset && !isCashMode && equation === "") {
       setDisplay(Math.round(baseValue).toString());
+      setStartedFromBase(true);
     }
-  }, [baseValue, isReset, isCashMode]);
+  }, [baseValue, isReset, isCashMode, equation]);
 
   const handleNumber = (n: string) => {
     if (isCashMode) {
@@ -43,6 +45,8 @@ export function CalculatorComponent({
     if (isReset) {
       setDisplay(n);
       setIsReset(false);
+      // Si el usuario empieza a escribir, ya no es solo el monto de caja puro
+      if (equation === "") setStartedFromBase(false);
     } else {
       setDisplay(display === "0" ? n : display + n);
     }
@@ -50,13 +54,11 @@ export function CalculatorComponent({
 
   const handleOperator = (op: string) => {
     if (isCashMode) return;
-    // Si ya hay una ecuación, la calculamos primero para seguir sumando
-    if (equation && !isReset) {
-      const result = calculateResult();
-      setEquation(result + " " + op + " ");
-    } else {
-      setEquation(display + " " + op + " ");
-    }
+    
+    // Si no hay nada en la ecuación, añadimos lo que hay en display
+    // Si isReset es true y no hay ecuación, significa que estamos usando el valor base
+    const currentVal = display;
+    setEquation(prev => prev + currentVal + " " + op + " ");
     setDisplay("0");
     setIsReset(true);
   };
@@ -64,9 +66,11 @@ export function CalculatorComponent({
   const calculateResult = () => {
     if (!equation) return parseInt(display || "0");
     try {
+      // Limpiamos la ecuación para eval
       const fullEq = equation + (isReset ? "0" : display);
+      const sanitizedEq = fullEq.replace(/×/g, '*').replace(/÷/g, '/');
       // eslint-disable-next-line no-eval
-      const result = eval(fullEq.replace('×', '*').replace('÷', '/'));
+      const result = eval(sanitizedEq);
       return Math.round(result);
     } catch (e) {
       return parseInt(display || "0");
@@ -79,6 +83,7 @@ export function CalculatorComponent({
     setDisplay(result.toString());
     setEquation("");
     setIsReset(false);
+    setStartedFromBase(false);
   };
 
   const clear = () => {
@@ -89,6 +94,7 @@ export function CalculatorComponent({
     setDisplay(Math.round(baseValue).toString());
     setEquation("");
     setIsReset(true);
+    setStartedFromBase(true);
   };
 
   const forceZero = () => {
@@ -97,6 +103,7 @@ export function CalculatorComponent({
     setIsReset(false);
     setIsCashMode(false);
     setCashReceived("");
+    setStartedFromBase(false);
   };
 
   const handleFinalizeNormal = () => {
@@ -107,6 +114,7 @@ export function CalculatorComponent({
       setDisplay("0"); 
       setIsCashMode(false);
       setCashReceived("");
+      setStartedFromBase(false);
       onFinalize(amount);
     }
   };
@@ -125,39 +133,47 @@ export function CalculatorComponent({
   const receivedAmount = parseInt(cashReceived || "0");
   const changeAmount = receivedAmount > 0 ? receivedAmount - totalToPay : 0;
   
-  // Determinar si lo que se muestra es puramente el monto de la caja
-  const isOnlyBaseValue = isReset && !equation && parseInt(display) === Math.round(baseValue) && baseValue > 0;
+  // Determinar si lo que se muestra inicialmente es el monto de la caja
+  const isShowingBaseValue = startedFromBase && equation === "" && isReset;
 
   return (
     <Card className="h-full border-none shadow-none bg-transparent">
       <CardContent className="p-0 space-y-4">
         {/* Pantalla de la Calculadora */}
         <div className={cn(
-          "rounded-xl p-4 shadow-inner border text-right transition-all duration-300 min-h-[100px] flex flex-col justify-end",
-          isCashMode ? "bg-green-50 border-green-200" : isOnlyBaseValue ? "bg-primary/5 border-primary/20" : "bg-white"
+          "rounded-xl p-4 shadow-inner border text-right transition-all duration-300 min-h-[120px] flex flex-col justify-end",
+          isCashMode ? "bg-green-50 border-green-200" : isShowingBaseValue ? "bg-primary/10 border-primary/30" : "bg-white"
         )}>
           {!isCashMode ? (
             <>
               <div className="flex justify-between items-center mb-1">
                 <div className="flex items-center gap-1">
-                  {isOnlyBaseValue && (
+                  {isShowingBaseValue && (
                     <span className="text-[9px] font-black bg-primary text-white px-2 py-0.5 rounded-full uppercase tracking-widest animate-pulse">
                       Monto de Caja
                     </span>
                   )}
                   {equation && (
                     <span className="text-[9px] font-black bg-slate-200 text-slate-500 px-2 py-0.5 rounded-full uppercase tracking-widest">
-                      Operación
+                      Operación en curso
                     </span>
                   )}
                 </div>
-                <div className="text-[10px] text-muted-foreground font-mono uppercase font-black tracking-widest">
+                <div className="text-[10px] text-muted-foreground font-mono uppercase font-black tracking-widest max-w-[200px] truncate">
                   {equation || "Calculadora"}
                 </div>
               </div>
+              
+              {/* Historial de la suma arriba del número principal */}
+              {equation && (
+                <div className="text-xs font-mono text-slate-400 mb-1 overflow-hidden text-ellipsis whitespace-nowrap">
+                  {equation}
+                </div>
+              )}
+
               <div className={cn(
-                "text-3xl font-black font-mono truncate transition-colors",
-                isOnlyBaseValue ? "text-primary" : "text-slate-700"
+                "text-3xl sm:text-4xl font-black font-mono truncate transition-colors",
+                isShowingBaseValue ? "text-primary" : "text-slate-700"
               )}>
                 ${parseInt(display || "0").toLocaleString('es-CL')}
               </div>
@@ -189,7 +205,7 @@ export function CalculatorComponent({
         <div className="flex gap-2">
           <Button variant="outline" className="flex-1 h-10 text-[10px] font-black uppercase tracking-widest rounded-xl border-primary/30" onClick={clear}>
             <RotateCcw className="w-3 h-3 mr-2 text-primary" />
-            {isCashMode ? "Limpiar Pago" : "Monto caja"}
+            Monto caja
           </Button>
           <Button variant="outline" className="flex-1 h-10 text-[10px] font-black uppercase tracking-widest rounded-xl border-destructive/30" onClick={forceZero}>
             <Trash2 className="w-3 h-3 mr-2 text-destructive" />
