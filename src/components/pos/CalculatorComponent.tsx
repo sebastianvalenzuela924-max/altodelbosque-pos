@@ -1,17 +1,15 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Calculator, Plus, Minus, X, Divide, ChevronRight, CornerDownLeft } from "lucide-react";
+import { Calculator, Plus, Minus, X, Divide, CornerDownLeft, Trash2, Hash } from "lucide-react";
 
 export function CalculatorComponent({ baseValue, onResult }: { baseValue: number, onResult: (amount: number) => void }) {
   const [display, setDisplay] = useState(Math.round(baseValue).toString());
   const [equation, setEquation] = useState("");
   const [isReset, setIsReset] = useState(true);
 
-  // Sincronizar con el total de la caja cuando este cambia
   useEffect(() => {
     if (isReset) {
       setDisplay(Math.round(baseValue).toString());
@@ -41,7 +39,7 @@ export function CalculatorComponent({ baseValue, onResult }: { baseValue: number
       setEquation("");
       setIsReset(false);
     } catch (e) {
-      setDisplay("Error");
+      setDisplay("0");
     }
   };
 
@@ -51,18 +49,35 @@ export function CalculatorComponent({ baseValue, onResult }: { baseValue: number
     setIsReset(true);
   };
 
+  const forceZero = () => {
+    setDisplay("0");
+    setEquation("");
+    setIsReset(false);
+  };
+
   return (
     <Card className="h-full border-none shadow-none bg-transparent">
       <CardContent className="p-0 space-y-3">
         <div className="bg-white rounded-xl p-4 shadow-inner border text-right">
-          <div className="text-xs text-muted-foreground h-4">{equation}</div>
-          <div className="text-3xl font-bold font-mono text-primary truncate">
-            {parseInt(display).toLocaleString('es-CL')}
+          <div className="text-[10px] text-muted-foreground h-4 uppercase font-black tracking-widest">{equation || "Calculando"}</div>
+          <div className="text-3xl font-black font-mono text-primary truncate mt-1">
+            ${parseInt(display).toLocaleString('es-CL')}
           </div>
         </div>
 
+        <div className="flex gap-2 mb-2">
+          <Button variant="outline" className="flex-1 h-10 text-[10px] font-black uppercase tracking-widest" onClick={clear}>
+            <Hash className="w-3 h-3 mr-2 text-primary" />
+            Base Caja
+          </Button>
+          <Button variant="outline" className="flex-1 h-10 text-[10px] font-black uppercase tracking-widest" onClick={forceZero}>
+            <Trash2 className="w-3 h-3 mr-2 text-destructive" />
+            Empezar 0
+          </Button>
+        </div>
+
         <div className="grid grid-cols-4 gap-2">
-          <Button variant="outline" className="h-14 text-lg font-bold" onClick={clear}>C</Button>
+          <Button variant="secondary" className="h-14 text-lg font-bold" onClick={() => setDisplay("0")}>CE</Button>
           <Button variant="outline" className="h-14 text-lg font-bold" onClick={() => handleOperator("÷")}><Divide className="w-5 h-5"/></Button>
           <Button variant="outline" className="h-14 text-lg font-bold" onClick={() => handleOperator("×")}><X className="w-5 h-5"/></Button>
           <Button variant="outline" className="h-14 text-lg font-bold" onClick={() => handleOperator("-")}><Minus className="w-5 h-5"/></Button>
@@ -86,7 +101,7 @@ export function CalculatorComponent({ baseValue, onResult }: { baseValue: number
         </div>
 
         <Button 
-          className="w-full h-16 text-lg font-bold bg-primary hover:bg-primary/90 rounded-xl shadow-lg"
+          className="w-full h-16 text-lg font-bold bg-primary hover:bg-primary/90 rounded-2xl shadow-lg mt-2"
           onClick={() => {
             const amount = parseInt(display);
             if (!isNaN(amount)) {

@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
@@ -7,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ScannerComponent } from "@/components/pos/ScannerComponent";
 import { CalculatorComponent } from "@/components/pos/CalculatorComponent";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Trash2, PlusCircle, MinusCircle, ShoppingCart, CheckCircle2, Scan, Calculator, Loader2, AlertCircle, Clock } from "lucide-react";
+import { Trash2, PlusCircle, MinusCircle, ShoppingCart, CheckCircle2, Scan, Calculator, Loader2, Clock, RotateCcw } from "lucide-react";
 import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { doc, collection, serverTimestamp, increment, query } from "firebase/firestore";
@@ -126,6 +125,12 @@ export default function POSPage() {
     setManualProducts(prev => prev.filter((_, i) => i !== index));
   };
 
+  const handleClearCart = () => {
+    setItems([]);
+    setManualProducts([]);
+    toast({ title: "Caja Vaciada", description: "Se han eliminado todos los items." });
+  };
+
   const total = useMemo(() => {
     return items.reduce((sum, item) => sum + (item.price * item.quantity), 0) +
            manualProducts.reduce((sum, item) => sum + item.amount, 0);
@@ -192,10 +197,23 @@ export default function POSPage() {
         <Card className="flex-1 flex flex-col border-none shadow-2xl bg-white overflow-hidden rounded-3xl min-h-[600px]">
           <CardHeader className="bg-primary text-white py-6">
             <div className="flex justify-between items-center">
-              <CardTitle className="text-2xl flex items-center gap-3">
-                <ShoppingCart className="w-8 h-8" />
-                Caja Registradora
-              </CardTitle>
+              <div className="flex items-center gap-4">
+                <CardTitle className="text-2xl flex items-center gap-3">
+                  <ShoppingCart className="w-8 h-8" />
+                  Caja Registradora
+                </CardTitle>
+                {(items.length > 0 || manualProducts.length > 0) && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={handleClearCart}
+                    className="bg-white/10 hover:bg-white/20 text-white border-none rounded-full px-4 h-8 text-[10px] font-black uppercase tracking-widest"
+                  >
+                    <RotateCcw className="w-3 h-3 mr-2" />
+                    Vaciar
+                  </Button>
+                )}
+              </div>
               <div className="flex flex-col items-end">
                 <span className="text-xs uppercase font-bold opacity-70">Terminal Activo</span>
                 <span className="text-sm font-mono tracking-widest">
