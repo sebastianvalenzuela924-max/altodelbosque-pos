@@ -135,6 +135,16 @@ export default function InventoryPage() {
     setQuickStockProduct(null);
   };
 
+  // Función para manejar el escaneo con retardo para evitar bloqueos de UI
+  const handleScanResult = (barcode: string) => {
+    setIsScannerOpen(false);
+    // Damos un pequeño respiro al DOM (300ms) para que el primer modal se cierre completamente
+    // Esto evita que Radix UI deje el puntero bloqueado o impida reabrir el escáner.
+    setTimeout(() => {
+      setPendingBarcode(barcode);
+    }, 300);
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -345,11 +355,11 @@ export default function InventoryPage() {
             <DialogTitle>Escáner de Inventario</DialogTitle>
             <DialogDescription>Escanea un código de barras para buscar o registrar un producto.</DialogDescription>
           </DialogHeader>
-          <ScannerComponent onScan={(b) => { setPendingBarcode(b); setIsScannerOpen(false); }} />
+          <ScannerComponent onScan={handleScanResult} />
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={!!pendingBarcode} onOpenChange={() => setPendingBarcode(null)}>
+      <AlertDialog open={!!pendingBarcode} onOpenChange={(open) => { if(!open) setPendingBarcode(null); }}>
         <AlertDialogContent className="rounded-3xl p-8 max-w-[90vw] sm:max-w-lg">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-2xl font-black">Código Detectado</AlertDialogTitle>
