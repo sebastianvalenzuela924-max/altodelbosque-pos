@@ -94,46 +94,48 @@ export function QuickAddDialog({
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-[95vw] sm:max-w-md border-none shadow-2xl rounded-3xl p-0 overflow-hidden max-h-[90vh] flex flex-col">
-        <DialogHeader className="p-6 pb-2">
+        <DialogHeader className="p-6 pb-2 shrink-0">
           <DialogTitle className="flex items-center gap-3 text-2xl font-black text-primary">
             <Barcode className="w-6 h-6" />
             Nuevo Producto
           </DialogTitle>
         </DialogHeader>
         
-        <ScrollArea className="flex-1 px-6">
-          <div className="grid gap-5 py-4">
-            <Button variant="outline" className="w-full flex items-center justify-center gap-2 h-12 border-accent text-accent font-bold" onClick={handleAI} disabled={loading}>
-              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
-              Auto-completar con IA
-            </Button>
+        <div className="flex-1 min-h-0">
+          <ScrollArea className="h-full">
+            <div className="px-6 py-4 grid gap-5">
+              <Button variant="outline" className="w-full flex items-center justify-center gap-2 h-12 border-accent text-accent font-bold" onClick={handleAI} disabled={loading}>
+                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
+                Auto-completar con IA
+              </Button>
 
-            <div className="space-y-4">
-              <div className="grid gap-2">
-                  <Label className="font-bold text-xs uppercase text-slate-500">Nombre</Label>
-                  <Input className="h-12 rounded-xl bg-slate-50 border-none font-bold" value={name} onChange={e => setName(e.target.value)} placeholder="Ej: Coca Cola" />
-              </div>
+              <div className="space-y-4">
+                <div className="grid gap-2">
+                    <Label className="font-bold text-xs uppercase text-slate-500">Nombre</Label>
+                    <Input className="h-12 rounded-xl bg-slate-50 border-none font-bold" value={name} onChange={e => setName(e.target.value)} placeholder="Ej: Coca Cola" />
+                </div>
 
-              <div className="grid gap-2">
-                  <Label className="font-bold text-xs uppercase text-slate-500">Categoría</Label>
-                  <Input value={category} className="h-12 rounded-xl bg-slate-50 border-none font-bold" onChange={e => setCategory(e.target.value)} placeholder="Categoría..." />
-              </div>
+                <div className="grid gap-2">
+                    <Label className="font-bold text-xs uppercase text-slate-500">Categoría</Label>
+                    <Input value={category} className="h-12 rounded-xl bg-slate-50 border-none font-bold" onChange={e => setCategory(e.target.value)} placeholder="Categoría..." />
+                </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                  <div className="grid gap-2">
-                    <Label className="font-bold text-xs uppercase text-slate-500">Precio ($)</Label>
-                    <Input type="number" className="h-12 rounded-xl bg-slate-50 border-none font-black" value={price} onChange={e => setPrice(e.target.value)} />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label className="font-bold text-xs uppercase text-slate-500">Normal (Ideal)</Label>
-                    <Input type="number" className="h-12 rounded-xl bg-primary/5 border-none font-black text-primary" value={idealStock} onChange={e => setIdealStock(e.target.value)} />
-                  </div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="grid gap-2">
+                      <Label className="font-bold text-xs uppercase text-slate-500">Precio ($)</Label>
+                      <Input type="number" className="h-12 rounded-xl bg-slate-50 border-none font-black" value={price} onChange={e => setPrice(e.target.value)} />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label className="font-bold text-xs uppercase text-slate-500">Normal (Ideal)</Label>
+                      <Input type="number" className="h-12 rounded-xl bg-primary/5 border-none font-black text-primary" value={idealStock} onChange={e => setIdealStock(e.target.value)} />
+                    </div>
+                </div>
               </div>
             </div>
-          </div>
-        </ScrollArea>
+          </ScrollArea>
+        </div>
 
-        <DialogFooter className="flex gap-2 p-6 pt-2 mt-auto bg-white border-t">
+        <DialogFooter className="flex gap-2 p-6 pt-2 mt-auto bg-white border-t shrink-0">
           <Button variant="ghost" className="rounded-xl flex-1" onClick={onClose}>Descartar</Button>
           <Button className="rounded-xl flex-1 bg-primary font-black h-12" onClick={handleSave}>REGISTRAR</Button>
         </DialogFooter>

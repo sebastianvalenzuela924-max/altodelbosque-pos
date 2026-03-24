@@ -283,32 +283,34 @@ export default function InventoryPage() {
           className="rounded-3xl border-none shadow-2xl max-w-[90vw] sm:max-w-sm p-0 overflow-hidden max-h-[90vh] flex flex-col"
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
-          <DialogHeader className="p-6 pb-2">
+          <DialogHeader className="p-6 pb-2 shrink-0">
             <DialogTitle className="flex items-center gap-2 text-xl font-black text-primary uppercase tracking-tighter">
               <PackagePlus className="w-6 h-6" />
               Carga Rápida
             </DialogTitle>
           </DialogHeader>
-          <ScrollArea className="flex-1 px-6">
-            <div className="space-y-4 py-4">
-              <div className="text-center">
-                <p className="font-bold text-slate-600 truncate">{quickStockProduct?.name}</p>
-                <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mt-1">Stock Actual: {quickStockProduct?.stock}</p>
+          <div className="flex-1 min-h-0">
+            <ScrollArea className="h-full">
+              <div className="space-y-4 px-6 py-4">
+                <div className="text-center">
+                  <p className="font-bold text-slate-600 truncate">{quickStockProduct?.name}</p>
+                  <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mt-1">Stock Actual: {quickStockProduct?.stock}</p>
+                </div>
+                <div className="grid gap-2">
+                  <Label className="font-black text-[10px] uppercase text-slate-400 tracking-widest text-center">¿Cuánto vas a sumar?</Label>
+                  <Input 
+                    type="number" 
+                    className="h-16 rounded-2xl bg-primary/5 border-none text-center text-4xl font-black text-primary focus-visible:ring-primary" 
+                    placeholder="+0"
+                    value={quickAddValue}
+                    onChange={e => setQuickAddValue(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleQuickAdd()}
+                  />
+                </div>
               </div>
-              <div className="grid gap-2">
-                <Label className="font-black text-[10px] uppercase text-slate-400 tracking-widest text-center">¿Cuánto vas a sumar?</Label>
-                <Input 
-                  type="number" 
-                  className="h-16 rounded-2xl bg-primary/5 border-none text-center text-4xl font-black text-primary focus-visible:ring-primary" 
-                  placeholder="+0"
-                  value={quickAddValue}
-                  onChange={e => setQuickAddValue(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleQuickAdd()}
-                />
-              </div>
-            </div>
-          </ScrollArea>
-          <DialogFooter className="grid grid-cols-2 gap-2 p-6 pt-2 bg-white border-t">
+            </ScrollArea>
+          </div>
+          <DialogFooter className="grid grid-cols-2 gap-2 p-6 pt-2 bg-white border-t shrink-0">
             <Button variant="ghost" onClick={() => setQuickStockProduct(null)} className="rounded-xl h-12 font-bold uppercase text-[10px]">Cancelar</Button>
             <Button onClick={handleQuickAdd} className="bg-primary hover:bg-primary/90 rounded-xl h-12 font-black uppercase text-[10px] shadow-lg shadow-primary/20">
               Añadir
