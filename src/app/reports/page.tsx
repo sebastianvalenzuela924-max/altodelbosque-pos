@@ -311,8 +311,8 @@ export default function ReportsPage() {
                     <AccordionContent className="px-6 pb-6 pt-2 bg-slate-50/50">
                       <div className="grid gap-2 mt-2">
                         <div className="flex items-center justify-between px-2 mb-2">
-                          <span className="text-[10px] font-black uppercase text-slate-400">Desempeño por producto</span>
-                          <span className="text-[10px] font-bold text-slate-400">Unidades vendidas: {cat.unitsSold}</span>
+                          <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Desempeño por producto</span>
+                          <span className="text-[10px] font-bold text-slate-400">Total unidades: {cat.unitsSold}</span>
                         </div>
                         {cat.products.map((p: any) => {
                           const status = getProductStatus(p.stock, p.idealStock);
@@ -322,26 +322,33 @@ export default function ReportsPage() {
                               "bg-white p-4 rounded-2xl flex items-center justify-between border transition-all",
                               status === 'danger' ? "border-red-200 shadow-sm" : "border-slate-100"
                             )}>
-                              <div className="flex items-center gap-3">
+                              <div className="flex items-center gap-3 flex-1 min-w-0">
                                 {status === 'danger' ? <ShieldAlert className="w-5 h-5 text-destructive" /> : 
                                  status === 'warning' ? <AlertTriangle className="w-5 h-5 text-amber-500" /> : 
                                  <ShieldCheck className="w-5 h-5 text-green-500" />}
-                                <div>
-                                  <p className="font-bold text-sm text-slate-700">{p.name}</p>
-                                  <div className="flex flex-col gap-0.5">
-                                    <p className="text-[9px] text-slate-400 font-bold uppercase">
-                                      Stock: <span className={cn(status === 'danger' ? "text-destructive font-black" : "text-slate-500")}>{p.stock}</span> / Normal: {p.idealStock}
-                                    </p>
-                                    <p className="text-[9px] text-primary font-black uppercase tracking-widest flex items-center gap-1">
-                                      <ShoppingBag className="w-2 h-2" />
-                                      Llevados: {p.soldThisPeriod} u.
-                                    </p>
-                                  </div>
+                                <div className="min-w-0">
+                                  <p className="font-bold text-sm text-slate-700 truncate">{p.name}</p>
+                                  <p className="text-[10px] text-slate-400 font-bold uppercase">
+                                    Stock: <span className={cn(status === 'danger' ? "text-destructive font-black" : "text-slate-500")}>{p.stock}</span> / Ideal: {p.idealStock}
+                                  </p>
                                 </div>
                               </div>
-                              <div className="text-right">
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Ingreso Total</p>
-                                <p className="text-sm font-black text-slate-700 font-mono">${productTotalRevenue.toLocaleString('es-CL')}</p>
+                              
+                              <div className="flex items-center gap-6 text-right shrink-0">
+                                <div className="flex flex-col items-end">
+                                  <p className="text-[9px] font-black text-primary uppercase tracking-widest mb-0.5">Llevados</p>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-2xl font-black text-primary leading-none">{p.soldThisPeriod}</span>
+                                    <span className="text-[10px] font-black text-primary/60 uppercase">u.</span>
+                                  </div>
+                                </div>
+                                
+                                <div className="flex flex-col items-end min-w-[100px]">
+                                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Ingreso Total</p>
+                                  <p className="text-lg font-black text-slate-800 font-mono leading-none tracking-tighter">
+                                    ${productTotalRevenue.toLocaleString('es-CL')}
+                                  </p>
+                                </div>
                               </div>
                             </div>
                           );
@@ -408,4 +415,3 @@ export default function ReportsPage() {
     </div>
   );
 }
-
