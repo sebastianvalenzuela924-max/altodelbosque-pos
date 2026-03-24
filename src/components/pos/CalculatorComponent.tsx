@@ -1,9 +1,10 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus, Minus, X, Divide, CheckCircle2, Trash2, Hash, Loader2, RotateCcw, Calculator } from "lucide-react";
+import { Plus, Minus, X, Divide, CheckCircle2, Trash2, Hash, Loader2, RotateCcw, Calculator, Banknote, Delete } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface CalculatorComponentProps {
@@ -22,15 +23,24 @@ export function CalculatorComponent({
   const [display, setDisplay] = useState(Math.round(baseValue).toString());
   const [equation, setEquation] = useState("");
   const [isReset, setIsReset] = useState(true);
+  
+  // Estados para el cálculo de vuelto
+  const [isCashMode, setIsCashMode] = useState(false);
+  const [cashReceived, setCashReceived] = useState("");
 
   // Sincronizar con el valor base de la caja (total del carrito)
   useEffect(() => {
-    if (isReset) {
+    if (isReset && !isCashMode) {
       setDisplay(Math.round(baseValue).toString());
     }
-  }, [baseValue, isReset]);
+  }, [baseValue, isReset, isCashMode]);
 
   const handleNumber = (n: string) => {
+    if (isCashMode) {
+      setCashReceived(prev => prev === "0" ? n : prev + n);
+      return;
+    }
+
     if (isReset) {
       setDisplay(n);
       setIsReset(false);
@@ -40,6 +50,7 @@ export function CalculatorComponent({
   };
 
   const handleOperator = (op: string) => {
+    if (isCashMode) return;
     setEquation(display + " " + op + " ");
     setDisplay("0");
     setIsReset(false);
@@ -58,6 +69,7 @@ export function CalculatorComponent({
   };
 
   const handleCalculate = () => {
+    if (isCashMode) return;
     const result = calculateResult();
     setDisplay(result.toString());
     setEquation("");
@@ -65,6 +77,10 @@ export function CalculatorComponent({
   };
 
   const clear = () => {
+    if (isCashMode) {
+      setCashReceived("");
+      return;
+    }
     setDisplay(Math.round(baseValue).toString());
     setEquation("");
     setIsReset(true);
@@ -74,6 +90,8 @@ export function CalculatorComponent({
     setDisplay("0");
     setEquation("");
     setIsReset(false);
+    setIsCashMode(false);
+    setCashReceived("");
   };
 
   const handleFinalizeNormal = () => {
@@ -81,7 +99,9 @@ export function CalculatorComponent({
     if (!isNaN(amount)) {
       setIsReset(true);
       setEquation("");
-      setDisplay(amount.toString());
+      setDisplay("0"); // Se limpia a cero tras el cobro exitoso
+      setIsCashMode(false);
+      setCashReceived("");
       onFinalize(amount);
     }
   };
@@ -96,42 +116,98 @@ export function CalculatorComponent({
     }
   };
 
+  const toggleCashMode = () => {
+    if (!isCashMode) {
+      // Al entrar, calculamos el resultado actual de la ecuación si existe
+      const result = calculateResult();
+      setDisplay(result.toString());
+      setEquation("");
+    }
+    setIsCashMode(!isCashMode);
+    setCashReceived("");
+  };
+
+  const totalToPay = calculateResult();
+  const receivedAmount = parseInt(cashReceived || "0");
+  const changeAmount = receivedAmount > 0 ? receivedAmount - totalToPay : 0;
+
   return (
     <Card className="h-full border-none shadow-none bg-transparent">
       <CardContent className="p-0 space-y-4">
-        <div className="bg-white rounded-xl p-4 shadow-inner border text-right">
-          <div className="text-[10px] text-muted-foreground h-4 uppercase font-black tracking-widest">{equation || "Calculadora de Cobro"}</div>
-          <div className="text-3xl font-black font-mono text-primary truncate mt-1">
-            ${parseInt(display || "0").toLocaleString('es-CL')}
-          </div>
+        {/* Pantalla de la Calculadora */}
+        <div className={cn(
+          "rounded-xl p-4 shadow-inner border text-right transition-all duration-300",
+          isCashMode ? "bg-green-50 border-green-200" : "bg-white"
+        )}>
+          {!isCashMode ? (
+            <>
+              <div className="text-[10px] text-muted-foreground h-4 uppercase font-black tracking-widest">
+                {equation || "Calculadora de Cobro"}
+              </div>
+              <div className="text-3xl font-black font-mono text-primary truncate mt-1">
+                ${parseInt(display || "0").toLocaleString('es-CL')}
+              </div>
+            </>
+          ) : (
+            <div className="space-y-1">
+              <div className="flex justify-between items-center border-b border-green-100 pb-1">
+                <span className="text-[10px] font-black uppercase text-green-600 tracking-widest">Total:</span>
+                <span className="text-lg font-black font-mono text-slate-700">${totalToPay.toLocaleString('es-CL')}</span>
+              </div>
+              <div className="flex justify-between items-center py-1">
+                <span className="text-[10px] font-black uppercase text-green-600 tracking-widest">Recibido:</span>
+                <span className="text-2xl font-black font-mono text-primary">${receivedAmount.toLocaleString('es-CL')}</span>
+              </div>
+              <div className="flex justify-between items-center pt-1 border-t border-green-200">
+                <span className="text-[10px] font-black uppercase text-green-600 tracking-widest">Vuelto:</span>
+                <span className={cn(
+                  "text-3xl font-black font-mono",
+                  changeAmount < 0 ? "text-destructive" : "text-green-600"
+                )}>
+                  ${Math.max(0, changeAmount).toLocaleString('es-CL')}
+                </span>
+              </div>
+            </div>
+          )}
         </div>
 
+        {/* Botones de Control Rápido */}
         <div className="flex gap-2">
           <Button variant="outline" className="flex-1 h-10 text-[10px] font-black uppercase tracking-widest rounded-xl" onClick={clear}>
-            <Hash className="w-3 h-3 mr-2 text-primary" />
-            Base Caja
+            <RotateCcw className="w-3 h-3 mr-2 text-primary" />
+            {isCashMode ? "Limpiar Pago" : "Reset Monto"}
           </Button>
           <Button variant="outline" className="flex-1 h-10 text-[10px] font-black uppercase tracking-widest rounded-xl" onClick={forceZero}>
             <Trash2 className="w-3 h-3 mr-2 text-destructive" />
-            Empezar 0
+            Todo a Cero
           </Button>
         </div>
 
+        {/* Teclado Numérico */}
         <div className="grid grid-cols-4 gap-2">
-          <Button variant="secondary" className="h-12 text-lg font-bold rounded-xl" onClick={() => setDisplay("0")}>CE</Button>
-          <Button variant="outline" className="h-12 text-lg font-bold rounded-xl" onClick={() => handleOperator("÷")}><Divide className="w-5 h-5"/></Button>
-          <Button variant="outline" className="h-12 text-lg font-bold rounded-xl" onClick={() => handleOperator("×")}><X className="w-5 h-5"/></Button>
-          <Button variant="outline" className="h-12 text-lg font-bold rounded-xl" onClick={() => handleOperator("-")}><Minus className="w-5 h-5"/></Button>
+          <Button variant="secondary" className="h-12 text-lg font-bold rounded-xl" onClick={clear}>
+            {isCashMode ? <Delete className="w-5 h-5"/> : "CE"}
+          </Button>
+          <Button variant="outline" disabled={isCashMode} className="h-12 text-lg font-bold rounded-xl" onClick={() => handleOperator("÷")}><Divide className="w-5 h-5"/></Button>
+          <Button variant="outline" disabled={isCashMode} className="h-12 text-lg font-bold rounded-xl" onClick={() => handleOperator("×")}><X className="w-5 h-5"/></Button>
+          <Button variant="outline" disabled={isCashMode} className="h-12 text-lg font-bold rounded-xl" onClick={() => handleOperator("-")}><Minus className="w-5 h-5"/></Button>
 
           {[7, 8, 9].map((n) => (
             <Button key={n} variant="secondary" className="h-12 text-xl font-bold rounded-xl" onClick={() => handleNumber(n.toString())}>{n}</Button>
           ))}
-          <Button variant="outline" className="h-12 text-lg font-bold rounded-xl" onClick={() => handleOperator("+")}><Plus className="w-5 h-5"/></Button>
+          <Button variant="outline" disabled={isCashMode} className="h-12 text-lg font-bold rounded-xl" onClick={() => handleOperator("+")}><Plus className="w-5 h-5"/></Button>
 
           {[4, 5, 6].map((n) => (
             <Button key={n} variant="secondary" className="h-12 text-xl font-bold rounded-xl" onClick={() => handleNumber(n.toString())}>{n}</Button>
           ))}
-          <Button variant="primary" className="h-12 text-lg font-bold row-span-2 bg-accent hover:bg-accent/90 rounded-xl text-white" onClick={handleCalculate}>=</Button>
+          <Button 
+            variant="primary" 
+            disabled={isCashMode}
+            className="h-12 text-lg font-bold row-span-2 bg-slate-200 hover:bg-slate-300 rounded-xl text-slate-800" 
+            onClick={handleCalculate}
+          >
+            =
+          </Button>
 
           {[1, 2, 3].map((n) => (
             <Button key={n} variant="secondary" className="h-12 text-xl font-bold rounded-xl" onClick={() => handleNumber(n.toString())}>{n}</Button>
@@ -139,8 +215,20 @@ export function CalculatorComponent({
           
           <Button variant="secondary" className="h-12 text-xl font-bold col-span-2 rounded-xl" onClick={() => handleNumber("0")}>0</Button>
           <Button variant="secondary" className="h-12 text-xl font-bold rounded-xl" onClick={() => handleNumber(".")}>.</Button>
+          
+          <Button 
+            className={cn(
+              "h-12 rounded-xl font-black text-[10px] uppercase tracking-tighter flex flex-col items-center justify-center leading-none",
+              isCashMode ? "bg-green-600 text-white hover:bg-green-700" : "bg-white border-2 border-green-600 text-green-600 hover:bg-green-50"
+            )}
+            onClick={toggleCashMode}
+          >
+            <Banknote className="w-4 h-4 mb-0.5" />
+            {isCashMode ? "CALCULAR" : "EFECTIVO"}
+          </Button>
         </div>
 
+        {/* Botones de Finalización */}
         <div className="space-y-2 mt-4">
           <Button 
             className={cn(
@@ -185,3 +273,4 @@ export function CalculatorComponent({
     </Card>
   );
 }
+
