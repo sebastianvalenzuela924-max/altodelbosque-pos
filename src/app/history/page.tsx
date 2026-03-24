@@ -3,19 +3,19 @@
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import { collection, query, orderBy } from "firebase/firestore";
 import { Card } from "@/components/ui/card";
-import { FileSpreadsheet, Calendar, History, ShoppingBag, DollarSign, Clock, Loader2 } from "lucide-react";
+import { FileSpreadsheet, Calendar, History, ShoppingBag, DollarSign, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { exportToExcel } from "@/lib/export";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useState } from "react";
 
 export default function HistoryPage() {
-  const [mounted, setMounted] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   const firestore = useFirestore();
   const { toast } = useToast();
 
   useEffect(() => {
-    setMounted(true);
+    setIsMounted(true);
   }, []);
 
   const salesQuery = useMemoFirebase(() => {
@@ -41,9 +41,9 @@ export default function HistoryPage() {
     toast({ title: "Exportación exitosa", description: "Se ha descargado el historial en Excel." });
   };
 
-  // Prevenir renderizado de fechas/datos dinámicos hasta montar
-  if (!mounted) {
-    return <div className="min-h-screen" />;
+  // Evitar cualquier renderizado dinámico hasta que el cliente esté montado
+  if (!isMounted) {
+    return <div className="min-h-screen bg-background" />;
   }
 
   return (
@@ -93,19 +93,19 @@ export default function HistoryPage() {
                   </div>
                   <div className="flex-1 p-6 flex items-center">
                     <div className="flex flex-wrap gap-2">
-                      <div className="flex items-center gap-2 bg-primary/5 text-primary text-xs font-bold px-3 py-1.5 rounded-full border border-primary/10">
+                      <div className="flex items-center gap-2 bg-primary/10 text-primary text-[10px] font-bold px-3 py-1.5 rounded-full border border-primary/10">
                         <ShoppingBag className="w-3 h-3" />
                         {sale.productSaleItemIds?.length || 0} Productos
                       </div>
-                      <div className="flex items-center gap-2 bg-accent/5 text-accent text-xs font-bold px-3 py-1.5 rounded-full border border-accent/10">
+                      <div className="flex items-center gap-2 bg-accent/10 text-accent text-[10px] font-bold px-3 py-1.5 rounded-full border border-accent/10">
                         <DollarSign className="w-3 h-3" />
-                        {sale.manualSaleItemIds?.length || 0} Cargos Manuales
+                        {sale.manualSaleItemIds?.length || 0} Manuales
                       </div>
                     </div>
                   </div>
                   <div className="p-6 flex items-center justify-end md:min-w-[200px] bg-primary/5 border-l border-primary/5 group-hover:bg-primary/10 transition-colors">
                     <div className="text-right">
-                      <p className="text-[10px] text-primary/60 font-black uppercase tracking-widest mb-1">Total Cobrado</p>
+                      <p className="text-[10px] text-primary/60 font-black uppercase tracking-widest mb-1">Total</p>
                       <p className="text-4xl font-black text-primary font-mono tracking-tighter">${sale.totalAmount?.toFixed(2)}</p>
                     </div>
                   </div>

@@ -7,16 +7,16 @@ import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
 
 /**
- * AuthWrapper definitivo: garantiza paridad total entre servidor y cliente.
+ * AuthWrapper: Garantiza paridad absoluta entre servidor y cliente para evitar errores de hidratación.
  */
 export function AuthWrapper({ children }: { children: React.ReactNode }) {
-  const [mounted, setMounted] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const auth = useAuth();
   const [isAuthorized, setIsAuthorized] = useState(false);
 
-  // Referencia al documento de autorización
+  // Referencia al documento de autorización (memoizada)
   const authDocRef = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return doc(firestore, 'authorizedUsers', user.uid);
@@ -24,20 +24,21 @@ export function AuthWrapper({ children }: { children: React.ReactNode }) {
 
   const { data: authDoc, isLoading: isAuthDocLoading } = useDoc(authDocRef);
 
+  // 1. Establecer montado en el cliente
   useEffect(() => {
-    setMounted(true);
+    setIsMounted(true);
   }, []);
 
-  // Login anónimo automático
+  // 2. Login anónimo automático
   useEffect(() => {
-    if (mounted && !isUserLoading && !user && auth) {
+    if (isMounted && !isUserLoading && !user && auth) {
       initiateAnonymousSignIn(auth);
     }
-  }, [mounted, user, isUserLoading, auth]);
+  }, [isMounted, user, isUserLoading, auth]);
 
-  // Autorización automática silenciosa
+  // 3. Autorización automática silenciosa
   useEffect(() => {
-    if (!mounted || !user || !firestore || isAuthDocLoading) return;
+    if (!isMounted || !user || !firestore || isAuthDocLoading) return;
 
     if (authDoc) {
       setIsAuthorized(true);
@@ -51,25 +52,25 @@ export function AuthWrapper({ children }: { children: React.ReactNode }) {
       }, { merge: true })
       .then(() => setIsAuthorized(true))
       .catch(() => {
-        // Errores gestionados por el listener global
+        // Errores gestionados por el listener global de Firebase
       });
     }
-  }, [mounted, user, firestore, authDoc, isAuthDocLoading]);
+  }, [isMounted, user, firestore, authDoc, isAuthDocLoading]);
 
-  // Durante SSR y el PRIMER render del cliente, el componente es estático y vacío
-  if (!mounted) {
+  // Durante SSR y el PRIMER render del cliente (hidratación), devolvemos un cascarón vacío idéntico.
+  if (!isMounted) {
     return <div className="min-h-screen bg-background" />;
   }
 
-  // Pantalla de carga mientras se verifica la identidad y autorización
+  // Pantalla de carga mientras se verifica la identidad y la base de datos
   if (isUserLoading || isAuthDocLoading || !isAuthorized) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
-        <div className="flex flex-col items-center gap-4 animate-in fade-in duration-700">
+        <div className="flex flex-col items-center gap-4">
           <div className="relative">
             <Loader2 className="w-12 h-12 animate-spin text-primary" />
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-2 bg-primary rounded-full animate-ping" />
+              <div className="w-2 h-2 bg-primary rounded-full animate-ping" />
             </div>
           </div>
           <div className="text-center">
@@ -83,5 +84,6 @@ export function AuthWrapper({ children }: { children: React.ReactNode }) {
     );
   }
 
+  // Una vez autorizado y montado, renderizamos el contenido real
   return <>{children}</>;
 }
