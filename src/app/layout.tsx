@@ -1,10 +1,9 @@
-
 import type { Metadata } from 'next';
 import './globals.css';
 import { Navbar } from '@/components/layout/Navbar';
 import { Toaster } from '@/components/ui/toaster';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
-import { AuthWrapper } from '@/components/auth/AuthWrapper';
+import { AuthGate } from '@/components/auth/AuthGate';
 
 export const metadata: Metadata = {
   title: 'SmartSale POS - Punto de Venta Inteligente',
@@ -25,12 +24,12 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased min-h-screen pb-20 md:pb-0 md:pt-16 bg-background">
         <FirebaseClientProvider>
-          <AuthWrapper>
+          <AuthGate>
             <Navbar />
             <main className="max-w-7xl mx-auto p-4 md:p-6 lg:p-8">
               {children}
             </main>
-          </AuthWrapper>
+          </AuthGate>
           <Toaster />
         </FirebaseClientProvider>
       </body>
