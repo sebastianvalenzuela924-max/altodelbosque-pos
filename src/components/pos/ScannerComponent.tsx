@@ -11,6 +11,7 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const scannerRef = useRef<Html5Qrcode | null>(null);
+  const isInitializingRef = useRef(false);
 
   const stopScanner = async () => {
     if (scannerRef.current && scannerRef.current.isScanning) {
@@ -23,6 +24,7 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
     }
     setIsEnabled(false);
     setIsLoading(false);
+    isInitializingRef.current = false;
   };
 
   const applyAdvancedConstraints = async (videoTrack: MediaStreamTrack) => {
@@ -51,13 +53,13 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
     let checkInterval: NodeJS.Timeout;
 
     async function initScanner() {
-      if (!isEnabled || !isMounted) return;
+      if (!isEnabled || !isMounted || isInitializingRef.current) return;
 
-      // Esperar a que el elemento "qr-reader" exista en el DOM antes de iniciar
       checkInterval = setInterval(async () => {
         const element = document.getElementById("qr-reader");
-        if (element && isMounted) {
+        if (element && isMounted && !isInitializingRef.current) {
           clearInterval(checkInterval);
+          isInitializingRef.current = true;
           
           try {
             if (!scannerRef.current) {
@@ -74,45 +76,52 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
               });
             }
 
+            // Asegurar dimensiones mínimas de 50px para evitar errores de la librería
             const config = {
               fps: 20,
               qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
-                const width = Math.min(viewfinderWidth * 0.8, 400);
-                const height = Math.min(viewfinderHeight * 0.4, 200);
+                const width = Math.max(50, Math.min(viewfinderWidth * 0.8, 400));
+                const height = Math.max(50, Math.min(viewfinderHeight * 0.4, 200));
                 return { width, height };
               },
               aspectRatio: 1.0,
             };
 
-            await scannerRef.current.start(
-              { facingMode: "environment" },
-              config,
-              (decodedText) => {
-                onScan(decodedText);
-              },
-              () => {} 
-            );
+            if (scannerRef.current && !scannerRef.current.isScanning) {
+              await scannerRef.current.start(
+                { facingMode: "environment" },
+                config,
+                (decodedText) => {
+                  onScan(decodedText);
+                },
+                () => {} 
+              );
 
-            const videoElement = document.querySelector("#qr-reader video") as HTMLVideoElement;
-            if (videoElement && videoElement.srcObject) {
-              const stream = videoElement.srcObject as MediaStream;
-              const track = stream.getVideoTracks()[0];
-              if (track) {
-                await applyAdvancedConstraints(track);
+              const videoElement = document.querySelector("#qr-reader video") as HTMLVideoElement;
+              if (videoElement && videoElement.srcObject) {
+                const stream = videoElement.srcObject as MediaStream;
+                const track = stream.getVideoTracks()[0];
+                if (track) {
+                  await applyAdvancedConstraints(track);
+                }
               }
             }
 
-            if (isMounted) setIsLoading(false);
+            if (isMounted) {
+              setIsLoading(false);
+              isInitializingRef.current = false;
+            }
           } catch (err: any) {
             console.error("Scanner Error:", err);
             if (isMounted) {
               setError("No se pudo acceder a la cámara. Por favor, revisa los permisos del navegador.");
               setIsEnabled(false);
               setIsLoading(false);
+              isInitializingRef.current = false;
             }
           }
         }
-      }, 100);
+      }, 150);
     }
 
     initScanner();
