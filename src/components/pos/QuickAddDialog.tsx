@@ -93,15 +93,15 @@ export function QuickAddDialog({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-[95vw] sm:max-w-md border-none shadow-2xl rounded-3xl p-0 overflow-hidden max-h-[90vh] flex flex-col">
-        <DialogHeader className="p-6 pb-2 shrink-0">
+      <DialogContent className="max-w-[95vw] sm:max-w-md border-none shadow-2xl rounded-3xl p-0 overflow-hidden max-h-[90vh] flex flex-col gap-0">
+        <DialogHeader className="p-6 pb-2 shrink-0 bg-white z-10">
           <DialogTitle className="flex items-center gap-3 text-2xl font-black text-primary">
             <Barcode className="w-6 h-6" />
             Nuevo Producto
           </DialogTitle>
         </DialogHeader>
         
-        <div className="flex-1 min-h-0">
+        <div className="flex-1 min-h-0 overflow-hidden">
           <ScrollArea className="h-full">
             <div className="px-6 py-4 grid gap-5">
               <Button variant="outline" className="w-full flex items-center justify-center gap-2 h-12 border-accent text-accent font-bold" onClick={handleAI} disabled={loading}>
@@ -109,7 +109,7 @@ export function QuickAddDialog({
                 Auto-completar con IA
               </Button>
 
-              <div className="space-y-4">
+              <div className="space-y-4 pb-4">
                 <div className="grid gap-2">
                     <Label className="font-bold text-xs uppercase text-slate-500">Nombre</Label>
                     <Input className="h-12 rounded-xl bg-slate-50 border-none font-bold" value={name} onChange={e => setName(e.target.value)} placeholder="Ej: Coca Cola" />
@@ -135,8 +135,8 @@ export function QuickAddDialog({
           </ScrollArea>
         </div>
 
-        <DialogFooter className="flex gap-2 p-6 pt-2 mt-auto bg-white border-t shrink-0">
-          <Button variant="ghost" className="rounded-xl flex-1" onClick={onClose}>Descartar</Button>
+        <DialogFooter className="flex flex-row items-center gap-2 p-6 pt-4 bg-white border-t shrink-0 z-10">
+          <Button variant="ghost" className="rounded-xl flex-1 h-12" onClick={onClose}>Descartar</Button>
           <Button className="rounded-xl flex-1 bg-primary font-black h-12" onClick={handleSave}>REGISTRAR</Button>
         </DialogFooter>
       </DialogContent>

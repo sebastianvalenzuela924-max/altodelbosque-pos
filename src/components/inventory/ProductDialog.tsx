@@ -89,17 +89,17 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent 
-        className="max-w-[95vw] sm:max-w-lg border-none shadow-2xl rounded-3xl p-0 overflow-hidden max-h-[90vh] flex flex-col"
+        className="max-w-[95vw] sm:max-w-lg border-none shadow-2xl rounded-3xl p-0 overflow-hidden max-h-[90vh] flex flex-col gap-0"
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
-        <DialogHeader className="p-6 pb-2 shrink-0">
+        <DialogHeader className="p-6 pb-2 shrink-0 bg-white z-10">
           <DialogTitle className="flex items-center gap-2 text-2xl font-black text-primary">
             <Package className="w-6 h-6" />
             {product?.id && product.name ? "Editar Producto" : "Nuevo Producto"}
           </DialogTitle>
         </DialogHeader>
         
-        <div className="flex-1 min-h-0">
+        <div className="flex-1 min-h-0 overflow-hidden">
           <ScrollArea className="h-full">
             <div className="px-6 py-4 grid gap-6">
               <div className="grid grid-cols-2 gap-4">
@@ -139,7 +139,7 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-4 pb-4">
                 <div className="grid gap-2">
                   <Label htmlFor="stock" className="font-bold text-slate-500 text-xs uppercase tracking-widest">Stock Actual</Label>
                   <Input id="stock" type="number" className="h-12 rounded-xl bg-slate-50 border-none font-black" value={formData.stock} onChange={e => setFormData({ ...formData, stock: e.target.value })} placeholder="0" />
@@ -155,8 +155,8 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
           </ScrollArea>
         </div>
 
-        <DialogFooter className="gap-2 p-6 pt-2 shrink-0 bg-white border-t">
-          <Button variant="ghost" onClick={onClose} disabled={loading} className="rounded-xl flex-1">Cancelar</Button>
+        <DialogFooter className="gap-2 p-6 pt-4 shrink-0 bg-white border-t z-10 flex flex-row items-center">
+          <Button variant="ghost" onClick={onClose} disabled={loading} className="rounded-xl flex-1 h-12">Cancelar</Button>
           <Button onClick={handleSave} disabled={loading} className="bg-primary hover:bg-primary/90 rounded-xl flex-1 h-12 font-black">
             {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             GUARDAR
