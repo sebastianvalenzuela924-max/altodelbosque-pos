@@ -3,8 +3,7 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Plus, Minus, X, Divide, CheckCircle2, Trash2, RotateCcw, Banknote, Delete, Loader2, Equal } from "lucide-react";
+import { Plus, Minus, X, Divide, CheckCircle2, RotateCcw, Banknote, Loader2, Equal } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface CalculatorComponentProps {
@@ -49,6 +48,7 @@ export function CalculatorComponent({
       if (!sanitized) return parseInt(display || "0");
       
       const evalString = sanitized.replace(/×/g, '*').replace(/÷/g, '/');
+      // eslint-disable-next-line no-eval
       const result = eval(evalString);
       return Math.round(result ?? 0);
     } catch (e) {
@@ -157,13 +157,13 @@ export function CalculatorComponent({
             <>
               <div className="flex justify-between items-center mb-1">
                 <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
-                  {isShowingBaseValue ? "Total en Caja" : equation ? "Calculando..." : "Monto Final"}
+                  {isShowingBaseValue ? "Monto en Caja" : equation ? "Calculando..." : "Monto Final"}
                 </span>
-                <span className="text-[9px] font-mono text-slate-300 uppercase">Terminal V1</span>
+                <span className="text-[9px] font-mono text-slate-300 uppercase tracking-tighter">Terminal AltodelBosque</span>
               </div>
               
               <div className="text-xs font-mono text-slate-400 mb-1 overflow-hidden truncate h-4">
-                {equation || (isShowingBaseValue ? "Monto base del inventario" : "")}
+                {equation || (isShowingBaseValue ? "Suma de productos cargados" : "")}
               </div>
 
               <div className={cn(
@@ -219,35 +219,47 @@ export function CalculatorComponent({
           
           <Button 
             className={cn(
-              "h-14 rounded-xl font-black text-[10px] uppercase flex flex-col items-center justify-center row-span-2 border-2",
-              isCashMode ? "bg-green-600 text-white border-green-700" : "bg-white border-green-600 text-green-600"
+              "h-14 rounded-xl font-black text-[10px] uppercase flex flex-col items-center justify-center row-span-2 border-2 transition-all",
+              isCashMode ? "bg-green-600 text-white border-green-700" : "bg-white border-green-600 text-green-600 hover:bg-green-50"
             )}
             onClick={toggleCashMode}
           >
             <Banknote className="w-5 h-5 mb-0.5" />
-            {isCashMode ? "Caja" : "Efectivo"}
+            {isCashMode ? "Pagar" : "Efectivo"}
           </Button>
 
           <Button variant="secondary" className="h-14 text-2xl font-black col-span-2 rounded-xl" onClick={() => handleNumber("0")}>0</Button>
           <Button variant="secondary" className="h-14 text-2xl font-black rounded-xl" onClick={() => handleNumber(".")}>.</Button>
         </div>
 
-        {/* Acción Final */}
-        <Button 
-            className={cn(
-              "w-full h-24 text-2xl font-black rounded-2xl shadow-xl transition-all active:scale-95 flex items-center justify-center gap-4 mt-4",
-              isProcessing ? "bg-slate-400" : "bg-primary hover:bg-primary/90"
-            )}
-            onClick={handleFinalizeNormal}
-            disabled={isProcessing}
+        {/* Acciones Finales Unificadas */}
+        <div className="flex gap-2 mt-4">
+          <Button 
+              variant="outline"
+              className="h-24 w-24 flex flex-col items-center justify-center gap-1 border-destructive/20 text-destructive hover:bg-destructive/5 hover:text-destructive rounded-2xl shrink-0 transition-all active:scale-95"
+              onClick={onClearCart}
+              disabled={isProcessing}
           >
-            {isProcessing ? (
-              <Loader2 className="w-8 h-8 animate-spin" />
-            ) : (
-              <CheckCircle2 className="w-8 h-8" />
-            )}
-            {isProcessing ? "PROCESANDO..." : "COBRAR VENTA"}
-        </Button>
+            <RotateCcw className="w-6 h-6" />
+            <span className="text-[10px] font-black uppercase leading-tight">Vaciar<br/>Caja</span>
+          </Button>
+          
+          <Button 
+              className={cn(
+                "flex-1 h-24 text-2xl font-black rounded-2xl shadow-xl transition-all active:scale-95 flex items-center justify-center gap-4",
+                isProcessing ? "bg-slate-400" : "bg-primary hover:bg-primary/90"
+              )}
+              onClick={handleFinalizeNormal}
+              disabled={isProcessing}
+            >
+              {isProcessing ? (
+                <Loader2 className="w-8 h-8 animate-spin" />
+              ) : (
+                <CheckCircle2 className="w-8 h-8" />
+              )}
+              {isProcessing ? "PROCESANDO..." : "COBRAR VENTA"}
+          </Button>
+        </div>
     </div>
   );
 }
