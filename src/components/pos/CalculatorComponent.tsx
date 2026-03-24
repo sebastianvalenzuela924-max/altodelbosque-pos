@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -52,6 +53,29 @@ export function CalculatorComponent({
     }
   };
 
+  const calculateResult = (forceEquation?: string) => {
+    const eqToEval = forceEquation || (equation + (isReset ? "" : display));
+    if (!eqToEval.trim()) return parseInt(display || "0");
+    
+    try {
+      // Limpiar operadores huérfanos al final para el eval
+      let sanitized = eqToEval.trim();
+      while (sanitized.endsWith('+') || sanitized.endsWith('-') || sanitized.endsWith('×') || sanitized.endsWith('÷')) {
+        sanitized = sanitized.slice(0, -1).trim();
+      }
+      
+      if (!sanitized) return parseInt(display || "0");
+      
+      const evalString = sanitized.replace(/×/g, '*').replace(/÷/g, '/');
+      // eslint-disable-next-line no-eval
+      const result = eval(evalString);
+      return Math.round(result);
+    } catch (e) {
+      console.error("Eval error:", e);
+      return parseInt(display || "0");
+    }
+  };
+
   const handleOperator = (op: string) => {
     if (isCashMode) return;
     
@@ -67,36 +91,11 @@ export function CalculatorComponent({
       return;
     }
 
-    const valToAdd = display;
-    const nextFullEq = equation + valToAdd;
-    
-    // Calculamos el subtotal para mostrarlo en el display en lugar de 0
-    try {
-      const sanitized = nextFullEq.replace(/×/g, '*').replace(/÷/g, '/');
-      // eslint-disable-next-line no-eval
-      const result = eval(sanitized);
-      setDisplay(Math.round(result).toString());
-    } catch (e) {
-      // Si falla el eval, mantenemos el display actual
-    }
-
-    setEquation(nextFullEq + " " + op + " ");
+    const currentSubtotal = calculateResult();
+    setEquation(prev => prev + (isReset ? "" : display) + " " + op + " ");
+    setDisplay(currentSubtotal.toString());
     setIsReset(true);
     setStartedFromBase(false);
-  };
-
-  const calculateResult = () => {
-    if (!equation) return parseInt(display || "0");
-    try {
-      // La ecuación completa es lo que llevamos + lo que hay en display
-      const fullEq = equation + (isReset ? "0" : display);
-      const sanitizedEq = fullEq.replace(/×/g, '*').replace(/÷/g, '/');
-      // eslint-disable-next-line no-eval
-      const result = eval(sanitizedEq);
-      return Math.round(result);
-    } catch (e) {
-      return parseInt(display || "0");
-    }
   };
 
   const handleCalculate = () => {
