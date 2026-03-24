@@ -12,6 +12,13 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
   const [error, setError] = useState<string | null>(null);
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const isInitializingRef = useRef(false);
+  
+  // Usamos una referencia para la función onScan para evitar que el useEffect 
+  // se reinicie cada vez que el componente padre (la terminal) se re-renderiza.
+  const onScanRef = useRef(onScan);
+  useEffect(() => {
+    onScanRef.current = onScan;
+  }, [onScan]);
 
   const stopScanner = async () => {
     if (scannerRef.current && scannerRef.current.isScanning) {
@@ -53,6 +60,7 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
     let checkInterval: NodeJS.Timeout;
 
     async function initScanner() {
+      // Importante: No incluimos onScan en las dependencias para que no se reinicie la cámara
       if (!isEnabled || !isMounted || isInitializingRef.current) return;
 
       checkInterval = setInterval(async () => {
@@ -76,7 +84,6 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
               });
             }
 
-            // Asegurar dimensiones mínimas de 50px para evitar errores de la librería
             const config = {
               fps: 20,
               qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
@@ -92,7 +99,8 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
                 { facingMode: "environment" },
                 config,
                 (decodedText) => {
-                  onScan(decodedText);
+                  // Llamamos a la referencia actual de onScan
+                  onScanRef.current(decodedText);
                 },
                 () => {} 
               );
@@ -129,11 +137,9 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
     return () => {
       isMounted = false;
       if (checkInterval) clearInterval(checkInterval);
-      if (scannerRef.current && scannerRef.current.isScanning) {
-        scannerRef.current.stop().catch(() => {});
-      }
+      // El scanner solo se detiene si el componente se desmonta o si isEnabled cambia a false
     };
-  }, [isEnabled, onScan]);
+  }, [isEnabled]); // Eliminamos onScan de aquí para evitar el parpadeo negro
 
   const handleToggleScanner = () => {
     if (isEnabled) {
