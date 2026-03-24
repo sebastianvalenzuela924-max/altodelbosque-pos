@@ -3,7 +3,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
-import { Scan, Camera, XCircle, AlertCircle, Loader2, ZoomIn } from "lucide-react";
+import { Scan, Camera, XCircle, AlertCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
@@ -19,7 +19,7 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
         await scannerRef.current.stop();
         scannerRef.current.clear();
       } catch (err) {
-        console.error("Error al detener el escáner:", err);
+        // Silently ignore stop errors during manual stop
       }
     }
     setIsEnabled(false);
@@ -43,70 +43,103 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
         await videoTrack.applyConstraints({ advanced: [constraints] } as any);
       }
     } catch (e) {
-      console.warn("No se pudieron aplicar restricciones avanzadas de cámara:", e);
+      // Advanced constraints not supported, ignore
     }
   };
 
-  const startScanner = async () => {
-    setError(null);
-    setIsLoading(true);
-    setIsEnabled(true);
+  // Effect to start scanner after the DOM element is rendered
+  useEffect(() => {
+    let isMounted = true;
 
-    try {
-      if (!scannerRef.current) {
-        scannerRef.current = new Html5Qrcode("qr-reader", {
-          verbose: false,
-          formatsToSupport: [
-            Html5QrcodeSupportedFormats.EAN_13,
-            Html5QrcodeSupportedFormats.EAN_8,
-            Html5QrcodeSupportedFormats.CODE_128,
-            Html5QrcodeSupportedFormats.UPC_A,
-            Html5QrcodeSupportedFormats.UPC_E,
-            Html5QrcodeSupportedFormats.CODE_39,
-          ]
-        });
-      }
+    async function initScanner() {
+      if (!isEnabled || !isMounted) return;
 
-      const config = {
-        fps: 20,
-        qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
-          const width = Math.min(viewfinderWidth * 0.8, 400);
-          const height = Math.min(viewfinderHeight * 0.4, 200);
-          return { width, height };
-        },
-        aspectRatio: 1.0,
-      };
+      // We wait for the next frame to ensure the div#qr-reader is in the DOM
+      const checkInterval = setInterval(async () => {
+        const element = document.getElementById("qr-reader");
+        if (element && isMounted) {
+          clearInterval(checkInterval);
+          
+          try {
+            if (!scannerRef.current) {
+              scannerRef.current = new Html5Qrcode("qr-reader", {
+                verbose: false,
+                formatsToSupport: [
+                  Html5QrcodeSupportedFormats.EAN_13,
+                  Html5QrcodeSupportedFormats.EAN_8,
+                  Html5QrcodeSupportedFormats.CODE_128,
+                  Html5QrcodeSupportedFormats.UPC_A,
+                  Html5QrcodeSupportedFormats.UPC_E,
+                  Html5QrcodeSupportedFormats.CODE_39,
+                ]
+              });
+            }
 
-      await scannerRef.current.start(
-        { facingMode: "environment" },
-        config,
-        (decodedText) => {
-          onScan(decodedText);
-        },
-        () => {} 
-      );
+            const config = {
+              fps: 20,
+              qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
+                const width = Math.min(viewfinderWidth * 0.8, 400);
+                const height = Math.min(viewfinderHeight * 0.4, 200);
+                return { width, height };
+              },
+              aspectRatio: 1.0,
+            };
 
-      const videoElement = document.querySelector("#qr-reader video") as HTMLVideoElement;
-      if (videoElement && videoElement.srcObject) {
-        const stream = videoElement.srcObject as MediaStream;
-        const track = stream.getVideoTracks()[0];
-        if (track) {
-          await applyAdvancedConstraints(track);
+            await scannerRef.current.start(
+              { facingMode: "environment" },
+              config,
+              (decodedText) => {
+                onScan(decodedText);
+              },
+              () => {} 
+            );
+
+            const videoElement = document.querySelector("#qr-reader video") as HTMLVideoElement;
+            if (videoElement && videoElement.srcObject) {
+              const stream = videoElement.srcObject as MediaStream;
+              const track = stream.getVideoTracks()[0];
+              if (track) {
+                await applyAdvancedConstraints(track);
+              }
+            }
+
+            if (isMounted) setIsLoading(false);
+          } catch (err: any) {
+            if (isMounted) {
+              setError("Error de cámara. Por favor, revisa los permisos.");
+              setIsEnabled(false);
+              setIsLoading(false);
+            }
+          }
         }
-      }
+      }, 100);
 
-      setIsLoading(false);
-    } catch (err: any) {
-      console.error("Error iniciando escáner:", err);
-      setError("Error de cámara. Por favor, revisa los permisos.");
-      setIsEnabled(false);
-      setIsLoading(false);
+      return () => clearInterval(checkInterval);
+    }
+
+    initScanner();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isEnabled, onScan]);
+
+  const handleToggleScanner = () => {
+    if (isEnabled) {
+      stopScanner();
+    } else {
+      setError(null);
+      setIsLoading(true);
+      setIsEnabled(true);
     }
   };
 
   useEffect(() => {
     return () => {
-      stopScanner();
+      // Ensure scanner is stopped on unmount
+      if (scannerRef.current && scannerRef.current.isScanning) {
+        scannerRef.current.stop().catch(() => {});
+      }
     };
   }, []);
 
@@ -129,7 +162,7 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
           </div>
           
           <Button 
-            onClick={startScanner} 
+            onClick={handleToggleScanner} 
             disabled={isLoading}
             className="rounded-2xl px-8 h-14 text-md font-bold bg-primary hover:bg-primary/90"
           >
