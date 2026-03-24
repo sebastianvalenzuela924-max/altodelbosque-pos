@@ -1,13 +1,13 @@
 
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScannerComponent } from "@/components/pos/ScannerComponent";
 import { CalculatorComponent } from "@/components/pos/CalculatorComponent";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Trash2, PlusCircle, MinusCircle, ShoppingCart, CheckCircle2, Scan, Calculator, Loader2 } from "lucide-react";
+import { Trash2, PlusCircle, MinusCircle, ShoppingCart, CheckCircle2, Scan, Calculator, Loader2, AlertCircle } from "lucide-react";
 import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { doc, collection, serverTimestamp, increment, query } from "firebase/firestore";
@@ -20,6 +20,7 @@ export default function POSPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentTime, setCurrentTime] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
+  const lastScanRef = useRef<{ code: string; time: number } | null>(null);
   const { toast } = useToast();
 
   // Cargamos el inventario completo para reconocimiento instantáneo
@@ -34,7 +35,7 @@ export default function POSPage() {
     const map = new Map();
     if (allProducts) {
       allProducts.forEach(p => {
-        const key = p.id.toString().trim();
+        const key = String(p.id).trim();
         map.set(key, p);
       });
     }
@@ -52,38 +53,44 @@ export default function POSPage() {
   }, []);
 
   const handleScan = (barcode: string) => {
-    const cleanBarcode = barcode.toString().trim();
-    if (!cleanBarcode) return;
-    
-    // Verificamos si ya está en el carrito
-    const existingInCart = items.find(i => i.id === cleanBarcode);
-    if (existingInCart) {
-      updateQuantity(cleanBarcode, 1);
-      toast({ title: "Cantidad añadida", description: `${existingInCart.name} +1` });
+    const cleanBarcode = String(barcode).trim();
+    if (!cleanBarcode || isLoadingInventory) return;
+
+    // DEBOUNCING: Evitar múltiples escaneos del mismo código en menos de 1.5 segundos
+    const now = Date.now();
+    if (lastScanRef.current && lastScanRef.current.code === cleanBarcode && (now - lastScanRef.current.time < 1500)) {
       return;
     }
-
+    lastScanRef.current = { code: cleanBarcode, time: now };
+    
     // Buscamos en el inventario cargado
     const product = productMap.get(cleanBarcode);
 
     if (product) {
       // PRODUCTO ENCONTRADO: Añadir directamente al carrito
-      setItems(prev => [...prev, { 
-        id: cleanBarcode, 
-        name: product.name, 
-        price: product.price, 
-        quantity: 1 
-      }]);
+      setItems(prev => {
+        const existing = prev.find(i => i.id === cleanBarcode);
+        if (existing) {
+          return prev.map(i => i.id === cleanBarcode ? { ...i, quantity: i.quantity + 1 } : i);
+        }
+        return [...prev, { 
+          id: cleanBarcode, 
+          name: product.name, 
+          price: product.price, 
+          quantity: 1 
+        }];
+      });
+      
       toast({ 
         title: "Añadido a la Caja", 
         description: `${product.name} - $${product.price.toFixed(2)}` 
       });
     } else {
-      // PRODUCTO NO ENCONTRADO: Error
+      // PRODUCTO NO ENCONTRADO: Error informativo
       toast({ 
         variant: "destructive",
         title: "No en Inventario", 
-        description: `El código ${cleanBarcode} no está registrado en el inventario.`
+        description: `El código ${cleanBarcode} no existe. Regístralo en la sección de Inventario.`
       });
     }
   };
@@ -194,10 +201,10 @@ export default function POSPage() {
 
           <CardContent className="flex-1 p-0 bg-slate-50 relative">
             {isLoadingInventory && (
-              <div className="absolute inset-0 z-10 bg-white/60 backdrop-blur-sm flex items-center justify-center">
+              <div className="absolute inset-0 z-50 bg-white/80 backdrop-blur-sm flex items-center justify-center">
                 <div className="flex flex-col items-center gap-2">
                   <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                  <p className="text-xs font-black text-primary uppercase tracking-widest">Sincronizando Inventario...</p>
+                  <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">Sincronizando Inventario...</p>
                 </div>
               </div>
             )}
@@ -211,7 +218,7 @@ export default function POSPage() {
                     </div>
                     <div>
                       <h3 className="text-lg font-bold text-slate-400 uppercase tracking-wider">Caja Vacía</h3>
-                      <p className="text-slate-400 text-sm">Escanea productos para empezar a cobrar.</p>
+                      <p className="text-slate-400 text-sm">Escanea productos existentes para empezar.</p>
                     </div>
                   </div>
                 )}
@@ -220,7 +227,7 @@ export default function POSPage() {
                   <div key={item.id} className="p-4 flex items-center gap-4 bg-white hover:bg-slate-50 transition-colors">
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="bg-primary/10 text-primary text-[10px] font-black px-1.5 py-0.5 rounded uppercase">Producto</span>
+                        <span className="bg-primary/10 text-primary text-[10px] font-black px-1.5 py-0.5 rounded uppercase">Inventario</span>
                         <p className="font-bold text-lg text-slate-800 line-clamp-1">{item.name}</p>
                       </div>
                       <p className="text-primary font-black text-xl mt-1 font-mono">${(item.price * item.quantity).toFixed(2)}</p>
@@ -285,9 +292,16 @@ export default function POSPage() {
 
       <div className="lg:col-span-5 flex flex-col gap-6">
         <section className="space-y-4">
-          <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 px-1">
-            <Scan className="w-4 h-4" /> Escáner de Productos
-          </h3>
+          <div className="flex items-center justify-between px-1">
+            <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+              <Scan className="w-4 h-4" /> Escáner de Venta
+            </h3>
+            {isLoadingInventory && (
+              <span className="text-[10px] font-bold text-amber-600 flex items-center gap-1 animate-pulse">
+                <AlertCircle className="w-3 h-3" /> Sincronizando...
+              </span>
+            )}
+          </div>
           <ScannerComponent onScan={handleScan} />
         </section>
 
