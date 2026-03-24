@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ScannerComponent } from "@/components/pos/ScannerComponent";
 import { CalculatorComponent } from "@/components/pos/CalculatorComponent";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Trash2, PlusCircle, MinusCircle, ShoppingCart, CheckCircle2, Scan, Calculator, Loader2, AlertCircle } from "lucide-react";
+import { Trash2, PlusCircle, MinusCircle, ShoppingCart, CheckCircle2, Scan, Calculator, Loader2, AlertCircle, Clock } from "lucide-react";
 import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { doc, collection, serverTimestamp, increment, query } from "firebase/firestore";
@@ -18,6 +18,7 @@ export default function POSPage() {
   const [items, setItems] = useState<any[]>([]);
   const [manualProducts, setManualProducts] = useState<any[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isScanLocked, setIsScanLocked] = useState(false);
   const [currentTime, setCurrentTime] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
   const lastScanRef = useRef<{ code: string; time: number } | null>(null);
@@ -54,13 +55,16 @@ export default function POSPage() {
 
   const handleScan = (barcode: string) => {
     const cleanBarcode = String(barcode).trim();
-    if (!cleanBarcode || isLoadingInventory) return;
+    if (!cleanBarcode || isLoadingInventory || isScanLocked) return;
 
-    // DEBOUNCING: Evitar múltiples escaneos del mismo código en menos de 1.5 segundos
+    // DEBOUNCING AGRESIVO: Evitar múltiples escaneos del mismo código en menos de 3 segundos
     const now = Date.now();
-    if (lastScanRef.current && lastScanRef.current.code === cleanBarcode && (now - lastScanRef.current.time < 1500)) {
+    if (lastScanRef.current && lastScanRef.current.code === cleanBarcode && (now - lastScanRef.current.time < 3000)) {
       return;
     }
+
+    // Bloqueo temporal del escáner para dar tiempo al usuario
+    setIsScanLocked(true);
     lastScanRef.current = { code: cleanBarcode, time: now };
     
     // Buscamos en el inventario cargado
@@ -90,9 +94,14 @@ export default function POSPage() {
       toast({ 
         variant: "destructive",
         title: "No en Inventario", 
-        description: `El código ${cleanBarcode} no existe. Regístralo en la sección de Inventario.`
+        description: `El código ${cleanBarcode} no existe en el sistema.`
       });
     }
+
+    // Liberar el escáner después de 3 segundos
+    setTimeout(() => {
+      setIsScanLocked(false);
+    }, 3000);
   };
 
   const addManual = (amount: number) => {
@@ -296,13 +305,15 @@ export default function POSPage() {
             <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
               <Scan className="w-4 h-4" /> Escáner de Venta
             </h3>
-            {isLoadingInventory && (
+            {isScanLocked && (
               <span className="text-[10px] font-bold text-amber-600 flex items-center gap-1 animate-pulse">
-                <AlertCircle className="w-3 h-3" /> Sincronizando...
+                <Clock className="w-3 h-3" /> Procesando, espere...
               </span>
             )}
           </div>
-          <ScannerComponent onScan={handleScan} />
+          <div className={cn("transition-opacity duration-300", isScanLocked ? "opacity-40 grayscale" : "opacity-100")}>
+            <ScannerComponent onScan={handleScan} />
+          </div>
         </section>
 
         <section className="space-y-4">
