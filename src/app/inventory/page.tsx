@@ -1,0 +1,187 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { getProducts, Product, deleteProduct } from "@/lib/firebase";
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+import { Card, CardHeader, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Search, FileSpreadsheet, Edit3, AlertTriangle, Plus, Trash2, Package } from "lucide-react";
+import { exportToExcel } from "@/lib/export";
+import { useToast } from "@/hooks/use-toast";
+import { ProductDialog } from "@/components/inventory/ProductDialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+
+export default function InventoryPage() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const load = async () => {
+    const data = await getProducts();
+    setProducts(data);
+  };
+
+  const filtered = products.filter(p => 
+    p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    p.id.includes(searchTerm)
+  );
+
+  const handleExport = () => {
+    const dataForExport = products.map(p => ({
+      "Código Barras": p.id,
+      "Nombre": p.name,
+      "Precio ($)": p.price,
+      "Stock": p.stock,
+      "Estado": p.stock < 5 ? "Stock Bajo" : "Normal"
+    }));
+    exportToExcel("Inventario_SmartSale", dataForExport, "Inventario");
+    toast({ title: "Exportación exitosa", description: "Se ha descargado el archivo Excel del inventario." });
+  };
+
+  const handleEdit = (product: Product) => {
+    setSelectedProduct(product);
+    setIsDialogOpen(true);
+  };
+
+  const handleAddNew = () => {
+    setSelectedProduct(null);
+    setIsDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!productToDelete) return;
+    try {
+      await deleteProduct(productToDelete.id);
+      toast({ title: "Eliminado", description: "El producto ha sido eliminado del sistema." });
+      load();
+    } catch (e) {
+      toast({ title: "Error", description: "No se pudo eliminar el producto.", variant: "destructive" });
+    } finally {
+      setProductToDelete(null);
+    }
+  };
+
+  return (
+    <div className="space-y-6 animate-in fade-in duration-500">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-black text-primary flex items-center gap-2">
+            <Package className="w-8 h-8" />
+            Inventario
+          </h1>
+          <p className="text-muted-foreground">Gestiona tus productos, precios y existencias.</p>
+        </div>
+        <div className="flex gap-2 w-full md:w-auto">
+          <Button variant="outline" className="flex-1 md:flex-none" onClick={handleExport}>
+            <FileSpreadsheet className="w-4 h-4 mr-2 text-green-600" /> Exportar a Excel
+          </Button>
+          <Button className="flex-1 md:flex-none bg-accent hover:bg-accent/90" onClick={handleAddNew}>
+            <Plus className="w-4 h-4 mr-2" /> Nuevo Producto
+          </Button>
+        </div>
+      </div>
+
+      <Card className="border-none shadow-xl">
+        <CardHeader className="bg-muted/30 pb-4">
+          <div className="flex items-center gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input 
+                className="pl-10 h-11 bg-white border-none shadow-sm" 
+                placeholder="Buscar por nombre o código de barras..." 
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+              />
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader className="bg-muted/10">
+                <TableRow>
+                  <TableHead className="font-bold py-4">Código</TableHead>
+                  <TableHead className="font-bold py-4">Nombre</TableHead>
+                  <TableHead className="font-bold py-4">Precio</TableHead>
+                  <TableHead className="font-bold py-4 text-center">Stock</TableHead>
+                  <TableHead className="font-bold py-4">Estado</TableHead>
+                  <TableHead className="font-bold py-4 text-right">Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="h-48 text-center text-muted-foreground">
+                      No se encontraron productos en el inventario.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filtered.map((p) => (
+                    <TableRow key={p.id} className={p.stock < 5 ? "bg-destructive/5" : ""}>
+                      <TableCell className="font-mono text-xs">{p.id}</TableCell>
+                      <TableCell className="font-bold">{p.name}</TableCell>
+                      <TableCell className="text-primary font-black text-lg">${p.price.toFixed(2)}</TableCell>
+                      <TableCell className="text-center font-bold">{p.stock}</TableCell>
+                      <TableCell>
+                        {p.stock < 5 ? (
+                          <Badge variant="destructive" className="flex items-center gap-1 w-fit">
+                            <AlertTriangle className="w-3 h-3" /> Stock Bajo
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary" className="bg-green-100 text-green-700 hover:bg-green-100 border-none w-fit">Normal</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button variant="ghost" size="icon" className="text-primary" onClick={() => handleEdit(p)}>
+                            <Edit3 className="w-4 h-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setProductToDelete(p)}>
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+
+      <ProductDialog 
+        open={isDialogOpen} 
+        onClose={() => setIsDialogOpen(false)} 
+        product={selectedProduct}
+        onSaved={load}
+      />
+
+      <AlertDialog open={!!productToDelete} onOpenChange={() => setProductToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción eliminará permanentemente el producto <strong>{productToDelete?.name}</strong> del inventario.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Eliminar Definitivamente
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
