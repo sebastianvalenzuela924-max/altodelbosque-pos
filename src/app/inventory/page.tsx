@@ -67,7 +67,7 @@ export default function InventoryPage() {
         case "category-asc":
           return (a.category || "General").localeCompare(b.category || "General");
         case "category-desc":
-          return (b.category || "General").localeCompare(a.category || "General");
+          return (b.category || "General").localeCompare(b.category || "General");
         case "status-critical":
           const aCritical = a.stock < 5 ? 0 : 1;
           const bCritical = b.stock < 5 ? 0 : 1;
@@ -176,13 +176,17 @@ export default function InventoryPage() {
                   <TableHead className="px-6">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <button type="button" className="flex items-center gap-2 font-black uppercase text-[10px] tracking-widest hover:text-primary transition-colors focus:outline-none">
+                        <button 
+                          type="button" 
+                          onClick={(e) => e.stopPropagation()}
+                          className="flex items-center gap-2 font-black uppercase text-[10px] tracking-widest hover:text-primary transition-colors focus:outline-none"
+                        >
                           Nombre
                           <ChevronDown className="w-3 h-3" />
                         </button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start" className="rounded-xl border-none shadow-2xl p-1">
-                        <DropdownMenuItem onClick={() => setSortBy("name")} className="rounded-lg font-bold text-xs py-2">
+                      <DropdownMenuContent align="start" className="rounded-xl border-none shadow-2xl p-1 z-50">
+                        <DropdownMenuItem onClick={() => setSortBy("name")} className="rounded-lg font-bold text-xs py-2 cursor-pointer">
                           <ArrowUp className="w-3 h-3 mr-2" /> Ordenar A-Z
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -193,28 +197,32 @@ export default function InventoryPage() {
                   <TableHead className="px-6">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <button type="button" className="flex items-center gap-2 font-black uppercase text-[10px] tracking-widest hover:text-primary transition-colors focus:outline-none">
+                        <button 
+                          type="button" 
+                          onClick={(e) => e.stopPropagation()}
+                          className="flex items-center gap-2 font-black uppercase text-[10px] tracking-widest hover:text-primary transition-colors focus:outline-none"
+                        >
                           Categoría
                           <ChevronDown className="w-3 h-3" />
                         </button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start" className="rounded-xl border-none shadow-2xl p-1 max-h-64 overflow-y-auto">
+                      <DropdownMenuContent align="start" className="rounded-xl border-none shadow-2xl p-1 max-h-64 overflow-y-auto z-50">
                         <DropdownMenuLabel className="text-[9px] font-black uppercase opacity-40 px-3 py-1.5 tracking-widest">Filtrar por</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={() => setCategoryFilter("all")} className="rounded-lg font-bold text-xs py-2">
+                        <DropdownMenuItem onClick={() => setCategoryFilter("all")} className="rounded-lg font-bold text-xs py-2 cursor-pointer">
                           <ListFilter className="w-3 h-3 mr-2" /> Todas
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         {categories.map(cat => (
-                          <DropdownMenuItem key={cat} onClick={() => setCategoryFilter(cat)} className="rounded-lg font-bold text-xs py-2">
+                          <DropdownMenuItem key={cat} onClick={() => setCategoryFilter(cat)} className="rounded-lg font-bold text-xs py-2 cursor-pointer">
                             {cat}
                           </DropdownMenuItem>
                         ))}
                         <DropdownMenuSeparator />
                         <DropdownMenuLabel className="text-[9px] font-black uppercase opacity-40 px-3 py-1.5 tracking-widest">Ordenar por</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={() => setSortBy("category-asc")} className="rounded-lg font-bold text-xs py-2">
+                        <DropdownMenuItem onClick={() => setSortBy("category-asc")} className="rounded-lg font-bold text-xs py-2 cursor-pointer">
                           <ArrowUp className="w-3 h-3 mr-2" /> A-Z
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setSortBy("category-desc")} className="rounded-lg font-bold text-xs py-2">
+                        <DropdownMenuItem onClick={() => setSortBy("category-desc")} className="rounded-lg font-bold text-xs py-2 cursor-pointer">
                           <ArrowDown className="w-3 h-3 mr-2" /> Z-A
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -225,16 +233,20 @@ export default function InventoryPage() {
                   <TableHead className="px-6">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <button type="button" className="flex items-center gap-2 font-black uppercase text-[10px] tracking-widest hover:text-primary transition-colors focus:outline-none">
+                        <button 
+                          type="button" 
+                          onClick={(e) => e.stopPropagation()}
+                          className="flex items-center gap-2 font-black uppercase text-[10px] tracking-widest hover:text-primary transition-colors focus:outline-none"
+                        >
                           Precio
                           <ChevronDown className="w-3 h-3" />
                         </button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start" className="rounded-xl border-none shadow-2xl p-1">
-                        <DropdownMenuItem onClick={() => setSortBy("price-asc")} className="rounded-lg font-bold text-xs py-2">
+                      <DropdownMenuContent align="start" className="rounded-xl border-none shadow-2xl p-1 z-50">
+                        <DropdownMenuItem onClick={() => setSortBy("price-asc")} className="rounded-lg font-bold text-xs py-2 cursor-pointer">
                           <ArrowUp className="w-3 h-3 mr-2" /> Menor a Mayor
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setSortBy("price-desc")} className="rounded-lg font-bold text-xs py-2">
+                        <DropdownMenuItem onClick={() => setSortBy("price-desc")} className="rounded-lg font-bold text-xs py-2 cursor-pointer">
                           <ArrowDown className="w-3 h-3 mr-2" /> Mayor a Menor
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -246,16 +258,20 @@ export default function InventoryPage() {
                     <div className="flex justify-center">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <button type="button" className="flex items-center gap-2 font-black uppercase text-[10px] tracking-widest hover:text-primary transition-colors focus:outline-none">
+                          <button 
+                            type="button" 
+                            onClick={(e) => e.stopPropagation()}
+                            className="flex items-center gap-2 font-black uppercase text-[10px] tracking-widest hover:text-primary transition-colors focus:outline-none"
+                          >
                             Stock
                             <ChevronDown className="w-3 h-3" />
                           </button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="center" className="rounded-xl border-none shadow-2xl p-1">
-                          <DropdownMenuItem onClick={() => setSortBy("stock-asc")} className="rounded-lg font-bold text-xs py-2">
+                        <DropdownMenuContent align="center" className="rounded-xl border-none shadow-2xl p-1 z-50">
+                          <DropdownMenuItem onClick={() => setSortBy("stock-asc")} className="rounded-lg font-bold text-xs py-2 cursor-pointer">
                             <ArrowUp className="w-3 h-3 mr-2" /> Menor Stock
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setSortBy("stock-desc")} className="rounded-lg font-bold text-xs py-2">
+                          <DropdownMenuItem onClick={() => setSortBy("stock-desc")} className="rounded-lg font-bold text-xs py-2 cursor-pointer">
                             <ArrowDown className="w-3 h-3 mr-2" /> Mayor Stock
                           </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -267,13 +283,17 @@ export default function InventoryPage() {
                   <TableHead className="px-6">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <button type="button" className="flex items-center gap-2 font-black uppercase text-[10px] tracking-widest hover:text-primary transition-colors focus:outline-none">
+                        <button 
+                          type="button" 
+                          onClick={(e) => e.stopPropagation()}
+                          className="flex items-center gap-2 font-black uppercase text-[10px] tracking-widest hover:text-primary transition-colors focus:outline-none"
+                        >
                           Estado
                           <ChevronDown className="w-3 h-3" />
                         </button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start" className="rounded-xl border-none shadow-2xl p-1">
-                        <DropdownMenuItem onClick={() => setSortBy("status-critical")} className="rounded-lg font-black text-xs py-2 text-destructive hover:text-destructive">
+                      <DropdownMenuContent align="start" className="rounded-xl border-none shadow-2xl p-1 z-50">
+                        <DropdownMenuItem onClick={() => setSortBy("status-critical")} className="rounded-lg font-black text-xs py-2 text-destructive hover:text-destructive cursor-pointer">
                           <AlertTriangle className="w-3 h-3 mr-2" /> Ver Críticos Primero
                         </DropdownMenuItem>
                       </DropdownMenuContent>
