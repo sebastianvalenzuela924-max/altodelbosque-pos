@@ -5,14 +5,16 @@ import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import { collection, query, orderBy } from "firebase/firestore";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { PieChart, Pie, Tooltip, ResponsiveContainer, Cell, Legend } from "recharts";
-import { DollarSign, Package, TrendingUp, Calendar, ShoppingBag, ArrowUpRight, Loader2, ListFilter, Table as TableIcon, CalendarDays, ChevronRight } from "lucide-react";
+import { DollarSign, Package, TrendingUp, Calendar, ShoppingBag, ArrowUpRight, Loader2, ListFilter, Table as TableIcon, CalendarDays, ChevronRight, Clock } from "lucide-react";
 import { useMemo, useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
 export default function ReportsPage() {
   const [mounted, setMounted] = useState(false);
+  const [rankingFilter, setRankingFilter] = useState<'today' | 'yesterday' | 'week' | 'month' | 'all'>('all');
   const firestore = useFirestore();
 
   useEffect(() => {
@@ -119,11 +121,30 @@ export default function ReportsPage() {
     return Object.values(groups).sort((a, b) => b.date.getTime() - a.date.getTime());
   }, [sales, mounted]);
 
-  const allProductsRanking = useMemo(() => {
+  // Ranking filtrable por periodo
+  const filteredRanking = useMemo(() => {
     if (!sales || !mounted) return [];
+    
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfYesterday = new Date(startOfToday);
+    startOfYesterday.setDate(startOfYesterday.getDate() - 1);
+    const startOfWeek = new Date(startOfToday);
+    startOfWeek.setDate(startOfWeek.getDate() - 7);
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const filteredSales = sales.filter(s => {
+      const d = s.saleDateTime?.toDate?.() || new Date();
+      if (rankingFilter === 'today') return d >= startOfToday;
+      if (rankingFilter === 'yesterday') return d >= startOfYesterday && d < startOfToday;
+      if (rankingFilter === 'week') return d >= startOfWeek;
+      if (rankingFilter === 'month') return d >= startOfMonth;
+      return true;
+    });
+
     const productStats: Record<string, { name: string, quantity: number, total: number }> = {};
     
-    sales.forEach(sale => {
+    filteredSales.forEach(sale => {
       if (sale.itemsSummary) {
         sale.itemsSummary.forEach((item: any) => {
           const key = item.id === 'manual' ? `Manual: ${item.name}` : item.name;
@@ -137,7 +158,7 @@ export default function ReportsPage() {
     });
 
     return Object.values(productStats).sort((a, b) => b.quantity - a.quantity);
-  }, [sales, mounted]);
+  }, [sales, mounted, rankingFilter]);
 
   const COLORS = ['#3366CC', '#8B4ADF', '#10b981', '#f59e0b', '#ef4444', '#64748b', '#ec4899', '#8b5cf6', '#06b6d4', '#f97316'];
 
@@ -240,7 +261,7 @@ export default function ReportsPage() {
             <CalendarDays className="w-4 h-4 mr-2" /> Mensual
           </TabsTrigger>
           <TabsTrigger value="ranking" className="rounded-xl font-bold data-[state=active]:bg-primary data-[state=active]:text-white">
-            <ListFilter className="w-4 h-4 mr-2" /> Más Vendidos
+            <ListFilter className="w-4 h-4 mr-2" /> Ranking
           </TabsTrigger>
         </TabsList>
 
@@ -400,82 +421,103 @@ export default function ReportsPage() {
         </TabsContent>
 
         <TabsContent value="ranking" className="animate-in slide-in-from-bottom-4 duration-500">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            <Card className="lg:col-span-7 border-none shadow-xl bg-white rounded-3xl">
-              <CardHeader className="p-8 pb-4">
-                <CardTitle className="text-2xl font-black text-slate-800">Ranking de Rotación</CardTitle>
-                <CardDescription>Productos ordenados por cantidad total de unidades vendidas.</CardDescription>
-              </CardHeader>
-              <CardContent className="px-8 pb-8">
-                <div className="space-y-4">
-                  {allProductsRanking.length > 0 ? (
-                    allProductsRanking.map((product, idx) => (
-                      <div key={idx} className="flex items-center gap-4 group">
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-white shrink-0 shadow-sm`} style={{ backgroundColor: COLORS[idx % COLORS.length] }}>
-                          {idx + 1}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex justify-between items-end mb-1">
-                            <span className="font-bold text-slate-700 truncate">{product.name}</span>
-                            <span className="text-xs font-black text-primary">{product.quantity} unidades</span>
-                          </div>
-                          <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                            <div 
-                              className="h-full rounded-full transition-all duration-1000" 
-                              style={{ 
-                                width: `${(product.quantity / allProductsRanking[0].quantity) * 100}%`,
-                                backgroundColor: COLORS[idx % COLORS.length]
-                              }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-20 opacity-30">
-                      <Package className="w-12 h-12 mx-auto mb-2" />
-                      <p>Esperando datos de venta para generar el ranking.</p>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="lg:col-span-5 border-none shadow-xl bg-white rounded-3xl">
-              <CardHeader className="p-8 pb-4">
-                <CardTitle className="text-2xl font-black text-slate-800">Impacto en Ingresos</CardTitle>
-                <CardDescription>Distribución porcentual de la recaudación por producto (Top 10).</CardDescription>
-              </CardHeader>
-              <CardContent className="h-[400px] flex flex-col items-center justify-center p-8">
-                {allProductsRanking.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={allProductsRanking.slice(0, 10)}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={80}
-                        outerRadius={110}
-                        paddingAngle={5}
-                        dataKey="total"
-                      >
-                        {allProductsRanking.slice(0, 10).map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip 
-                        contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)'}}
-                        formatter={(value: any) => [`$${value.toLocaleString('es-CL')}`, 'Recaudado']}
-                      />
-                      <Legend verticalAlign="bottom" height={36} iconType="circle" />
-                    </PieChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="text-center text-muted-foreground p-8">
-                    <Package className="w-12 h-12 mx-auto mb-2 opacity-20" />
-                    Sin datos suficientes.
+          <div className="space-y-6">
+            <Card className="border-none shadow-xl bg-white rounded-3xl overflow-hidden">
+              <CardHeader className="bg-slate-50/50 border-b p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="bg-primary/10 p-2 rounded-xl text-primary">
+                    <Clock className="w-5 h-5" />
                   </div>
-                )}
+                  <div>
+                    <CardTitle className="text-xl font-black text-slate-800">Filtrar Ranking</CardTitle>
+                    <CardDescription>Selecciona el periodo para analizar la rotación.</CardDescription>
+                  </div>
+                </div>
+                <Select value={rankingFilter} onValueChange={(v: any) => setRankingFilter(v)}>
+                  <SelectTrigger className="w-[180px] rounded-xl h-11 border-primary/20 bg-white font-bold">
+                    <SelectValue placeholder="Periodo" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border-none shadow-2xl">
+                    <SelectItem value="today">Hoy</SelectItem>
+                    <SelectItem value="yesterday">Ayer</SelectItem>
+                    <SelectItem value="week">Última Semana</SelectItem>
+                    <SelectItem value="month">Este Mes</SelectItem>
+                    <SelectItem value="all">Todo el Historial</SelectItem>
+                  </SelectContent>
+                </Select>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="grid grid-cols-1 lg:grid-cols-12">
+                  <div className="lg:col-span-7 p-8 border-r">
+                    <h3 className="text-sm font-black text-slate-400 uppercase tracking-[0.2em] mb-6">Productos con mayor rotación</h3>
+                    <div className="space-y-4">
+                      {filteredRanking.length > 0 ? (
+                        filteredRanking.map((product, idx) => (
+                          <div key={idx} className="flex items-center gap-4 group">
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-white shrink-0 shadow-sm`} style={{ backgroundColor: COLORS[idx % COLORS.length] }}>
+                              {idx + 1}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex justify-between items-end mb-1">
+                                <span className="font-bold text-slate-700 truncate">{product.name}</span>
+                                <span className="text-xs font-black text-primary">{product.quantity} unidades</span>
+                              </div>
+                              <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                                <div 
+                                  className="h-full rounded-full transition-all duration-1000" 
+                                  style={{ 
+                                    width: `${(product.quantity / filteredRanking[0].quantity) * 100}%`,
+                                    backgroundColor: COLORS[idx % COLORS.length]
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-center py-20 opacity-30">
+                          <Package className="w-12 h-12 mx-auto mb-2" />
+                          <p className="text-xs font-bold">Sin datos para este periodo.</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="lg:col-span-5 p-8 flex flex-col items-center justify-center bg-slate-50/30">
+                    <h3 className="text-sm font-black text-slate-400 uppercase tracking-[0.2em] mb-6 text-center">Impacto en Ingresos</h3>
+                    <div className="h-[300px] w-full">
+                      {filteredRanking.length > 0 ? (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={filteredRanking.slice(0, 10)}
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={60}
+                              outerRadius={90}
+                              paddingAngle={5}
+                              dataKey="total"
+                            >
+                              {filteredRanking.slice(0, 10).map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                              ))}
+                            </Pie>
+                            <Tooltip 
+                              contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)'}}
+                              formatter={(value: any) => [`$${value.toLocaleString('es-CL')}`, 'Recaudado']}
+                            />
+                            <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{fontSize: '10px', fontWeight: 'bold'}} />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <div className="text-center text-muted-foreground p-8">
+                          <Package className="w-12 h-12 mx-auto mb-2 opacity-20" />
+                          Sin datos suficientes.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </div>
