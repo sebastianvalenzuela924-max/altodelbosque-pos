@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScannerComponent } from "@/components/pos/ScannerComponent";
@@ -8,9 +9,9 @@ import { CalculatorComponent } from "@/components/pos/CalculatorComponent";
 import { QuickAddDialog } from "@/components/pos/QuickAddDialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Trash2, PlusCircle, MinusCircle, ShoppingCart, CheckCircle2, Scan, Calculator } from "lucide-react";
-import { useFirestore, addDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase";
+import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase";
 import { useToast } from "@/hooks/use-toast";
-import { doc, getDoc, collection, serverTimestamp, increment } from "firebase/firestore";
+import { doc, collection, serverTimestamp, increment, query } from "firebase/firestore";
 import { cn } from "@/lib/utils";
 
 export default function POSPage() {
@@ -23,6 +24,13 @@ export default function POSPage() {
   const [mounted, setMounted] = useState(false);
   const { toast } = useToast();
 
+  // Suscribirse a todos los productos para comparación instantánea
+  const productsQuery = useMemoFirebase(() => {
+    return query(collection(firestore, "products"));
+  }, [firestore]);
+  
+  const { data: allProducts } = useCollection(productsQuery);
+
   useEffect(() => {
     setMounted(true);
     const updateTime = () => {
@@ -33,23 +41,31 @@ export default function POSPage() {
     return () => clearInterval(timer);
   }, []);
 
-  const handleScan = async (barcode: string) => {
-    const existing = items.find(i => i.id === barcode);
-    if (existing) {
-      updateQuantity(barcode, 1);
-      toast({ title: "Cantidad actualizada", description: `${existing.name} +1` });
+  const handleScan = (barcode: string) => {
+    const cleanBarcode = barcode.trim();
+    
+    // 1. Verificar si ya está en el carrito
+    const existingInCart = items.find(i => i.id === cleanBarcode);
+    if (existingInCart) {
+      updateQuantity(cleanBarcode, 1);
+      toast({ title: "Cantidad actualizada", description: `${existingInCart.name} +1` });
       return;
     }
 
-    const docRef = doc(firestore, 'products', barcode);
-    const docSnap = await getDoc(docRef);
+    // 2. Buscar en el inventario cargado
+    const product = allProducts?.find(p => p.id === cleanBarcode);
 
-    if (docSnap.exists()) {
-      const p = docSnap.data();
-      setItems(prev => [...prev, { id: barcode, name: p.name, price: p.price, quantity: 1 }]);
-      toast({ title: "Producto Agregado", description: p.name });
+    if (product) {
+      setItems(prev => [...prev, { 
+        id: cleanBarcode, 
+        name: product.name, 
+        price: product.price, 
+        quantity: 1 
+      }]);
+      toast({ title: "Producto Agregado", description: product.name });
     } else {
-      setQuickAddBarcode(barcode);
+      // 3. Si no existe, abrir diálogo de registro rápido
+      setQuickAddBarcode(cleanBarcode);
     }
   };
 
@@ -76,8 +92,10 @@ export default function POSPage() {
     setManualProducts(prev => prev.filter((_, i) => i !== index));
   };
 
-  const total = items.reduce((sum, item) => sum + (item.price * item.quantity), 0) +
-                manualProducts.reduce((sum, item) => sum + item.amount, 0);
+  const total = useMemo(() => {
+    return items.reduce((sum, item) => sum + (item.price * item.quantity), 0) +
+           manualProducts.reduce((sum, item) => sum + item.amount, 0);
+  }, [items, manualProducts]);
 
   const handleFinalize = () => {
     if (items.length === 0 && manualProducts.length === 0) return;
@@ -124,14 +142,13 @@ export default function POSPage() {
       });
     });
 
-    toast({ title: "Venta Procesada", description: "Sincronizando con el servidor..." });
+    toast({ title: "Venta Procesada", description: "La transacción se ha registrado correctamente." });
     setItems([]);
     setManualProducts([]);
     setIsProcessing(false);
   };
 
-  // Evitar renderizado de tiempo en servidor
-  const displayTime = mounted ? (currentTime || "--:--") : "--:--";
+  if (!mounted) return null;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in fade-in duration-500">
@@ -146,7 +163,7 @@ export default function POSPage() {
               <div className="flex flex-col items-end">
                 <span className="text-xs uppercase font-bold opacity-70">Sesión Activa</span>
                 <span className="text-sm font-mono tracking-widest">
-                  {displayTime}
+                  {currentTime || "--:--"}
                 </span>
               </div>
             </div>
