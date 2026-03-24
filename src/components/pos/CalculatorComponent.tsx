@@ -1,10 +1,9 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus, Minus, X, Divide, CheckCircle2, Trash2, Hash, Loader2, RotateCcw, Calculator, Banknote, Delete } from "lucide-react";
+import { Plus, Minus, X, Divide, CheckCircle2, Trash2, RotateCcw, Calculator, Banknote, Delete } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface CalculatorComponentProps {
@@ -99,26 +98,15 @@ export function CalculatorComponent({
     if (!isNaN(amount)) {
       setIsReset(true);
       setEquation("");
-      setDisplay("0"); // Se limpia a cero tras el cobro exitoso
+      setDisplay("0"); 
       setIsCashMode(false);
       setCashReceived("");
       onFinalize(amount);
     }
   };
 
-  const handleFinalizeKeepAmount = () => {
-    const amount = calculateResult();
-    if (!isNaN(amount)) {
-      setIsReset(false);
-      setEquation("");
-      setDisplay(amount.toString());
-      onFinalize(amount);
-    }
-  };
-
   const toggleCashMode = () => {
     if (!isCashMode) {
-      // Al entrar, calculamos el resultado actual de la ecuación si existe
       const result = calculateResult();
       setDisplay(result.toString());
       setEquation("");
@@ -247,19 +235,6 @@ export function CalculatorComponent({
           </Button>
 
           <Button 
-            variant="outline"
-            className={cn(
-              "w-full h-14 text-xs font-black rounded-2xl border-2 border-primary text-primary hover:bg-primary/5 transition-all active:scale-95 flex items-center justify-center gap-2",
-              isProcessing && "opacity-50"
-            )}
-            onClick={handleFinalizeKeepAmount}
-            disabled={isProcessing}
-          >
-            <Calculator className="w-4 h-4" />
-            COBRAR SIN BORRAR MONTO
-          </Button>
-
-          <Button 
             variant="ghost"
             className="w-full h-12 text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl text-destructive hover:bg-destructive/10"
             onClick={onClearCart}
@@ -273,4 +248,3 @@ export function CalculatorComponent({
     </Card>
   );
 }
-
