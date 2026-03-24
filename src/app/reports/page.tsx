@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
@@ -9,6 +8,7 @@ import { DollarSign, Package, TrendingUp, Calendar, ShoppingBag, ArrowUpRight, L
 import { useMemo, useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 export default function ReportsPage() {
   const [mounted, setMounted] = useState(false);
