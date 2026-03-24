@@ -145,7 +145,8 @@ export default function POSPage() {
     });
     
     setScanSuccess(true);
-    setTimeout(() => setScanSuccess(false), 300);
+    // Mayor tiempo de feedback visual y bloqueo para evitar duplicados
+    setTimeout(() => setScanSuccess(false), 800);
   };
 
   const handleScan = (barcode: string) => {
@@ -153,8 +154,8 @@ export default function POSPage() {
     if (!cleanBarcode || isLoadingInventory || isScanLocked) return;
 
     const now = Date.now();
-    // Debounce de 600ms para permitir cobro rápido
-    if (lastScanRef.current && lastScanRef.current.code === cleanBarcode && (now - lastScanRef.current.time < 600)) {
+    // Debounce aumentado a 2 segundos para evitar duplicados accidentales del mismo código
+    if (lastScanRef.current && lastScanRef.current.code === cleanBarcode && (now - lastScanRef.current.time < 2000)) {
       return;
     }
 
@@ -163,9 +164,10 @@ export default function POSPage() {
     const product = productMap.get(cleanBarcode);
 
     if (product) {
+      setIsScanLocked(true); // Bloqueo temporal para procesar
       handleAddItem(product);
+      setTimeout(() => setIsScanLocked(false), 1000); // Desbloqueo tras 1 segundo
     } else {
-      // Bloqueo corto tras error para que el usuario pueda reintentar rápido
       setIsScanLocked(true);
       toast({ 
         variant: "destructive",
