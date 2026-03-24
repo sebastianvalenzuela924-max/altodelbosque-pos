@@ -480,6 +480,7 @@ export default function POSPage() {
               baseValue={Math.round(total)} 
               isProcessing={isProcessing}
               onFinalize={handleFinalize} 
+              onClearCart={handleClearCart}
             />
           </div>
         </section>

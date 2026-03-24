@@ -3,19 +3,21 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus, Minus, X, Divide, CheckCircle2, Trash2, Hash, Loader2 } from "lucide-react";
+import { Plus, Minus, X, Divide, CheckCircle2, Trash2, Hash, Loader2, RotateCcw, Calculator } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface CalculatorComponentProps {
   baseValue: number;
   isProcessing?: boolean;
   onFinalize: (amount: number) => void;
+  onClearCart?: () => void;
 }
 
 export function CalculatorComponent({ 
   baseValue, 
   isProcessing = false,
-  onFinalize 
+  onFinalize,
+  onClearCart
 }: CalculatorComponentProps) {
   const [display, setDisplay] = useState(Math.round(baseValue).toString());
   const [equation, setEquation] = useState("");
@@ -67,6 +69,22 @@ export function CalculatorComponent({
     setIsReset(false);
   };
 
+  const handleFinalizeNormal = () => {
+    const amount = parseInt(display);
+    if (!isNaN(amount)) {
+      setIsReset(true); // Permitir que se resetee al nuevo baseValue (0)
+      onFinalize(amount);
+    }
+  };
+
+  const handleFinalizeKeepAmount = () => {
+    const amount = parseInt(display);
+    if (!isNaN(amount)) {
+      setIsReset(false); // Mantener el número actual aunque la base cambie
+      onFinalize(amount);
+    }
+  };
+
   return (
     <Card className="h-full border-none shadow-none bg-transparent">
       <CardContent className="p-0 space-y-4">
@@ -102,7 +120,7 @@ export function CalculatorComponent({
           {[4, 5, 6].map((n) => (
             <Button key={n} variant="secondary" className="h-12 text-xl font-bold rounded-xl" onClick={() => handleNumber(n.toString())}>{n}</Button>
           ))}
-          <Button variant="primary" className="h-12 text-lg font-bold row-span-2 bg-accent hover:bg-accent/90 rounded-xl" onClick={handleCalculate}>=</Button>
+          <Button variant="primary" className="h-12 text-lg font-bold row-span-2 bg-accent hover:bg-accent/90 rounded-xl text-white" onClick={handleCalculate}>=</Button>
 
           {[1, 2, 3].map((n) => (
             <Button key={n} variant="secondary" className="h-12 text-xl font-bold rounded-xl" onClick={() => handleNumber(n.toString())}>{n}</Button>
@@ -112,26 +130,46 @@ export function CalculatorComponent({
           <Button variant="secondary" className="h-12 text-xl font-bold rounded-xl" onClick={() => handleNumber(".")}>.</Button>
         </div>
 
-        <Button 
-          className={cn(
-            "w-full h-20 text-xl font-black rounded-2xl shadow-xl transition-all active:scale-95 flex items-center justify-center gap-3 mt-4",
-            isProcessing ? "bg-slate-400" : "bg-primary hover:bg-primary/90"
-          )}
-          onClick={() => {
-            const amount = parseInt(display);
-            if (!isNaN(amount)) {
-              onFinalize(amount);
-            }
-          }}
-          disabled={isProcessing}
-        >
-          {isProcessing ? (
-            <Loader2 className="w-8 h-8 animate-spin" />
-          ) : (
-            <CheckCircle2 className="w-8 h-8" />
-          )}
-          {isProcessing ? "PROCESANDO..." : "COBRAR"}
-        </Button>
+        <div className="space-y-2 mt-4">
+          <Button 
+            className={cn(
+              "w-full h-16 text-xl font-black rounded-2xl shadow-xl transition-all active:scale-95 flex items-center justify-center gap-3",
+              isProcessing ? "bg-slate-400" : "bg-primary hover:bg-primary/90"
+            )}
+            onClick={handleFinalizeNormal}
+            disabled={isProcessing}
+          >
+            {isProcessing ? (
+              <Loader2 className="w-6 h-6 animate-spin" />
+            ) : (
+              <CheckCircle2 className="w-6 h-6" />
+            )}
+            {isProcessing ? "PROCESANDO..." : "COBRAR"}
+          </Button>
+
+          <Button 
+            variant="outline"
+            className={cn(
+              "w-full h-14 text-xs font-black rounded-2xl border-2 border-primary text-primary hover:bg-primary/5 transition-all active:scale-95 flex items-center justify-center gap-2",
+              isProcessing && "opacity-50"
+            )}
+            onClick={handleFinalizeKeepAmount}
+            disabled={isProcessing}
+          >
+            <Calculator className="w-4 h-4" />
+            COBRAR SIN BORRAR MONTO
+          </Button>
+
+          <Button 
+            variant="ghost"
+            className="w-full h-12 text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl text-destructive hover:bg-destructive/10"
+            onClick={onClearCart}
+            disabled={isProcessing}
+          >
+            <RotateCcw className="w-3 h-3 mr-2" />
+            Vaciar Caja Completa
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );
