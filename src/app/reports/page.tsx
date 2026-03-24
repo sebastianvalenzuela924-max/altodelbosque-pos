@@ -1,81 +1,96 @@
+
 "use client";
 
-import { useEffect, useState } from "react";
-import { db, Sale } from "@/lib/firebase";
-import { collection, query, getDocs } from "firebase/firestore";
+import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { collection, query, orderBy } from "firebase/firestore";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from "recharts";
-import { DollarSign, Package, TrendingUp, Calendar, ShoppingBag, ArrowUpRight } from "lucide-react";
+import { DollarSign, Package, TrendingUp, Calendar, ShoppingBag, ArrowUpRight, Loader2 } from "lucide-react";
+import { useMemo } from "react";
 
 export default function ReportsPage() {
-  const [sales, setSales] = useState<Sale[]>([]);
-  const [stats, setStats] = useState({
-    daily: 0,
-    monthly: 0,
-    totalSales: 0,
-    itemCount: 0,
-  });
+  const firestore = useFirestore();
 
-  useEffect(() => {
-    load();
-  }, []);
+  const salesQuery = useMemoFirebase(() => {
+    return query(collection(firestore, "sales"), orderBy("saleDateTime", "desc"));
+  }, [firestore]);
 
-  const load = async () => {
-    const q = query(collection(db, "ventas"));
-    const snapshot = await getDocs(q);
-    const data = snapshot.docs.map(doc => ({
-      ...doc.data(),
-      timestamp: doc.data().timestamp?.toDate() || new Date()
-    } as Sale));
-    setSales(data);
+  const { data: sales, isLoading } = useCollection(salesQuery);
+
+  const stats = useMemo(() => {
+    if (!sales) return { daily: 0, monthly: 0, totalSales: 0, itemCount: 0 };
 
     const today = new Date();
     const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
     const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
 
-    const daily = data
-      .filter(s => s.timestamp >= startOfDay)
-      .reduce((sum, s) => sum + s.total, 0);
+    const daily = sales
+      .filter(s => {
+        const d = s.saleDateTime?.toDate?.() || new Date();
+        return d >= startOfDay;
+      })
+      .reduce((sum, s) => sum + (s.totalAmount || 0), 0);
 
-    const monthly = data
-      .filter(s => s.timestamp >= startOfMonth)
-      .reduce((sum, s) => sum + s.total, 0);
+    const monthly = sales
+      .filter(s => {
+        const d = s.saleDateTime?.toDate?.() || new Date();
+        return d >= startOfMonth;
+      })
+      .reduce((sum, s) => sum + (s.totalAmount || 0), 0);
 
-    const itemCount = data.reduce((sum, s) => sum + s.items.reduce((iSum, i) => iSum + i.quantity, 0), 0);
+    const itemCount = sales.reduce((sum, s) => sum + (s.productSaleItemIds?.length || 0), 0);
 
-    setStats({
+    return {
       daily,
       monthly,
-      totalSales: data.length,
+      totalSales: sales.length,
       itemCount
+    };
+  }, [sales]);
+
+  const chartData = useMemo(() => {
+    if (!sales) return [];
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - (6 - i));
+      const dayStr = d.toLocaleDateString('es-ES', { weekday: 'short' });
+      const amount = sales
+        .filter(s => {
+          const sd = s.saleDateTime?.toDate?.() || new Date();
+          return sd.toDateString() === d.toDateString();
+        })
+        .reduce((sum, s) => sum + (s.totalAmount || 0), 0);
+      return { name: dayStr, amount };
     });
-  };
+  }, [sales]);
 
-  // Group by day for the chart (last 7 days)
-  const chartData = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() - (6 - i));
-    const dayStr = d.toLocaleDateString('es-ES', { weekday: 'short' });
-    const amount = sales
-      .filter(s => s.timestamp.toDateString() === d.toDateString())
-      .reduce((sum, s) => sum + s.total, 0);
-    return { name: dayStr, amount };
-  });
-
-  // Top products calculation
-  const productStats: Record<string, number> = {};
-  sales.forEach(sale => {
-    sale.items.forEach(item => {
-      productStats[item.name] = (productStats[item.name] || 0) + item.quantity;
+  const topProductsData = useMemo(() => {
+    if (!sales) return [];
+    // Note: To get real product names, we'd need to fetch productSaleItems subcollections
+    // For this prototype view, we'll summarize the count of IDs as a placeholder for popular products
+    const productStats: Record<string, number> = {};
+    sales.forEach(sale => {
+      sale.productSaleItemIds?.forEach((id: string) => {
+        productStats[id] = (productStats[id] || 0) + 1;
+      });
     });
-  });
 
-  const topProductsData = Object.entries(productStats)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5)
-    .map(([name, value]) => ({ name, value }));
+    return Object.entries(productStats)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([name, value]) => ({ name: `Prod ${name.slice(-4)}`, value }));
+  }, [sales]);
 
   const COLORS = ['#3366CC', '#8B4ADF', '#10b981', '#f59e0b', '#ef4444'];
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-32 gap-4">
+        <Loader2 className="w-12 h-12 animate-spin text-primary" />
+        <p className="text-muted-foreground font-bold">Analizando datos...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -176,38 +191,36 @@ export default function ReportsPage() {
 
         <Card className="lg:col-span-4 border-none shadow-xl">
           <CardHeader>
-            <CardTitle className="text-lg">Productos Más Vendidos</CardTitle>
-            <CardDescription>Top 5 por cantidad de unidades</CardDescription>
+            <CardTitle className="text-lg">Distribución de Ventas</CardTitle>
+            <CardDescription>Top IDs de producto más frecuentes</CardDescription>
           </CardHeader>
           <CardContent className="h-[350px] flex flex-col items-center justify-center">
             {topProductsData.length > 0 ? (
-              <>
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={topProductsData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={80}
-                      paddingAngle={5}
-                      dataKey="value"
-                    >
-                      {topProductsData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip 
-                      contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)'}}
-                    />
-                    <Legend verticalAlign="bottom" height={36} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </>
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={topProductsData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {topProductsData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)'}}
+                  />
+                  <Legend verticalAlign="bottom" height={36} />
+                </PieChart>
+              </ResponsiveContainer>
             ) : (
-              <div className="text-center text-muted-foreground">
+              <div className="text-center text-muted-foreground p-8">
                 <Package className="w-12 h-12 mx-auto mb-2 opacity-20" />
-                No hay datos suficientes
+                No hay suficientes datos de ventas.
               </div>
             )}
           </CardContent>
