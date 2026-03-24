@@ -11,6 +11,8 @@ import { Sparkles, Loader2, Barcode, Save, Tag } from "lucide-react";
 import { useFirestore, setDocumentNonBlocking, useCollection, useMemoFirebase } from "@/firebase";
 import { doc, collection } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
 export function QuickAddDialog({ 
   barcode, 
@@ -101,7 +103,7 @@ export function QuickAddDialog({
           
           <Button 
             variant="outline" 
-            className="w-full flex items-center justify-center gap-2 h-12 border-accent text-accent hover:bg-accent/5 rounded-xl font-bold"
+            className="w-full flex items-center justify-center gap-2 h-12 border-accent text-accent hover:bg-accent/5 rounded-xl font-bold shadow-sm shadow-accent/10"
             onClick={handleAI}
             disabled={loading}
           >
@@ -111,46 +113,57 @@ export function QuickAddDialog({
 
           <div className="space-y-4">
             <div className="grid gap-2">
-                <Label htmlFor="name" className="font-bold text-slate-500">Nombre del Producto</Label>
-                <Input id="name" className="h-12 rounded-xl" value={name} onChange={e => setName(e.target.value)} placeholder="Ej: Coca Cola 350ml" />
+                <Label htmlFor="name" className="font-bold text-slate-500 text-xs uppercase tracking-widest">Nombre del Producto</Label>
+                <Input id="name" className="h-12 rounded-xl bg-slate-50 border-none font-bold focus-visible:ring-primary" value={name} onChange={e => setName(e.target.value)} placeholder="Ej: Coca Cola 350ml" />
             </div>
 
             <div className="grid gap-2">
-                <Label htmlFor="quick-category" className="font-bold text-slate-500 flex items-center gap-2">
+                <Label htmlFor="quick-category" className="font-bold text-slate-500 text-xs uppercase tracking-widest flex items-center gap-2">
                   <Tag className="w-3 h-3" /> Categoría
                 </Label>
-                <div className="relative">
-                  <Input 
-                    id="quick-category" 
-                    list="quick-category-suggestions"
-                    value={category} 
-                    className="h-12 rounded-xl"
-                    onChange={e => setCategory(e.target.value)} 
-                    placeholder="Escribe o elige categoría" 
-                  />
-                  <datalist id="quick-category-suggestions">
-                    {existingCategories.map((cat) => (
-                      <option key={cat} value={cat} />
-                    ))}
-                  </datalist>
-                </div>
+                <Input 
+                  id="quick-category" 
+                  value={category} 
+                  className="h-12 rounded-xl bg-slate-50 border-none font-bold focus-visible:ring-primary"
+                  onChange={e => setCategory(e.target.value)} 
+                  placeholder="Escribe o toca una abajo..." 
+                />
+                {existingCategories.length > 0 && (
+                  <div className="mt-1">
+                    <ScrollArea className="w-full whitespace-nowrap pb-2">
+                      <div className="flex gap-2">
+                        {existingCategories.map((cat) => (
+                          <Badge 
+                            key={cat} 
+                            variant={category === cat ? "default" : "secondary"}
+                            className="cursor-pointer rounded-lg px-3 py-1 font-bold text-[10px] uppercase transition-all"
+                            onClick={() => setCategory(cat)}
+                          >
+                            {cat}
+                          </Badge>
+                        ))}
+                      </div>
+                      <ScrollBar orientation="horizontal" className="h-1" />
+                    </ScrollArea>
+                  </div>
+                )}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
-                <Label htmlFor="price" className="font-bold text-slate-500">Precio ($)</Label>
-                <Input id="price" type="number" className="h-12 rounded-xl" value={price} onChange={e => setPrice(e.target.value)} placeholder="Ej: 1500" />
+                <Label htmlFor="price" className="font-bold text-slate-500 text-xs uppercase tracking-widest">Precio ($)</Label>
+                <Input id="price" type="number" className="h-12 rounded-xl bg-slate-50 border-none font-mono font-black text-lg focus-visible:ring-primary" value={price} onChange={e => setPrice(e.target.value)} placeholder="0" />
                 </div>
                 <div className="grid gap-2">
-                <Label htmlFor="stock" className="font-bold text-slate-500">Stock Inicial</Label>
-                <Input id="stock" type="number" className="h-12 rounded-xl" value={stock} onChange={e => setStock(e.target.value)} placeholder="Ej: 24" />
+                <Label htmlFor="stock" className="font-bold text-slate-500 text-xs uppercase tracking-widest">Stock Inicial</Label>
+                <Input id="stock" type="number" className="h-12 rounded-xl bg-slate-50 border-none font-mono font-black text-lg focus-visible:ring-primary" value={stock} onChange={e => setStock(e.target.value)} placeholder="0" />
                 </div>
             </div>
           </div>
         </div>
-        <DialogFooter className="flex gap-2">
-          <Button variant="ghost" className="rounded-xl flex-1" onClick={onClose}>Descartar</Button>
-          <Button className="rounded-xl flex-1 bg-primary hover:bg-primary/90 font-black h-12" onClick={handleSave}>
+        <DialogFooter className="flex gap-2 pt-4">
+          <Button variant="ghost" className="rounded-xl flex-1 border-none hover:bg-slate-100" onClick={onClose}>Descartar</Button>
+          <Button className="rounded-xl flex-1 bg-primary hover:bg-primary/90 font-black h-12 shadow-lg shadow-primary/20" onClick={handleSave}>
             <Save className="w-4 h-4 mr-2" />
             REGISTRAR
           </Button>
