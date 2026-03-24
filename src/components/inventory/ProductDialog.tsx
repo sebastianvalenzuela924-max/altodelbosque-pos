@@ -89,18 +89,18 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent 
-        className="max-w-[95vw] sm:max-w-lg border-none shadow-2xl rounded-3xl overflow-hidden max-h-[90vh] flex flex-col"
+        className="max-w-[95vw] sm:max-w-lg border-none shadow-2xl rounded-3xl overflow-hidden max-h-[90vh] flex flex-col p-0"
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
-        <DialogHeader>
+        <DialogHeader className="p-6 pb-2">
           <DialogTitle className="flex items-center gap-2 text-2xl font-black text-primary">
             <Package className="w-6 h-6" />
             {product?.id && product.name ? "Editar Producto" : "Nuevo Producto"}
           </DialogTitle>
         </DialogHeader>
         
-        <ScrollArea className="flex-1 px-1">
-          <div className="grid gap-6 py-4 px-1">
+        <ScrollArea className="flex-1 px-6">
+          <div className="grid gap-6 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="id" className="font-bold text-slate-500 text-xs uppercase tracking-widest">Código</Label>
@@ -153,7 +153,7 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
           </div>
         </ScrollArea>
 
-        <DialogFooter className="gap-2 pt-4 mt-auto">
+        <DialogFooter className="gap-2 p-6 pt-2 mt-auto bg-white border-t">
           <Button variant="ghost" onClick={onClose} disabled={loading} className="rounded-xl flex-1">Cancelar</Button>
           <Button onClick={handleSave} disabled={loading} className="bg-primary hover:bg-primary/90 rounded-xl flex-1 h-12 font-black">
             {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
