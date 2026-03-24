@@ -308,7 +308,7 @@ export default function ReportsPage() {
                       </div>
                     </AccordionTrigger>
                     
-                    <AccordionContent className="px-6 pb-6 pt-2 bg-slate-50/50">
+                    <AccordionContent className="px-3 md:px-6 pb-6 pt-2 bg-slate-50/50">
                       <div className="grid gap-2 mt-2">
                         <div className="flex items-center justify-between px-2 mb-2">
                           <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Desempeño por producto</span>
@@ -319,7 +319,7 @@ export default function ReportsPage() {
                           const productTotalRevenue = Math.round(p.price * p.soldThisPeriod);
                           return (
                             <div key={p.id} className={cn(
-                              "bg-white p-4 rounded-2xl flex items-center justify-between border transition-all",
+                              "bg-white p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between border transition-all gap-4",
                               status === 'danger' ? "border-red-200 shadow-sm" : "border-slate-100"
                             )}>
                               <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -334,8 +334,8 @@ export default function ReportsPage() {
                                 </div>
                               </div>
                               
-                              <div className="flex items-center gap-6 text-right shrink-0">
-                                <div className="flex flex-col items-end">
+                              <div className="flex items-center justify-between sm:justify-end gap-6 sm:gap-8 w-full sm:w-auto border-t sm:border-t-0 pt-3 sm:pt-0">
+                                <div className="flex flex-col items-start sm:items-end">
                                   <p className="text-[9px] font-black text-primary uppercase tracking-widest mb-0.5">Llevados</p>
                                   <div className="flex items-center gap-1.5">
                                     <span className="text-2xl font-black text-primary leading-none">{p.soldThisPeriod}</span>
