@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Search, FileSpreadsheet, Edit3, AlertTriangle, Plus, Trash2, Package, Scan, Loader2, Check, X, ArrowUp, ArrowDown, ChevronDown, ListFilter, ShieldAlert, ShieldCheck, ShieldQuestion } from "lucide-react";
+import { Search, FileSpreadsheet, Edit3, AlertTriangle, Plus, Trash2, Package, Scan, Loader2, Check, X, ArrowUp, ArrowDown, ChevronDown, ListFilter, ShieldAlert, ShieldCheck, ShieldQuestion, DollarSign } from "lucide-react";
 import { exportToExcel } from "@/lib/export";
 import { useToast } from "@/hooks/use-toast";
 import { ProductDialog } from "@/components/inventory/ProductDialog";
@@ -74,6 +74,8 @@ export default function InventoryPage() {
           if (aStatus !== "peligro" && bStatus === "peligro") return 1;
           if (aStatus === "precaución" && bStatus === "ok") return -1;
           return 0;
+        case "category-asc": return (a.category || "").localeCompare(b.category || "");
+        case "category-desc": return (b.category || "").localeCompare(a.category || "");
         case "name":
         default: return a.name.localeCompare(b.name);
       }
@@ -112,24 +114,49 @@ export default function InventoryPage() {
             <TableHeader className="bg-slate-50/30">
               <TableRow className="border-none">
                 <TableHead className="px-6 font-black uppercase text-[10px] tracking-widest">Producto</TableHead>
+                
                 <TableHead className="px-6">
                   <DropdownMenu modal={false}>
-                    <DropdownMenuTrigger className="flex items-center gap-2 font-black uppercase text-[10px] tracking-widest focus:outline-none">
-                      Categoría <ChevronDown className="w-3 h-3" />
+                    <DropdownMenuTrigger asChild>
+                      <button type="button" className="flex items-center gap-2 font-black uppercase text-[10px] tracking-widest focus:outline-none">
+                        Stock / Ideal <ChevronDown className="w-3 h-3" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="rounded-xl border-none shadow-2xl p-1 z-[100]">
+                      <DropdownMenuItem onClick={() => setSortBy("stock-asc")} className="rounded-lg font-bold text-xs py-2">Menos stock primero</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setSortBy("stock-desc")} className="rounded-lg font-bold text-xs py-2">Más stock primero</DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableHead>
+
+                <TableHead className="px-6">
+                  <DropdownMenu modal={false}>
+                    <DropdownMenuTrigger asChild>
+                      <button type="button" className="flex items-center gap-2 font-black uppercase text-[10px] tracking-widest focus:outline-none">
+                        Categoría <ChevronDown className="w-3 h-3" />
+                      </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent className="rounded-xl border-none shadow-2xl p-1 z-[100]">
                       <DropdownMenuItem onClick={() => setCategoryFilter("all")} className="rounded-lg font-bold text-xs py-2">Todas</DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuLabel className="text-[9px] uppercase tracking-widest opacity-50">Ordenar</DropdownMenuLabel>
+                      <DropdownMenuItem onClick={() => setSortBy("category-asc")} className="rounded-lg font-bold text-xs py-2">A-Z</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setSortBy("category-desc")} className="rounded-lg font-bold text-xs py-2">Z-A</DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuLabel className="text-[9px] uppercase tracking-widest opacity-50">Filtrar</DropdownMenuLabel>
                       {categories.map(cat => (
                         <DropdownMenuItem key={cat} onClick={() => setCategoryFilter(cat)} className="rounded-lg font-bold text-xs py-2">{cat}</DropdownMenuItem>
                       ))}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableHead>
-                <TableHead className="px-6 text-center font-black uppercase text-[10px] tracking-widest">Stock / Ideal</TableHead>
+
                 <TableHead className="px-6">
                   <DropdownMenu modal={false}>
-                    <DropdownMenuTrigger className="flex items-center gap-2 font-black uppercase text-[10px] tracking-widest focus:outline-none">
-                      Estado <ChevronDown className="w-3 h-3" />
+                    <DropdownMenuTrigger asChild>
+                      <button type="button" className="flex items-center gap-2 font-black uppercase text-[10px] tracking-widest focus:outline-none">
+                        Estado <ChevronDown className="w-3 h-3" />
+                      </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent className="rounded-xl border-none shadow-2xl p-1 z-[100]">
                       <DropdownMenuItem onClick={() => setSortBy("status-critical")} className="rounded-lg font-black text-xs py-2 text-destructive">
@@ -138,6 +165,7 @@ export default function InventoryPage() {
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableHead>
+                
                 <TableHead className="px-6 text-right font-black uppercase text-[10px] tracking-widest">Acciones</TableHead>
               </TableRow>
             </TableHeader>
@@ -147,27 +175,38 @@ export default function InventoryPage() {
               ) : processedProducts.map((p) => {
                 const status = getProductStatus(p.stock, p.idealStock);
                 return (
-                  <TableRow key={p.id} className={cn("transition-colors", status === "peligro" ? "bg-destructive/5" : status === "precaución" ? "bg-amber-50" : "hover:bg-slate-50")}>
+                  <TableRow 
+                    key={p.id} 
+                    className={cn(
+                      "transition-colors", 
+                      status === "peligro" ? "bg-destructive/5" : 
+                      status === "precaución" ? "bg-amber-50" : 
+                      status === "ok" ? "bg-green-50/40 hover:bg-green-50/60" : "hover:bg-slate-50"
+                    )}
+                  >
                     <TableCell className="px-6">
                       <p className="font-bold text-sm">{p.name}</p>
                       <p className="text-[10px] font-mono text-slate-400">#{p.id}</p>
                     </TableCell>
+
                     <TableCell className="px-6">
-                      <Badge variant="outline" className="text-[9px] font-black uppercase border-slate-200">{p.category || "General"}</Badge>
-                    </TableCell>
-                    <TableCell className="px-6 text-center">
                       <div className="flex flex-col">
                         <span className="font-black text-lg">{p.stock}</span>
                         <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Normal: {p.idealStock || 10}</span>
                       </div>
                     </TableCell>
+
+                    <TableCell className="px-6">
+                      <Badge variant="outline" className="text-[9px] font-black uppercase border-slate-200 bg-white/50">{p.category || "General"}</Badge>
+                    </TableCell>
+
                     <TableCell className="px-6">
                       {status === "peligro" ? (
                         <Badge variant="destructive" className="flex items-center gap-1 rounded-full px-3 py-1 font-black text-[9px] uppercase">
                           <ShieldAlert className="w-3 h-3" /> Peligro
                         </Badge>
                       ) : status === "precaución" ? (
-                        <Badge className="bg-amber-500 hover:bg-amber-600 border-none flex items-center gap-1 rounded-full px-3 py-1 font-black text-[9px] uppercase">
+                        <Badge className="bg-amber-500 hover:bg-amber-600 border-none flex items-center gap-1 rounded-full px-3 py-1 font-black text-[9px] uppercase text-white">
                           <ShieldQuestion className="w-3 h-3" /> Precaución
                         </Badge>
                       ) : (
@@ -178,10 +217,10 @@ export default function InventoryPage() {
                     </TableCell>
                     <TableCell className="px-6 text-right">
                       <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="icon" className="text-primary" onClick={() => { setSelectedProduct(p); setIsDialogOpen(true); }}>
+                        <Button variant="ghost" size="icon" className="text-primary hover:bg-primary/10 rounded-full" onClick={() => { setSelectedProduct(p); setIsDialogOpen(true); }}>
                           <Edit3 className="w-4 h-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setProductToDelete(p)}>
+                        <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 rounded-full" onClick={() => setProductToDelete(p)}>
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
