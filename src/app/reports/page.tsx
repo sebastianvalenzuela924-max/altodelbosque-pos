@@ -9,6 +9,7 @@ import { DollarSign, Package, TrendingUp, Calendar, ShoppingBag, ArrowUpRight, L
 import { useMemo, useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { cn } from "@/lib/utils";
 
 export default function ReportsPage() {
   const [mounted, setMounted] = useState(false);
@@ -60,7 +61,7 @@ export default function ReportsPage() {
     };
   }, [sales, mounted]);
 
-  // Agrupación de ventas por día
+  // Agrupación de ventas por día (Día a Día)
   const dailyBreakdown = useMemo(() => {
     if (!sales || !mounted) return [];
     
@@ -140,6 +141,16 @@ export default function ReportsPage() {
 
   const COLORS = ['#3366CC', '#8B4ADF', '#10b981', '#f59e0b', '#ef4444', '#64748b', '#ec4899', '#8b5cf6', '#06b6d4', '#f97316'];
 
+  const getDateLabel = (date: Date) => {
+    const today = new Date();
+    const yesterday = new Date();
+    yesterday.setDate(today.getDate() - 1);
+
+    if (date.toDateString() === today.toDateString()) return "HOY";
+    if (date.toDateString() === yesterday.toDateString()) return "AYER";
+    return null;
+  };
+
   if (!mounted || isLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-32 gap-4">
@@ -153,15 +164,15 @@ export default function ReportsPage() {
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-black text-primary">Análisis de Negocio</h1>
-          <p className="text-muted-foreground">Revisa el detalle completo de tus ventas históricas.</p>
+          <h1 className="text-3xl font-black text-primary uppercase tracking-tighter">Análisis de Negocio</h1>
+          <p className="text-muted-foreground">Monitoreo detallado día a día de tus ventas y productos.</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card className="border-none shadow-lg bg-primary text-white">
           <CardHeader className="pb-2">
-            <CardDescription className="text-primary-foreground/70 font-black uppercase text-[10px] tracking-widest">Recaudación Hoy</CardDescription>
+            <CardDescription className="text-primary-foreground/70 font-black uppercase text-[10px] tracking-widest">Ventas Hoy</CardDescription>
             <CardTitle className="text-3xl font-black flex items-center justify-between">
               ${Math.round(stats.daily).toLocaleString('es-CL')}
               <DollarSign className="w-8 h-8 opacity-20" />
@@ -169,14 +180,14 @@ export default function ReportsPage() {
           </CardHeader>
           <CardContent>
             <div className="flex items-center text-xs text-primary-foreground/80 mt-2">
-              <ArrowUpRight className="w-4 h-4 mr-1" /> Ingresos del día actual
+              <ArrowUpRight className="w-4 h-4 mr-1" /> Total recaudado hoy
             </div>
           </CardContent>
         </Card>
 
         <Card className="border-none shadow-lg bg-accent text-white">
           <CardHeader className="pb-2">
-            <CardDescription className="text-accent-foreground/70 font-black uppercase text-[10px] tracking-widest">Recaudación Mes</CardDescription>
+            <CardDescription className="text-accent-foreground/70 font-black uppercase text-[10px] tracking-widest">Ventas Mes</CardDescription>
             <CardTitle className="text-3xl font-black flex items-center justify-between">
               ${Math.round(stats.monthly).toLocaleString('es-CL')}
               <TrendingUp className="w-8 h-8 opacity-20" />
@@ -184,14 +195,14 @@ export default function ReportsPage() {
           </CardHeader>
           <CardContent>
             <div className="flex items-center text-xs text-accent-foreground/80 mt-2">
-              <Calendar className="w-4 h-4 mr-1" /> Acumulado del mes en curso
+              <Calendar className="w-4 h-4 mr-1" /> Acumulado este mes
             </div>
           </CardContent>
         </Card>
 
         <Card className="border-none shadow-lg bg-white">
           <CardHeader className="pb-2">
-            <CardDescription className="text-muted-foreground font-black uppercase text-[10px] tracking-widest">Total Boletas</CardDescription>
+            <CardDescription className="text-muted-foreground font-black uppercase text-[10px] tracking-widest">Boletas Emitidas</CardDescription>
             <CardTitle className="text-3xl font-black flex items-center justify-between text-primary">
               {stats.totalSales}
               <ShoppingBag className="w-8 h-8 text-primary/10" />
@@ -199,14 +210,14 @@ export default function ReportsPage() {
           </CardHeader>
           <CardContent>
             <div className="flex items-center text-xs text-slate-400 mt-2">
-              Ventas totales en el sistema
+              Historial completo
             </div>
           </CardContent>
         </Card>
 
         <Card className="border-none shadow-lg bg-white">
           <CardHeader className="pb-2">
-            <CardDescription className="text-muted-foreground font-black uppercase text-[10px] tracking-widest">Artículos Vendidos</CardDescription>
+            <CardDescription className="text-muted-foreground font-black uppercase text-[10px] tracking-widest">Unidades Vendidas</CardDescription>
             <CardTitle className="text-3xl font-black flex items-center justify-between text-accent">
               {stats.unitsSold}
               <Package className="w-8 h-8 text-accent/10" />
@@ -214,7 +225,7 @@ export default function ReportsPage() {
           </CardHeader>
           <CardContent>
             <div className="flex items-center text-xs text-slate-400 mt-2">
-              Suma de todas las cantidades
+              Total productos físicos
             </div>
           </CardContent>
         </Card>
@@ -223,70 +234,98 @@ export default function ReportsPage() {
       <Tabs defaultValue="diario" className="w-full">
         <TabsList className="bg-white border p-1 rounded-2xl h-14 w-full md:w-auto grid grid-cols-3 md:inline-flex mb-6 gap-2">
           <TabsTrigger value="diario" className="rounded-xl font-bold data-[state=active]:bg-primary data-[state=active]:text-white">
-            <TableIcon className="w-4 h-4 mr-2" /> Diario
+            <TableIcon className="w-4 h-4 mr-2" /> Día a Día
           </TabsTrigger>
           <TabsTrigger value="mensual" className="rounded-xl font-bold data-[state=active]:bg-primary data-[state=active]:text-white">
             <CalendarDays className="w-4 h-4 mr-2" /> Mensual
           </TabsTrigger>
           <TabsTrigger value="ranking" className="rounded-xl font-bold data-[state=active]:bg-primary data-[state=active]:text-white">
-            <ListFilter className="w-4 h-4 mr-2" /> Ranking
+            <ListFilter className="w-4 h-4 mr-2" /> Más Vendidos
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="diario" className="animate-in slide-in-from-bottom-4 duration-500">
           <div className="space-y-4">
             <div className="flex items-center justify-between px-2 mb-2">
-               <h2 className="text-xs font-black uppercase text-slate-400 tracking-[0.2em]">Desglose por Fecha</h2>
+               <h2 className="text-xs font-black uppercase text-slate-400 tracking-[0.2em]">Desglose Histórico por Día</h2>
             </div>
             {dailyBreakdown.length > 0 ? (
-              dailyBreakdown.map((day, dayIdx) => (
-                <Card key={dayIdx} className="border-none shadow-md overflow-hidden rounded-2xl transition-all hover:shadow-lg">
-                  <Accordion type="single" collapsible className="w-full">
-                    <AccordionItem value="day-detail" className="border-none">
-                      <AccordionTrigger className="hover:no-underline px-6 py-5 bg-slate-50/50">
-                        <div className="flex items-center gap-4 text-left w-full">
-                          <div className="bg-primary/10 p-3 rounded-xl text-primary shrink-0">
-                            <Calendar className="w-5 h-5" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-black text-slate-800 uppercase tracking-tighter truncate">
-                              {day.date.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}
-                            </h3>
-                            <p className="text-xs text-muted-foreground font-bold">
-                              {Object.values(day.products).length} productos distintos
-                            </p>
-                          </div>
-                          <div className="text-right mr-4 shrink-0">
-                            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Día</p>
-                            <p className="text-xl font-black text-primary font-mono tracking-tighter">
-                              ${Object.values(day.products).reduce((sum, p) => sum + p.total, 0).toLocaleString('es-CL')}
-                            </p>
-                          </div>
-                        </div>
-                      </AccordionTrigger>
-                      <AccordionContent className="p-0 border-t border-slate-100 bg-white">
-                        <div className="divide-y divide-slate-50">
-                          {Object.values(day.products).sort((a, b) => b.quantity - a.quantity).map((prod, pIdx) => (
-                            <div key={pIdx} className="flex justify-between items-center p-4 px-8 hover:bg-slate-50/50 transition-colors">
-                              <div className="flex flex-col">
-                                <span className="font-bold text-slate-700">{prod.name}</span>
-                                <span className="text-[10px] font-black text-primary uppercase">Cantidad: {prod.quantity} uds.</span>
-                              </div>
-                              <div className="text-right font-black font-mono text-slate-600">
-                                ${prod.total.toLocaleString('es-CL')}
-                              </div>
+              dailyBreakdown.map((day, dayIdx) => {
+                const label = getDateLabel(day.date);
+                return (
+                  <Card key={dayIdx} className={cn(
+                    "border-none shadow-md overflow-hidden rounded-2xl transition-all hover:shadow-lg",
+                    label === 'HOY' && "ring-2 ring-primary ring-offset-2"
+                  )}>
+                    <Accordion type="single" collapsible className="w-full">
+                      <AccordionItem value="day-detail" className="border-none">
+                        <AccordionTrigger className="hover:no-underline px-6 py-5 bg-slate-50/50">
+                          <div className="flex items-center gap-4 text-left w-full">
+                            <div className={cn(
+                              "p-3 rounded-xl shrink-0",
+                              label === 'HOY' ? "bg-primary text-white" : "bg-primary/10 text-primary"
+                            )}>
+                              <Calendar className="w-5 h-5" />
                             </div>
-                          ))}
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  </Accordion>
-                </Card>
-              ))
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <h3 className="font-black text-slate-800 uppercase tracking-tighter truncate text-lg">
+                                  {day.date.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}
+                                </h3>
+                                {label && (
+                                  <span className={cn(
+                                    "text-[9px] font-black px-2 py-0.5 rounded-full",
+                                    label === 'HOY' ? "bg-primary text-white" : "bg-slate-200 text-slate-600"
+                                  )}>
+                                    {label}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs text-muted-foreground font-bold">
+                                {Object.values(day.products).length} productos distintos vendidos
+                              </p>
+                            </div>
+                            <div className="text-right mr-4 shrink-0">
+                              <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Total Día</p>
+                              <p className="text-2xl font-black text-primary font-mono tracking-tighter">
+                                ${Object.values(day.products).reduce((sum, p) => sum + p.total, 0).toLocaleString('es-CL')}
+                              </p>
+                            </div>
+                          </div>
+                        </AccordionTrigger>
+                        <AccordionContent className="p-0 border-t border-slate-100 bg-white">
+                          <div className="divide-y divide-slate-50">
+                            <div className="grid grid-cols-12 gap-4 p-4 px-8 bg-slate-50/30 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                              <div className="col-span-6">Producto</div>
+                              <div className="col-span-2 text-center">Cant.</div>
+                              <div className="col-span-4 text-right">Recaudado</div>
+                            </div>
+                            {Object.values(day.products).sort((a, b) => b.quantity - a.quantity).map((prod, pIdx) => (
+                              <div key={pIdx} className="grid grid-cols-12 gap-4 p-4 px-8 hover:bg-slate-50/50 transition-colors items-center">
+                                <div className="col-span-6 flex flex-col">
+                                  <span className="font-bold text-slate-700 text-sm">{prod.name}</span>
+                                </div>
+                                <div className="col-span-2 text-center">
+                                  <span className="bg-primary/10 text-primary text-[10px] font-black px-2 py-1 rounded-full">
+                                    {prod.quantity}
+                                  </span>
+                                </div>
+                                <div className="col-span-4 text-right font-black font-mono text-slate-600">
+                                  ${prod.total.toLocaleString('es-CL')}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    </Accordion>
+                  </Card>
+                );
+              })
             ) : (
               <div className="text-center py-20 bg-white rounded-3xl border-2 border-dashed">
                 <Package className="w-12 h-12 mx-auto mb-2 text-slate-200" />
-                <p className="text-slate-400 font-bold">No hay ventas registradas.</p>
+                <p className="text-slate-400 font-bold">No hay ventas registradas aún.</p>
               </div>
             )}
           </div>
@@ -295,7 +334,7 @@ export default function ReportsPage() {
         <TabsContent value="mensual" className="animate-in slide-in-from-bottom-4 duration-500">
           <div className="space-y-4">
             <div className="flex items-center justify-between px-2 mb-2">
-               <h2 className="text-xs font-black uppercase text-slate-400 tracking-[0.2em]">Resumen por Mes</h2>
+               <h2 className="text-xs font-black uppercase text-slate-400 tracking-[0.2em]">Resumen Mensual</h2>
             </div>
             {monthlyBreakdown.length > 0 ? (
               monthlyBreakdown.map((month, mIdx) => (
@@ -308,16 +347,16 @@ export default function ReportsPage() {
                             <CalendarDays className="w-5 h-5" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <h3 className="font-black text-slate-800 uppercase tracking-tighter truncate text-lg">
+                            <h3 className="font-black text-slate-800 uppercase tracking-tighter truncate text-xl">
                               {month.monthYear}
                             </h3>
                             <p className="text-xs text-muted-foreground font-bold">
-                              Acumulado de todos los productos del mes
+                              Rendimiento total del periodo
                             </p>
                           </div>
                           <div className="text-right mr-4 shrink-0">
-                            <p className="text-[10px] font-black uppercase text-accent tracking-widest">Mensual</p>
-                            <p className="text-2xl font-black text-accent font-mono tracking-tighter">
+                            <p className="text-[10px] font-black uppercase text-accent tracking-widest">Recaudación Mes</p>
+                            <p className="text-3xl font-black text-accent font-mono tracking-tighter">
                               ${Object.values(month.products).reduce((sum, p) => sum + p.total, 0).toLocaleString('es-CL')}
                             </p>
                           </div>
@@ -325,13 +364,22 @@ export default function ReportsPage() {
                       </AccordionTrigger>
                       <AccordionContent className="p-0 border-t border-slate-100 bg-white">
                         <div className="divide-y divide-slate-50">
+                          <div className="grid grid-cols-12 gap-4 p-4 px-8 bg-slate-50/30 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                            <div className="col-span-6">Producto</div>
+                            <div className="col-span-2 text-center">Unidades</div>
+                            <div className="col-span-4 text-right">Aporte</div>
+                          </div>
                           {Object.values(month.products).sort((a, b) => b.quantity - a.quantity).map((prod, pIdx) => (
-                            <div key={pIdx} className="flex justify-between items-center p-4 px-8 hover:bg-slate-50/50 transition-colors">
-                              <div className="flex flex-col">
+                            <div key={pIdx} className="grid grid-cols-12 gap-4 p-4 px-8 hover:bg-slate-50/50 transition-colors items-center">
+                              <div className="col-span-6 flex flex-col">
                                 <span className="font-bold text-slate-700">{prod.name}</span>
-                                <span className="text-[10px] font-black text-accent uppercase">Total Mes: {prod.quantity} uds.</span>
                               </div>
-                              <div className="text-right font-black font-mono text-slate-600">
+                              <div className="col-span-2 text-center">
+                                <span className="bg-accent/10 text-accent text-[10px] font-black px-2 py-1 rounded-full">
+                                  {prod.quantity}
+                                </span>
+                              </div>
+                              <div className="col-span-4 text-right font-black font-mono text-slate-600">
                                 ${prod.total.toLocaleString('es-CL')}
                               </div>
                             </div>
@@ -345,7 +393,7 @@ export default function ReportsPage() {
             ) : (
               <div className="text-center py-20 bg-white rounded-3xl border-2 border-dashed">
                 <CalendarDays className="w-12 h-12 mx-auto mb-2 text-slate-200" />
-                <p className="text-slate-400 font-bold">No hay datos mensuales.</p>
+                <p className="text-slate-400 font-bold">No hay suficientes datos mensuales.</p>
               </div>
             )}
           </div>
@@ -355,8 +403,8 @@ export default function ReportsPage() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <Card className="lg:col-span-7 border-none shadow-xl bg-white rounded-3xl">
               <CardHeader className="p-8 pb-4">
-                <CardTitle className="text-2xl font-black text-slate-800">Ranking General</CardTitle>
-                <CardDescription>Productos con mayor rotación en el inventario.</CardDescription>
+                <CardTitle className="text-2xl font-black text-slate-800">Ranking de Rotación</CardTitle>
+                <CardDescription>Productos ordenados por cantidad total de unidades vendidas.</CardDescription>
               </CardHeader>
               <CardContent className="px-8 pb-8">
                 <div className="space-y-4">
@@ -369,7 +417,7 @@ export default function ReportsPage() {
                         <div className="flex-1 min-w-0">
                           <div className="flex justify-between items-end mb-1">
                             <span className="font-bold text-slate-700 truncate">{product.name}</span>
-                            <span className="text-xs font-black text-primary">{product.quantity} uds.</span>
+                            <span className="text-xs font-black text-primary">{product.quantity} unidades</span>
                           </div>
                           <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
                             <div 
@@ -386,7 +434,7 @@ export default function ReportsPage() {
                   ) : (
                     <div className="text-center py-20 opacity-30">
                       <Package className="w-12 h-12 mx-auto mb-2" />
-                      <p>Sin datos de venta aún.</p>
+                      <p>Esperando datos de venta para generar el ranking.</p>
                     </div>
                   )}
                 </div>
@@ -395,8 +443,8 @@ export default function ReportsPage() {
 
             <Card className="lg:col-span-5 border-none shadow-xl bg-white rounded-3xl">
               <CardHeader className="p-8 pb-4">
-                <CardTitle className="text-2xl font-black text-slate-800">Aporte al Ingreso</CardTitle>
-                <CardDescription>Top 10 productos por recaudación monetaria.</CardDescription>
+                <CardTitle className="text-2xl font-black text-slate-800">Impacto en Ingresos</CardTitle>
+                <CardDescription>Distribución porcentual de la recaudación por producto (Top 10).</CardDescription>
               </CardHeader>
               <CardContent className="h-[400px] flex flex-col items-center justify-center p-8">
                 {allProductsRanking.length > 0 ? (
@@ -425,7 +473,7 @@ export default function ReportsPage() {
                 ) : (
                   <div className="text-center text-muted-foreground p-8">
                     <Package className="w-12 h-12 mx-auto mb-2 opacity-20" />
-                    No hay suficientes ventas.
+                    Sin datos suficientes.
                   </div>
                 )}
               </CardContent>
