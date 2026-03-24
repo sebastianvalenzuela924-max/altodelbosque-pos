@@ -9,9 +9,8 @@ import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Search, FileSpreadsheet, Edit3, AlertTriangle, Plus, Trash2, Package, Scan, Loader2, Check, X, ArrowUpDown, Filter, Tag, ArrowUp, ArrowDown, ChevronDown, ListFilter } from "lucide-react";
+import { Search, FileSpreadsheet, Edit3, AlertTriangle, Plus, Trash2, Package, Scan, Loader2, Check, X, ArrowUp, ArrowDown, ChevronDown, ListFilter } from "lucide-react";
 import { exportToExcel } from "@/lib/export";
 import { useToast } from "@/hooks/use-toast";
 import { ProductDialog } from "@/components/inventory/ProductDialog";
@@ -176,16 +175,15 @@ export default function InventoryPage() {
                   {/* Nombre */}
                   <TableHead className="px-6">
                     <DropdownMenu>
-                      <DropdownMenuTrigger className="flex items-center gap-2 font-black uppercase text-[10px] tracking-widest hover:text-primary transition-colors focus:outline-none">
-                        Nombre del Producto
-                        <ChevronDown className="w-3 h-3" />
+                      <DropdownMenuTrigger asChild>
+                        <button type="button" className="flex items-center gap-2 font-black uppercase text-[10px] tracking-widest hover:text-primary transition-colors focus:outline-none">
+                          Nombre
+                          <ChevronDown className="w-3 h-3" />
+                        </button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="start" className="rounded-xl border-none shadow-2xl p-1">
                         <DropdownMenuItem onClick={() => setSortBy("name")} className="rounded-lg font-bold text-xs py-2">
                           <ArrowUp className="w-3 h-3 mr-2" /> Ordenar A-Z
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setSortBy("name")} className="rounded-lg font-bold text-xs py-2">
-                          <ArrowDown className="w-3 h-3 mr-2" /> Ordenar Z-A
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -194,9 +192,11 @@ export default function InventoryPage() {
                   {/* Categoría */}
                   <TableHead className="px-6">
                     <DropdownMenu>
-                      <DropdownMenuTrigger className="flex items-center gap-2 font-black uppercase text-[10px] tracking-widest hover:text-primary transition-colors focus:outline-none">
-                        Categoría
-                        <ChevronDown className="w-3 h-3" />
+                      <DropdownMenuTrigger asChild>
+                        <button type="button" className="flex items-center gap-2 font-black uppercase text-[10px] tracking-widest hover:text-primary transition-colors focus:outline-none">
+                          Categoría
+                          <ChevronDown className="w-3 h-3" />
+                        </button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="start" className="rounded-xl border-none shadow-2xl p-1 max-h-64 overflow-y-auto">
                         <DropdownMenuLabel className="text-[9px] font-black uppercase opacity-40 px-3 py-1.5 tracking-widest">Filtrar por</DropdownMenuLabel>
@@ -224,9 +224,11 @@ export default function InventoryPage() {
                   {/* Precio */}
                   <TableHead className="px-6">
                     <DropdownMenu>
-                      <DropdownMenuTrigger className="flex items-center gap-2 font-black uppercase text-[10px] tracking-widest hover:text-primary transition-colors focus:outline-none">
-                        Precio
-                        <ChevronDown className="w-3 h-3" />
+                      <DropdownMenuTrigger asChild>
+                        <button type="button" className="flex items-center gap-2 font-black uppercase text-[10px] tracking-widest hover:text-primary transition-colors focus:outline-none">
+                          Precio
+                          <ChevronDown className="w-3 h-3" />
+                        </button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="start" className="rounded-xl border-none shadow-2xl p-1">
                         <DropdownMenuItem onClick={() => setSortBy("price-asc")} className="rounded-lg font-bold text-xs py-2">
@@ -243,9 +245,11 @@ export default function InventoryPage() {
                   <TableHead className="px-6 text-center">
                     <div className="flex justify-center">
                       <DropdownMenu>
-                        <DropdownMenuTrigger className="flex items-center gap-2 font-black uppercase text-[10px] tracking-widest hover:text-primary transition-colors focus:outline-none">
-                          Stock
-                          <ChevronDown className="w-3 h-3" />
+                        <DropdownMenuTrigger asChild>
+                          <button type="button" className="flex items-center gap-2 font-black uppercase text-[10px] tracking-widest hover:text-primary transition-colors focus:outline-none">
+                            Stock
+                            <ChevronDown className="w-3 h-3" />
+                          </button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="center" className="rounded-xl border-none shadow-2xl p-1">
                           <DropdownMenuItem onClick={() => setSortBy("stock-asc")} className="rounded-lg font-bold text-xs py-2">
@@ -262,9 +266,11 @@ export default function InventoryPage() {
                   {/* Estado */}
                   <TableHead className="px-6">
                     <DropdownMenu>
-                      <DropdownMenuTrigger className="flex items-center gap-2 font-black uppercase text-[10px] tracking-widest hover:text-primary transition-colors focus:outline-none">
-                        Estado
-                        <ChevronDown className="w-3 h-3" />
+                      <DropdownMenuTrigger asChild>
+                        <button type="button" className="flex items-center gap-2 font-black uppercase text-[10px] tracking-widest hover:text-primary transition-colors focus:outline-none">
+                          Estado
+                          <ChevronDown className="w-3 h-3" />
+                        </button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="start" className="rounded-xl border-none shadow-2xl p-1">
                         <DropdownMenuItem onClick={() => setSortBy("status-critical")} className="rounded-lg font-black text-xs py-2 text-destructive hover:text-destructive">
