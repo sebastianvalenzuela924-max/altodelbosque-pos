@@ -195,28 +195,28 @@ export default function POSPage() {
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in fade-in duration-500">
       <div className="lg:col-span-7 flex flex-col h-full gap-4">
         <Card className="flex-1 flex flex-col border-none shadow-2xl bg-white overflow-hidden rounded-3xl min-h-[600px]">
-          <CardHeader className="bg-primary text-white py-6">
-            <div className="flex justify-between items-center">
-              <div className="flex items-center gap-4">
-                <CardTitle className="text-2xl flex items-center gap-3">
-                  <ShoppingCart className="w-8 h-8" />
-                  Caja Registradora
+          <CardHeader className="bg-primary text-white py-4 md:py-6">
+            <div className="flex justify-between items-center gap-2">
+              <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4 overflow-hidden">
+                <CardTitle className="text-xl md:text-2xl flex items-center gap-2 md:gap-3 whitespace-nowrap">
+                  <ShoppingCart className="w-6 h-6 md:w-8 md:h-8 shrink-0" />
+                  <span className="truncate">Caja</span>
                 </CardTitle>
                 {(items.length > 0 || manualProducts.length > 0) && (
                   <Button 
                     variant="ghost" 
                     size="sm" 
                     onClick={handleClearCart}
-                    className="bg-white/10 hover:bg-white/20 text-white border-none rounded-full px-4 h-8 text-[10px] font-black uppercase tracking-widest"
+                    className="bg-white/10 hover:bg-white/20 text-white border-none rounded-full px-3 h-7 text-[9px] md:text-[10px] font-black uppercase tracking-widest w-fit"
                   >
-                    <RotateCcw className="w-3 h-3 mr-2" />
+                    <RotateCcw className="w-3 h-3 mr-1" />
                     Vaciar
                   </Button>
                 )}
               </div>
-              <div className="flex flex-col items-end">
-                <span className="text-xs uppercase font-bold opacity-70">Terminal Activo</span>
-                <span className="text-sm font-mono tracking-widest">
+              <div className="flex flex-col items-end shrink-0">
+                <span className="text-[9px] md:text-xs uppercase font-bold opacity-70 whitespace-nowrap">Terminal Activo</span>
+                <span className="text-xs md:text-sm font-mono tracking-widest">
                   {currentTime || "--:--"}
                 </span>
               </div>

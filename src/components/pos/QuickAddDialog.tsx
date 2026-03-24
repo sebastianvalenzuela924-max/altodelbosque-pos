@@ -25,7 +25,7 @@ export function QuickAddDialog({
   const firestore = useFirestore();
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
-  const [stock, setStock] = useState("10");
+  const [stock, setStock] = useState("");
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
@@ -34,7 +34,7 @@ export function QuickAddDialog({
     try {
       const result = await quickProductRegistration({ barcode });
       setName(result.suggestedName);
-      setPrice(result.suggestedPrice.toString());
+      setPrice(Math.round(result.suggestedPrice).toString());
       toast({ title: "IA: Datos sugeridos", description: "El producto ha sido identificado." });
     } catch (e) {
       toast({ title: "IA no disponible", description: "Completa los datos manualmente.", variant: "destructive" });
@@ -53,7 +53,7 @@ export function QuickAddDialog({
     const data = {
       id: barcode,
       name,
-      price: parseFloat(price),
+      price: Math.round(parseFloat(price)) || 0,
       stock: parseInt(stock) || 0,
     };
 
@@ -98,11 +98,11 @@ export function QuickAddDialog({
             <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
                 <Label htmlFor="price" className="font-bold text-slate-500">Precio ($)</Label>
-                <Input id="price" type="number" className="h-12 rounded-xl" value={price} onChange={e => setPrice(e.target.value)} placeholder="0.00" />
+                <Input id="price" type="number" className="h-12 rounded-xl" value={price} onChange={e => setPrice(e.target.value)} placeholder="Ej: 1500" />
                 </div>
                 <div className="grid gap-2">
                 <Label htmlFor="stock" className="font-bold text-slate-500">Stock Inicial</Label>
-                <Input id="stock" type="number" className="h-12 rounded-xl" value={stock} onChange={e => setStock(e.target.value)} />
+                <Input id="stock" type="number" className="h-12 rounded-xl" value={stock} onChange={e => setStock(e.target.value)} placeholder="Ej: 24" />
                 </div>
             </div>
           </div>
