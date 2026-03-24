@@ -1,0 +1,128 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * SMART SALE POS SECURITY RULES
+     * 
+     * Core Philosophy:
+     * This ruleset implements a Database Access Control (DBAC) model based on a global "Authorized User" 
+     * role. Rather than individual document ownership, access to inventory and sales data is 
+     * granted to any user whose UID exists within the top-level `/authorizedUsers` collection.
+     *
+     * Data Structure:
+     * - /authorizedUsers/{userId}: The gateway collection. Existence of a UID here grants POS access.
+     * - /products/{productId}: Global inventory reachable by all authorized users.
+     * - /sales/{saleId}: Transaction records, including nested subcollections for line items.
+     *
+     * Key Security Decisions:
+     * 1. Authorization Independence: Rules avoid costly parent-document lookups (get() calls) by 
+     *    relying on the user's presence in the authorizedUsers collection for all operations.
+     * 2. Historical Integrity: Sales and their line items are "Append-Only." Once a sale is 
+     *    finalized (created), it cannot be modified or deleted to preserve accounting records.
+     * 3. Identity Verification: All checks strictly use `request.auth.uid` as the source of truth.
+     * 4. Prototyping Flexibility: While access is strictly controlled, data schemas (fields/types) 
+     *    are not enforced to allow for rapid UI/UX iteration.
+     */
+
+    // --- Helper Functions ---
+
+    /**
+     * @description Checks if the request is from a signed-in user.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * @description Checks if the user's UID exists in the authorizedUsers collection.
+     * This is the primary gatekeeper for POS operations.
+     */
+    function isAuthorized() {
+      return isSignedIn() && exists(/databases/$(database)/documents/authorizedUsers/$(request.auth.uid));
+    }
+
+    /**
+     * @description Checks if the authenticated user matches the provided userId.
+     */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /**
+     * @description Ensures a document exists and belongs to the user (used for self-management).
+     */
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
+    }
+
+    // --- Collection Rules ---
+
+    /**
+     * @description Collection used for Database Access Control. Users register themselves here 
+     * to become authorized POS operators.
+     * @path /authorizedUsers/{userId}
+     * @allow (create) request.auth.uid == 'user_123'
+     * @deny (list) Denied to prevent user enumeration.
+     * @principle Existence-based authorization gate.
+     */
+    match /authorizedUsers/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if false;
+      allow create: if isOwner(userId);
+      allow update: if false; // Authorization state should be managed via Admin or restricted.
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Inventory management. Authorized users can manage the product catalog.
+     * @path /products/{productId}
+     * @allow (update) Authorized user updating stock levels.
+     * @deny (create) Unauthenticated or unauthorized user attempting to add products.
+     * @principle Path consistency and global role-based access.
+     */
+    match /products/{productId} {
+      allow get, list: if isAuthorized();
+      allow create: if isAuthorized() && request.resource.data.id == productId;
+      allow update: if isAuthorized() && resource != null;
+      allow delete: if isAuthorized() && resource != null;
+    }
+
+    /**
+     * @description Sales transaction records. Append-only for historical integrity.
+     * @path /sales/{saleId}
+     * @allow (create) Authorized user finalizing a sale.
+     * @deny (update) Any attempt to modify a completed sale.
+     * @principle Append-only immutable records for financial integrity.
+     */
+    match /sales/{saleId} {
+      allow get, list: if isAuthorized();
+      allow create: if isAuthorized();
+      allow update, delete: if false; // Sales are immutable once created.
+
+      /**
+       * @description Line items for products within a sale.
+       * @path /sales/{saleId}/productSaleItems/{itemId}
+       * @allow (list) Fetching all items for a specific receipt.
+       * @principle Inherited authorized access from POS status.
+       */
+      match /productSaleItems/{itemId} {
+        allow get, list: if isAuthorized();
+        allow create: if isAuthorized();
+        allow update, delete: if false;
+      }
+
+      /**
+       * @description Manual/Calculator entries within a sale.
+       * @path /sales/{saleId}/manualSaleItems/{itemId}
+       * @allow (create) Adding a manual price entry to a transaction.
+       * @principle Inherited authorized access from POS status.
+       */
+      match /manualSaleItems/{itemId} {
+        allow get, list: if isAuthorized();
+        allow create: if isAuthorized();
+        allow update, delete: if false;
+      }
+    }
+  }
+}

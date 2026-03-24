@@ -1,0 +1,244 @@
+{
+  "entities": {
+    "Product": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Product",
+      "type": "object",
+      "description": "Represents a single product available for sale in the inventory, managed via barcode or manual entry.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Product entity. This is typically the EAN-13 barcode of the product."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name or title of the product."
+        },
+        "price": {
+          "type": "number",
+          "description": "The current selling price of a single unit of the product. This value is used for sales and can be edited."
+        },
+        "stock": {
+          "type": "number",
+          "description": "The available quantity of the product currently in stock. This value is updated upon sale finalization."
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "price",
+        "stock"
+      ]
+    },
+    "Sale": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Sale",
+      "type": "object",
+      "description": "Represents a completed sales transaction, including products sold and manual entries.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Sale entity."
+        },
+        "saleDateTime": {
+          "type": "string",
+          "description": "The date and time when the sale was finalized.",
+          "format": "date-time"
+        },
+        "totalAmount": {
+          "type": "number",
+          "description": "The total monetary amount of the sale, including all products and manual items."
+        },
+        "productSaleItemIds": {
+          "type": "array",
+          "description": "References to ProductSaleItem entities associated with this sale, detailing each product sold. (Relationship: Sale 1:N ProductSaleItem)",
+          "items": {
+            "type": "string"
+          }
+        },
+        "manualSaleItemIds": {
+          "type": "array",
+          "description": "References to ManualSaleItem entities associated with this sale, detailing calculator-added items. (Relationship: Sale 1:N ManualSaleItem)",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "saleDateTime",
+        "totalAmount",
+        "productSaleItemIds",
+        "manualSaleItemIds"
+      ]
+    },
+    "ProductSaleItem": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ProductSaleItem",
+      "type": "object",
+      "description": "Represents a specific product and its details (quantity, price at time of sale) as a line item within a particular sale.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the ProductSaleItem entity, representing a specific line item in a sale."
+        },
+        "saleId": {
+          "type": "string",
+          "description": "Reference to the Sale this product item belongs to. (Relationship: Sale 1:N ProductSaleItem)"
+        },
+        "productId": {
+          "type": "string",
+          "description": "Reference to the Product sold (using its barcode ID). This links to the inventory product. (Relationship: Product 1:N ProductSaleItem)"
+        },
+        "productName": {
+          "type": "string",
+          "description": "The name of the product at the time of the sale. This is a snapshot to preserve historical accuracy."
+        },
+        "unitPrice": {
+          "type": "number",
+          "description": "The price of a single unit of the product at the time of the sale. This is a snapshot to preserve historical accuracy."
+        },
+        "quantity": {
+          "type": "number",
+          "description": "The quantity of the product sold in this specific line item."
+        },
+        "subtotal": {
+          "type": "number",
+          "description": "The total price for this specific product item (calculated as unitPrice * quantity)."
+        }
+      },
+      "required": [
+        "id",
+        "saleId",
+        "productId",
+        "productName",
+        "unitPrice",
+        "quantity",
+        "subtotal"
+      ]
+    },
+    "ManualSaleItem": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ManualSaleItem",
+      "type": "object",
+      "description": "Represents a manually entered item or value added to a sale, typically via the integrated calculator.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the ManualSaleItem entity, representing a specific manual entry in a sale."
+        },
+        "saleId": {
+          "type": "string",
+          "description": "Reference to the Sale this manual item belongs to. (Relationship: Sale 1:N ManualSaleItem)"
+        },
+        "description": {
+          "type": "string",
+          "description": "A description for the manual item (e.g., 'Verduras', 'Helado Soft', 'Producto sin código')."
+        },
+        "amount": {
+          "type": "number",
+          "description": "The monetary amount of the manual item added to the sale."
+        }
+      },
+      "required": [
+        "id",
+        "saleId",
+        "description",
+        "amount"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/authorizedUsers/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Collection used for Database Access Control (DBAC). An empty document in this path signifies that the {userId} is an authorized user of the POS system. Authorization rules for other data collections will check for the existence of the current authenticated user's UID in this collection."
+        }
+      },
+      {
+        "path": "/products/{productId}",
+        "definition": {
+          "entityName": "Product",
+          "schema": {
+            "$ref": "#/backend/entities/Product"
+          },
+          "description": "Main inventory collection storing all product details. The document ID ({productId}) is the EAN-13 barcode. Accessible for CRUD operations by authorized users. All documents share the same security posture, enabling efficient 'list' queries.",
+          "params": [
+            {
+              "name": "productId",
+              "description": "The unique EAN-13 barcode of the product."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/sales/{saleId}",
+        "definition": {
+          "entityName": "Sale",
+          "schema": {
+            "$ref": "#/backend/entities/Sale"
+          },
+          "description": "Collection storing completed sales transactions. Documents are created and read by authorized users. Each sale aggregates total amount and references to its line items. All documents share the same security posture, enabling efficient 'list' queries for sales history and reports.",
+          "params": [
+            {
+              "name": "saleId",
+              "description": "Unique identifier for the sales transaction."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/sales/{saleId}/productSaleItems/{productSaleItemId}",
+        "definition": {
+          "entityName": "ProductSaleItem",
+          "schema": {
+            "$ref": "#/backend/entities/ProductSaleItem"
+          },
+          "description": "Subcollection detailing individual product line items within a specific sale. Access is implicitly controlled by the authorization for the parent Sale document, requiring the user to be an authorized POS user. This structure supports querying line items for a particular sale without relying on complex parent document reads for authorization.",
+          "params": [
+            {
+              "name": "saleId",
+              "description": "The unique identifier of the parent sale."
+            },
+            {
+              "name": "productSaleItemId",
+              "description": "Unique identifier for the specific product item within the sale."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/sales/{saleId}/manualSaleItems/{manualSaleItemId}",
+        "definition": {
+          "entityName": "ManualSaleItem",
+          "schema": {
+            "$ref": "#/backend/entities/ManualSaleItem"
+          },
+          "description": "Subcollection detailing manually entered line items (from the calculator) within a specific sale. Access is implicitly controlled by the authorization for the parent Sale document, requiring the user to be an authorized POS user. This structure supports querying manual items for a particular sale without relying on complex parent document reads for authorization.",
+          "params": [
+            {
+              "name": "saleId",
+              "description": "The unique identifier of the parent sale."
+            },
+            {
+              "name": "manualSaleItemId",
+              "description": "Unique identifier for the specific manual item within the sale."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure for SmartSale POS prioritizes security, scalability, and debuggability following the core design principles. The primary goal is to minimize complexity in security rules and ensure performant queries for a point-of-sale system.\n\n**Authorization Independence (CRITICAL) & DBAC:**\nAuthorization in this system is based on a global 'authorized user' role rather than individual ownership of specific product or sale documents. This approach avoids hierarchical authorization dependencies that would require `get()` calls in security rules. Instead, a dedicated top-level collection, `/authorizedUsers/{userId}`, stores an empty document for each user who has permission to interact with the POS system. Access to all core data (products, sales, sale items) is granted by checking for the existence of `request.auth.uid` in this `authorizedUsers` collection. This design ensures authorization checks are atomic and do not rely on reading parent document data, thus upholding Authorization Independence.\n\n**Structural Segregation & Access Modeling:**\n\n1.  **`/authorizedUsers/{userId}`:** This collection identifies who can perform POS operations. It uses the 'Existence over Content' pattern for global roles, ensuring simple and robust security rules. Every document in this collection represents an authorized user.\n\n2.  **`/products/{productId}`:** This is the main inventory collection. All products share the same security posture: they can be read, created, updated, or deleted only by `authorizedUsers`. The product's EAN-13 barcode serves as the `productId`, ensuring predictable and direct access. This collection is flat and easily queryable for inventory management and real-time POS lookups. No document-level authorization denormalization is required here because all documents have the same access requirements relative to the global authorized user role.\n\n3.  **`/sales/{saleId}`:** This collection stores completed sales transactions. Sales can be created and read by `authorizedUsers`. Updates and deletions are typically disallowed for historical integrity. Like products, all sales documents share the same security posture, making security rules straightforward. The `saleId` is a unique identifier for each transaction.\n\n4.  **`/sales/{saleId}/productSaleItems/{productSaleItemId}`:** This subcollection holds the details of each product sold within a specific `Sale`. It follows the 'Continue Hierarchy for Nested Data' mandate. Access to these items is implicitly tied to the parent `/sales/{saleId}` document. Since access to any `/sales` document is already controlled by the global `authorizedUsers` check, no additional denormalization of authorization fields (e.g., `ownerId` from the parent `Sale`) is necessary within `ProductSaleItem` documents. This avoids `get()` calls on the parent's data for authorization.\n\n5.  **`/sales/{saleId}/manualSaleItems/{manualSaleItem_id}`:** Similar to `productSaleItems`, this subcollection stores details for manually entered items in a sale. Its security posture and rationale for Authorization Independence are identical to `productSaleItems`.\n\n**QAPs (Rules are not Filters):**\n\nThe structure is designed to enable secure `list` operations without relying on security rules as filters:\n\n*   **`/products`:** Authorized users can perform `list` queries to retrieve all products for inventory display or barcode scanning, as all products are intended to be accessible by any authorized POS user.\n*   **`/sales`:** Authorized users can perform `list` queries to fetch sales history and generate reports (e.g., total sales by day/month, top-selling products). This works because all sales documents are globally accessible by authorized users.\n*   **Subcollections (`/sales/{saleId}/productSaleItems` and `/sales/{saleId}/manualSaleItems`):** While these are generally accessed within the context of a specific sale, `list` operations on these subcollections (e.g., to fetch all items for `saleId X`) are QAP-compliant. Access is restricted to `authorizedUsers` for the parent `saleId`, ensuring all retrieved documents meet the security criteria."
+  }
+}
