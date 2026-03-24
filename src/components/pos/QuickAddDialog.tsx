@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -8,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { quickProductRegistration } from "@/ai/flows/quick-product-registration";
 import { Sparkles, Loader2, Barcode, Save } from "lucide-react";
-import { updateProduct } from "@/lib/firebase";
+import { useFirestore, setDocumentNonBlocking } from "@/firebase";
+import { doc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 
 export function QuickAddDialog({ 
@@ -22,6 +22,7 @@ export function QuickAddDialog({
   onClose: () => void;
   onAdded: (product: any) => void;
 }) {
+  const firestore = useFirestore();
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [stock, setStock] = useState("10");
@@ -34,32 +35,32 @@ export function QuickAddDialog({
       const result = await quickProductRegistration({ barcode });
       setName(result.suggestedName);
       setPrice(result.suggestedPrice.toString());
-      toast({ title: "Datos sugeridos", description: "La IA ha identificado el producto." });
+      toast({ title: "IA: Datos sugeridos", description: "El producto ha sido identificado." });
     } catch (e) {
-      toast({ title: "Error de IA", description: "No se pudieron obtener sugerencias.", variant: "destructive" });
+      toast({ title: "IA no disponible", description: "Completa los datos manualmente.", variant: "destructive" });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSave = async () => {
+  const handleSave = () => {
     if (!name || !price) {
       toast({ title: "Faltan datos", description: "Nombre y precio son obligatorios.", variant: "destructive" });
       return;
     }
-    const p = {
+    
+    const docRef = doc(firestore, "products", barcode);
+    const data = {
       id: barcode,
       name,
       price: parseFloat(price),
-      stock: parseInt(stock),
+      stock: parseInt(stock) || 0,
     };
-    try {
-      await updateProduct(barcode, p);
-      onAdded(p);
-      onClose();
-    } catch (e) {
-      toast({ title: "Error", description: "No se pudo guardar el producto.", variant: "destructive" });
-    }
+
+    setDocumentNonBlocking(docRef, data, { merge: true });
+    onAdded(data);
+    onClose();
+    toast({ title: "Producto Guardado", description: "Se ha registrado en el inventario." });
   };
 
   return (

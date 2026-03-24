@@ -5,18 +5,20 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Product, updateProduct } from "@/lib/firebase";
+import { useFirestore, setDocumentNonBlocking } from "@/firebase";
+import { doc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Package } from "lucide-react";
 
 interface ProductDialogProps {
-  product?: Product | null;
+  product?: any | null;
   open: boolean;
   onClose: () => void;
   onSaved: () => void;
 }
 
 export function ProductDialog({ product, open, onClose, onSaved }: ProductDialogProps) {
+  const firestore = useFirestore();
   const [formData, setFormData] = useState({
     id: "",
     name: "",
@@ -30,9 +32,9 @@ export function ProductDialog({ product, open, onClose, onSaved }: ProductDialog
     if (product) {
       setFormData({
         id: product.id,
-        name: product.name,
-        price: product.price.toString(),
-        stock: product.stock.toString()
+        name: product.name || "",
+        price: product.price?.toString() || "",
+        stock: product.stock?.toString() || "0"
       });
     } else {
       setFormData({
@@ -44,27 +46,26 @@ export function ProductDialog({ product, open, onClose, onSaved }: ProductDialog
     }
   }, [product, open]);
 
-  const handleSave = async () => {
+  const handleSave = () => {
     if (!formData.id || !formData.name || !formData.price) {
       toast({ title: "Error", description: "Por favor complete todos los campos obligatorios.", variant: "destructive" });
       return;
     }
 
     setLoading(true);
-    try {
-      await updateProduct(formData.id, {
-        name: formData.name,
-        price: parseFloat(formData.price),
-        stock: parseInt(formData.stock) || 0
-      });
-      toast({ title: "Éxito", description: product ? "Producto actualizado." : "Producto creado." });
-      onSaved();
-      onClose();
-    } catch (e) {
-      toast({ title: "Error", description: "No se pudo guardar el producto.", variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
+    const docRef = doc(firestore, "products", formData.id);
+    const data = {
+      id: formData.id,
+      name: formData.name,
+      price: parseFloat(formData.price),
+      stock: parseInt(formData.stock) || 0
+    };
+
+    setDocumentNonBlocking(docRef, data, { merge: true });
+    
+    toast({ title: "Éxito", description: "Operación enviada correctamente." });
+    setLoading(false);
+    onClose();
   };
 
   return (
@@ -73,7 +74,7 @@ export function ProductDialog({ product, open, onClose, onSaved }: ProductDialog
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Package className="w-5 h-5 text-primary" />
-            {product ? "Editar Producto" : "Nuevo Producto"}
+            {product?.id ? "Editar Producto" : "Nuevo Producto"}
           </DialogTitle>
         </DialogHeader>
         <div className="grid gap-4 py-4">
@@ -82,7 +83,7 @@ export function ProductDialog({ product, open, onClose, onSaved }: ProductDialog
             <Input 
               id="id" 
               value={formData.id} 
-              disabled={!!product}
+              disabled={!!product?.id}
               onChange={e => setFormData({ ...formData, id: e.target.value })} 
               placeholder="Ej: 7791234567890" 
             />
@@ -123,7 +124,7 @@ export function ProductDialog({ product, open, onClose, onSaved }: ProductDialog
           <Button variant="outline" onClick={onClose} disabled={loading}>Cancelar</Button>
           <Button onClick={handleSave} disabled={loading} className="bg-primary hover:bg-primary/90">
             {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-            {product ? "Actualizar" : "Crear Producto"}
+            {product?.id ? "Actualizar" : "Crear Producto"}
           </Button>
         </DialogFooter>
       </DialogContent>

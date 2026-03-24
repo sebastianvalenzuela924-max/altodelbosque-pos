@@ -8,37 +8,27 @@ import { CalculatorComponent } from "@/components/pos/CalculatorComponent";
 import { QuickAddDialog } from "@/components/pos/QuickAddDialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Trash2, PlusCircle, MinusCircle, ShoppingCart, CheckCircle2, Scan, Calculator } from "lucide-react";
-import { db, finalizeSale, getProducts, Product, SaleItem, ManualProduct } from "@/lib/firebase";
+import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase";
 import { useToast } from "@/hooks/use-toast";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, collection, serverTimestamp, increment } from "firebase/firestore";
 import { cn } from "@/lib/utils";
 
 export default function POSPage() {
-  const [items, setItems] = useState<SaleItem[]>([]);
-  const [manualProducts, setManualProducts] = useState<ManualProduct[]>([]);
-  const [inventory, setInventory] = useState<Product[]>([]);
+  const firestore = useFirestore();
+  const [items, setItems] = useState<any[]>([]);
+  const [manualProducts, setManualProducts] = useState<any[]>([]);
   const [quickAddBarcode, setQuickAddBarcode] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentTime, setCurrentTime] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
-    loadInventory();
-    // Set time on mount to avoid hydration mismatch
     setCurrentTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-    
-    // Optional: Update time every minute
     const timer = setInterval(() => {
       setCurrentTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
     }, 60000);
-    
     return () => clearInterval(timer);
   }, []);
-
-  const loadInventory = async () => {
-    const prods = await getProducts();
-    setInventory(prods);
-  };
 
   const handleScan = async (barcode: string) => {
     const existing = items.find(i => i.id === barcode);
@@ -48,11 +38,11 @@ export default function POSPage() {
       return;
     }
 
-    const docRef = doc(db, 'productos', barcode);
+    const docRef = doc(firestore, 'products', barcode);
     const docSnap = await getDoc(docRef);
 
     if (docSnap.exists()) {
-      const p = docSnap.data() as Product;
+      const p = docSnap.data();
       setItems(prev => [...prev, { id: barcode, name: p.name, price: p.price, quantity: 1 }]);
       toast({ title: "Producto Agregado", description: p.name });
     } else {
@@ -86,30 +76,63 @@ export default function POSPage() {
   const total = items.reduce((sum, item) => sum + (item.price * item.quantity), 0) +
                 manualProducts.reduce((sum, item) => sum + item.amount, 0);
 
-  const handleFinalize = async () => {
+  const handleFinalize = () => {
     if (items.length === 0 && manualProducts.length === 0) return;
     setIsProcessing(true);
 
-    try {
-      await finalizeSale({
-        total,
-        items,
-        manualProducts
+    const salesRef = collection(firestore, "sales");
+    const saleId = crypto.randomUUID();
+    
+    const saleData = {
+      id: saleId,
+      totalAmount: total,
+      saleDateTime: serverTimestamp(),
+      productSaleItemIds: items.map(i => i.id),
+      manualSaleItemIds: manualProducts.map((_, idx) => `manual-${idx}`)
+    };
+
+    // 1. Registrar venta
+    addDocumentNonBlocking(salesRef, saleData);
+
+    // 2. Registrar items de producto y actualizar stock
+    items.forEach(item => {
+      const itemRef = collection(doc(firestore, "sales", saleId), "productSaleItems");
+      addDocumentNonBlocking(itemRef, {
+        id: crypto.randomUUID(),
+        saleId: saleId,
+        productId: item.id,
+        productName: item.name,
+        unitPrice: item.price,
+        quantity: item.quantity,
+        subtotal: item.price * item.quantity
       });
-      setItems([]);
-      setManualProducts([]);
-      toast({ title: "Venta Finalizada", description: "El stock ha sido actualizado.", variant: "default" });
-      loadInventory();
-    } catch (e) {
-      toast({ title: "Error", description: "No se pudo procesar la venta.", variant: "destructive" });
-    } finally {
-      setIsProcessing(false);
-    }
+
+      // Restar stock
+      const productRef = doc(firestore, "products", item.id);
+      updateDocumentNonBlocking(productRef, {
+        stock: increment(-item.quantity)
+      });
+    });
+
+    // 3. Registrar items manuales
+    manualProducts.forEach(mp => {
+      const manualRef = collection(doc(firestore, "sales", saleId), "manualSaleItems");
+      addDocumentNonBlocking(manualRef, {
+        id: crypto.randomUUID(),
+        saleId: saleId,
+        description: mp.description,
+        amount: mp.amount
+      });
+    });
+
+    toast({ title: "Venta Procesada", description: "Sincronizando con el servidor..." });
+    setItems([]);
+    setManualProducts([]);
+    setIsProcessing(false);
   };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in fade-in duration-500">
-      {/* Left Column: Cart & Total */}
       <div className="lg:col-span-7 flex flex-col h-full gap-4">
         <Card className="flex-1 flex flex-col border-none shadow-2xl bg-white overflow-hidden rounded-3xl min-h-[600px]">
           <CardHeader className="bg-primary text-white py-6">
@@ -191,11 +214,7 @@ export default function POSPage() {
 
           <CardFooter className="flex flex-col gap-6 bg-white border-t p-8">
             <div className="w-full flex justify-between items-end">
-              <div>
-                <p className="text-slate-400 font-bold uppercase text-xs tracking-widest mb-1">Subtotal {items.length + manualProducts.length} items</p>
-                <p className="text-slate-800 font-medium">IVA Incluido (Exento)</p>
-              </div>
-              <div className="text-right">
+              <div className="text-right w-full">
                 <p className="text-xs font-black uppercase text-primary tracking-widest">Total General</p>
                 <p className="text-6xl font-black text-primary font-mono tracking-tighter leading-none">${total.toFixed(2)}</p>
               </div>
@@ -216,7 +235,6 @@ export default function POSPage() {
         </Card>
       </div>
 
-      {/* Right Column: Scanner & Tools */}
       <div className="lg:col-span-5 flex flex-col gap-6">
         <section className="space-y-4">
           <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 px-1">
@@ -242,7 +260,6 @@ export default function POSPage() {
           onClose={() => setQuickAddBarcode(null)}
           onAdded={(p) => {
             setItems(prev => [...prev, { id: p.id, name: p.name, price: p.price, quantity: 1 }]);
-            loadInventory();
             toast({ title: "Registrado y Agregado", description: p.name });
           }}
         />

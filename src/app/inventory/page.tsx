@@ -1,14 +1,14 @@
-
 "use client";
 
-import { useEffect, useState } from "react";
-import { getProducts, Product, deleteProduct } from "@/lib/firebase";
+import { useState } from "react";
+import { useCollection, useFirestore, useMemoFirebase, deleteDocumentNonBlocking } from "@/firebase";
+import { collection, doc, query, orderBy } from "firebase/firestore";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Search, FileSpreadsheet, Edit3, AlertTriangle, Plus, Trash2, Package, Scan } from "lucide-react";
+import { Search, FileSpreadsheet, Edit3, AlertTriangle, Plus, Trash2, Package, Scan, Loader2 } from "lucide-react";
 import { exportToExcel } from "@/lib/export";
 import { useToast } from "@/hooks/use-toast";
 import { ProductDialog } from "@/components/inventory/ProductDialog";
@@ -17,29 +17,27 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export default function InventoryPage() {
-  const [products, setProducts] = useState<Product[]>([]);
+  const firestore = useFirestore();
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
-  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
+  const [productToDelete, setProductToDelete] = useState<any | null>(null);
   const { toast } = useToast();
 
-  useEffect(() => {
-    load();
-  }, []);
+  const productsQuery = useMemoFirebase(() => {
+    return query(collection(firestore, "products"), orderBy("name"));
+  }, [firestore]);
 
-  const load = async () => {
-    const data = await getProducts();
-    setProducts(data);
-  };
+  const { data: products, isLoading } = useCollection(productsQuery);
 
-  const filtered = products.filter(p => 
+  const filtered = products?.filter(p => 
     p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
     p.id.includes(searchTerm)
-  );
+  ) || [];
 
   const handleExport = () => {
+    if (!products) return;
     const dataForExport = products.map(p => ({
       "Código Barras": p.id,
       "Nombre": p.name,
@@ -51,37 +49,28 @@ export default function InventoryPage() {
     toast({ title: "Exportación exitosa", description: "Se ha descargado el archivo Excel del inventario." });
   };
 
-  const handleEdit = (product: Product) => {
+  const handleEdit = (product: any) => {
     setSelectedProduct(product);
     setIsDialogOpen(true);
   };
 
   const handleAddNew = (barcode?: string) => {
-    const existing = products.find(p => p.id === barcode);
+    const existing = products?.find(p => p.id === barcode);
     if (existing) {
       handleEdit(existing);
     } else {
-      setSelectedProduct(barcode ? { id: barcode, name: "", price: 0, stock: 0 } as Product : null);
+      setSelectedProduct(barcode ? { id: barcode, name: "", price: 0, stock: 0 } : null);
       setIsDialogOpen(true);
     }
     setIsScannerOpen(false);
   };
 
-  const handleScanInInventory = (barcode: string) => {
-    handleAddNew(barcode);
-  };
-
-  const confirmDelete = async () => {
+  const confirmDelete = () => {
     if (!productToDelete) return;
-    try {
-      await deleteProduct(productToDelete.id);
-      toast({ title: "Eliminado", description: "El producto ha sido eliminado del sistema." });
-      load();
-    } catch (e) {
-      toast({ title: "Error", description: "No se pudo eliminar el producto.", variant: "destructive" });
-    } finally {
-      setProductToDelete(null);
-    }
+    const docRef = doc(firestore, "products", productToDelete.id);
+    deleteDocumentNonBlocking(docRef);
+    toast({ title: "Eliminado", description: "El producto ha sido marcado para eliminación." });
+    setProductToDelete(null);
   };
 
   return (
@@ -98,7 +87,7 @@ export default function InventoryPage() {
           <Button variant="outline" className="flex-1 md:flex-none border-primary text-primary" onClick={() => setIsScannerOpen(true)}>
             <Scan className="w-4 h-4 mr-2" /> Escanear Código
           </Button>
-          <Button variant="outline" className="flex-1 md:flex-none" onClick={handleExport}>
+          <Button variant="outline" className="flex-1 md:flex-none" onClick={handleExport} disabled={!products?.length}>
             <FileSpreadsheet className="w-4 h-4 mr-2 text-green-600" /> Exportar
           </Button>
           <Button className="flex-1 md:flex-none bg-accent hover:bg-accent/90" onClick={() => handleAddNew()}>
@@ -135,7 +124,16 @@ export default function InventoryPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.length === 0 ? (
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="h-48 text-center">
+                      <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                        <Loader2 className="w-8 h-8 animate-spin" />
+                        <p>Cargando inventario...</p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : filtered.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="h-48 text-center text-muted-foreground">
                       No se encontraron productos. Escanea uno para empezar.
@@ -180,7 +178,7 @@ export default function InventoryPage() {
         open={isDialogOpen} 
         onClose={() => setIsDialogOpen(false)} 
         product={selectedProduct}
-        onSaved={load}
+        onSaved={() => {}} 
       />
 
       <Dialog open={isScannerOpen} onOpenChange={setIsScannerOpen}>
@@ -192,7 +190,7 @@ export default function InventoryPage() {
             </DialogTitle>
           </DialogHeader>
           <div className="py-4">
-            <ScannerComponent onScan={handleScanInInventory} />
+            <ScannerComponent onScan={handleAddNew} />
             <p className="text-center text-sm text-muted-foreground mt-4">
               Apunta la cámara al código de barras del producto.
             </p>
@@ -205,13 +203,13 @@ export default function InventoryPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acción eliminará permanentemente el producto <strong>{productToDelete?.name}</strong> del inventario.
+              Esta acción eliminará el producto <strong>{productToDelete?.name}</strong> del inventario.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Eliminar Definitivamente
+              Eliminar
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

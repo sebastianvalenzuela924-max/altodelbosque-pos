@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { Navbar } from '@/components/layout/Navbar';
 import { Toaster } from '@/components/ui/toaster';
+import { FirebaseClientProvider } from '@/firebase/client-provider';
 
 export const metadata: Metadata = {
   title: 'SmartSale POS - Punto de Venta Inteligente',
@@ -21,11 +22,13 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
       </head>
       <body className="font-body antialiased min-h-screen pb-20 md:pb-0 md:pt-16 bg-background">
-        <Navbar />
-        <main className="max-w-7xl mx-auto p-4 md:p-6 lg:p-8">
-          {children}
-        </main>
-        <Toaster />
+        <FirebaseClientProvider>
+          <Navbar />
+          <main className="max-w-7xl mx-auto p-4 md:p-6 lg:p-8">
+            {children}
+          </main>
+          <Toaster />
+        </FirebaseClientProvider>
       </body>
     </html>
   );
