@@ -16,7 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ProductDialog } from "@/components/inventory/ProductDialog";
 import { ScannerComponent } from "@/components/pos/ScannerComponent";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -340,7 +340,13 @@ export default function InventoryPage() {
       <ProductDialog open={isDialogOpen} onClose={() => setIsDialogOpen(false)} product={selectedProduct} categories={categories} onSaved={() => {}} />
 
       <Dialog open={isScannerOpen} onOpenChange={setIsScannerOpen}>
-        <DialogContent className="p-0 overflow-hidden rounded-3xl max-w-[90vw] sm:max-w-2xl"><ScannerComponent onScan={(b) => { setPendingBarcode(b); setIsScannerOpen(false); }} /></DialogContent>
+        <DialogContent className="p-0 overflow-hidden rounded-3xl max-w-[90vw] sm:max-w-2xl">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Escáner de Inventario</DialogTitle>
+            <DialogDescription>Escanea un código de barras para buscar o registrar un producto.</DialogDescription>
+          </DialogHeader>
+          <ScannerComponent onScan={(b) => { setPendingBarcode(b); setIsScannerOpen(false); }} />
+        </DialogContent>
       </Dialog>
 
       <AlertDialog open={!!pendingBarcode} onOpenChange={() => setPendingBarcode(null)}>
