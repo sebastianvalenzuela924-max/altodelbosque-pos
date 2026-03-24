@@ -37,10 +37,12 @@ export default function InventoryPage() {
 
   const { toast } = useToast();
 
-  // FAIL-SAFE CRÍTICO: Limpia el bloqueo de puntero de Radix si algo sale mal
+  // FAIL-SAFE CRÍTICO: Asegura que el navegador recupere el control de clics y scroll
+  // cuando no hay diálogos abiertos. Esto previene el bloqueo de navegación.
   useEffect(() => {
     const isAnyModalOpen = isDialogOpen || isScannerOpen || !!pendingBarcode || !!productToDelete || !!quickStockProduct;
     if (!isAnyModalOpen) {
+      // Forzamos la limpieza del DOM que a veces Radix UI deja colgada
       document.body.style.pointerEvents = 'auto';
       document.body.style.overflow = 'auto';
     }
@@ -141,16 +143,18 @@ export default function InventoryPage() {
 
   const handleScanResult = (barcode: string) => {
     setIsScannerOpen(false);
-    setPendingBarcode(barcode);
+    // Usamos un pequeño delay para que el Dialog del scanner se cierre físicamente
+    // antes de abrir el aviso de código detectado.
+    setTimeout(() => {
+      setPendingBarcode(barcode);
+    }, 150);
   };
 
   const handleDiscardPending = () => {
     setPendingBarcode(null);
-    // Limpieza forzada de estado del body para asegurar navegación
-    setTimeout(() => {
-      document.body.style.pointerEvents = 'auto';
-      document.body.style.overflow = 'auto';
-    }, 50);
+    // Aseguramos navegación libre inmediatamente
+    document.body.style.pointerEvents = 'auto';
+    document.body.style.overflow = 'auto';
   };
 
   return (

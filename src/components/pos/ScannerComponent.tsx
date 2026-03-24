@@ -101,7 +101,7 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
                   if (hasScannedRef.current) return;
                   hasScannedRef.current = true;
                   
-                  // Detener el escaneo inmediatamente para evitar duplicados
+                  // Detener el escaneo inmediatamente para liberar recursos y evitar duplicados
                   if (scannerRef.current?.isScanning) {
                     await scannerRef.current.stop().catch(() => {});
                   }
