@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { useFirestore, setDocumentNonBlocking } from "@/firebase";
 import { doc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Package } from "lucide-react";
+import { Loader2, Package, Tag } from "lucide-react";
 
 interface ProductDialogProps {
   product?: any | null;
@@ -23,7 +23,8 @@ export function ProductDialog({ product, open, onClose, onSaved }: ProductDialog
     id: "",
     name: "",
     price: "",
-    stock: ""
+    stock: "",
+    category: ""
   });
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -34,14 +35,16 @@ export function ProductDialog({ product, open, onClose, onSaved }: ProductDialog
         id: product.id || "",
         name: product.name || "",
         price: product.price ? Math.round(product.price).toString() : "",
-        stock: product.stock !== undefined ? product.stock.toString() : ""
+        stock: product.stock !== undefined ? product.stock.toString() : "",
+        category: product.category || ""
       });
     } else {
       setFormData({
         id: "",
         name: "",
         price: "",
-        stock: ""
+        stock: "",
+        category: ""
       });
     }
   }, [product, open]);
@@ -58,7 +61,8 @@ export function ProductDialog({ product, open, onClose, onSaved }: ProductDialog
       id: formData.id,
       name: formData.name,
       price: Math.round(parseFloat(formData.price)) || 0,
-      stock: parseInt(formData.stock) || 0
+      stock: parseInt(formData.stock) || 0,
+      category: formData.category.trim() || "General"
     };
 
     setDocumentNonBlocking(docRef, data, { merge: true });
@@ -98,6 +102,18 @@ export function ProductDialog({ product, open, onClose, onSaved }: ProductDialog
               className="h-12 rounded-xl"
               onChange={e => setFormData({ ...formData, name: e.target.value })} 
               placeholder="Ej: Bebida 1.5L" 
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="category" className="font-bold text-slate-500 flex items-center gap-2">
+              <Tag className="w-3 h-3" /> Categoría
+            </Label>
+            <Input 
+              id="category" 
+              value={formData.category} 
+              className="h-12 rounded-xl"
+              onChange={e => setFormData({ ...formData, category: e.target.value })} 
+              placeholder="Ej: Bebidas, Snacks, Limpieza..." 
             />
           </div>
           <div className="grid grid-cols-2 gap-4">

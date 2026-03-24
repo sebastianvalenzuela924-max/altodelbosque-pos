@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo } from "react";
@@ -10,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, FileSpreadsheet, Edit3, AlertTriangle, Plus, Trash2, Package, Scan, Loader2, Check, X, ArrowUpDown, Filter } from "lucide-react";
+import { Search, FileSpreadsheet, Edit3, AlertTriangle, Plus, Trash2, Package, Scan, Loader2, Check, X, ArrowUpDown, Filter, Tag } from "lucide-react";
 import { exportToExcel } from "@/lib/export";
 import { useToast } from "@/hooks/use-toast";
 import { ProductDialog } from "@/components/inventory/ProductDialog";
@@ -24,6 +23,7 @@ export default function InventoryPage() {
   const firestore = useFirestore();
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>("name");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
@@ -37,13 +37,20 @@ export default function InventoryPage() {
 
   const { data: products, isLoading } = useCollection(productsQuery);
 
+  const categories = useMemo(() => {
+    if (!products) return [];
+    const cats = new Set(products.map(p => p.category || "General"));
+    return Array.from(cats).sort();
+  }, [products]);
+
   const processedProducts = useMemo(() => {
     if (!products) return [];
 
-    let filtered = products.filter(p => 
-      p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      p.id.includes(searchTerm)
-    );
+    let filtered = products.filter(p => {
+      const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.id.includes(searchTerm);
+      const matchesCategory = categoryFilter === "all" || (p.category || "General") === categoryFilter;
+      return matchesSearch && matchesCategory;
+    });
 
     return filtered.sort((a, b) => {
       switch (sortBy) {
@@ -52,7 +59,6 @@ export default function InventoryPage() {
         case "stock-desc":
           return b.stock - a.stock;
         case "status-critical":
-          // Primero los que tienen stock < 5, luego orden alfabético
           const aCritical = a.stock < 5 ? 0 : 1;
           const bCritical = b.stock < 5 ? 0 : 1;
           if (aCritical !== bCritical) return aCritical - bCritical;
@@ -62,13 +68,14 @@ export default function InventoryPage() {
           return a.name.localeCompare(b.name);
       }
     });
-  }, [products, searchTerm, sortBy]);
+  }, [products, searchTerm, sortBy, categoryFilter]);
 
   const handleExport = () => {
     if (!products) return;
     const dataForExport = products.map(p => ({
       "Código Barras": p.id,
       "Nombre": p.name,
+      "Categoría": p.category || "General",
       "Precio ($)": Math.round(p.price),
       "Stock": p.stock,
       "Estado": p.stock < 5 ? "Stock Bajo" : "Normal"
@@ -89,21 +96,19 @@ export default function InventoryPage() {
 
   const confirmPendingBarcode = () => {
     if (!pendingBarcode) return;
-    
     const barcode = pendingBarcode;
     setPendingBarcode(null);
-    
     const existing = products?.find(p => p.id === barcode);
     if (existing) {
       handleEdit(existing);
     } else {
-      setSelectedProduct({ id: barcode, name: "", price: "", stock: "" });
+      setSelectedProduct({ id: barcode, name: "", price: "", stock: "", category: "" });
       setIsDialogOpen(true);
     }
   };
 
   const handleAddNew = (barcode?: string) => {
-    setSelectedProduct(barcode ? { id: barcode, name: "", price: "", stock: "" } : null);
+    setSelectedProduct(barcode ? { id: barcode, name: "", price: "", stock: "", category: "" } : null);
     setIsDialogOpen(true);
   };
 
@@ -151,13 +156,30 @@ export default function InventoryPage() {
               />
             </div>
             
-            <div className="flex items-center gap-2 w-full lg:w-auto">
+            <div className="flex flex-col sm:flex-row items-center gap-2 w-full lg:w-auto">
+              <div className="bg-white p-1 rounded-2xl flex items-center border shadow-sm w-full lg:w-auto">
+                <div className="pl-3 text-muted-foreground">
+                  <Tag className="w-4 h-4" />
+                </div>
+                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                  <SelectTrigger className="border-none shadow-none focus:ring-0 w-full lg:w-[180px] font-bold h-10">
+                    <SelectValue placeholder="Categoría" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-2xl border-none shadow-2xl">
+                    <SelectItem value="all">Todas las categorías</SelectItem>
+                    {categories.map(cat => (
+                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div className="bg-white p-1 rounded-2xl flex items-center border shadow-sm w-full lg:w-auto">
                 <div className="pl-3 text-muted-foreground">
                   <ArrowUpDown className="w-4 h-4" />
                 </div>
                 <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
-                  <SelectTrigger className="border-none shadow-none focus:ring-0 w-full lg:w-[220px] font-bold h-10">
+                  <SelectTrigger className="border-none shadow-none focus:ring-0 w-full lg:w-[180px] font-bold h-10">
                     <SelectValue placeholder="Ordenar por" />
                   </SelectTrigger>
                   <SelectContent className="rounded-2xl border-none shadow-2xl">
@@ -178,6 +200,7 @@ export default function InventoryPage() {
                 <TableRow className="border-none hover:bg-transparent">
                   <TableHead className="font-black py-4 uppercase text-[10px] tracking-widest px-6">Código</TableHead>
                   <TableHead className="font-black py-4 uppercase text-[10px] tracking-widest px-6">Nombre del Producto</TableHead>
+                  <TableHead className="font-black py-4 uppercase text-[10px] tracking-widest px-6">Categoría</TableHead>
                   <TableHead className="font-black py-4 uppercase text-[10px] tracking-widest px-6">Precio</TableHead>
                   <TableHead className="font-black py-4 uppercase text-[10px] tracking-widest px-6 text-center">Stock</TableHead>
                   <TableHead className="font-black py-4 uppercase text-[10px] tracking-widest px-6">Estado</TableHead>
@@ -187,7 +210,7 @@ export default function InventoryPage() {
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-64 text-center">
+                    <TableCell colSpan={7} className="h-64 text-center">
                       <div className="flex flex-col items-center justify-center gap-3 text-primary">
                         <Loader2 className="w-10 h-10 animate-spin" />
                         <p className="font-black text-[10px] uppercase tracking-widest">Sincronizando inventario...</p>
@@ -196,7 +219,7 @@ export default function InventoryPage() {
                   </TableRow>
                 ) : processedProducts.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-64 text-center text-muted-foreground">
+                    <TableCell colSpan={7} className="h-64 text-center text-muted-foreground">
                       <div className="flex flex-col items-center justify-center gap-2">
                         <Package className="w-12 h-12 opacity-20" />
                         <p className="font-bold">No se encontraron productos.</p>
@@ -208,6 +231,11 @@ export default function InventoryPage() {
                     <TableRow key={p.id} className={p.stock < 5 ? "bg-destructive/5 hover:bg-destructive/10" : "hover:bg-slate-50"}>
                       <TableCell className="font-mono text-xs font-black text-primary px-6">{p.id}</TableCell>
                       <TableCell className="font-bold px-6">{p.name}</TableCell>
+                      <TableCell className="px-6">
+                        <Badge variant="outline" className="rounded-full px-2 py-0.5 text-[10px] font-bold border-slate-200 text-slate-500 uppercase">
+                          {p.category || "General"}
+                        </Badge>
+                      </TableCell>
                       <TableCell className="text-primary font-black text-lg px-6 font-mono">${Math.round(p.price).toLocaleString('es-CL')}</TableCell>
                       <TableCell className="text-center font-black text-lg px-6">{p.stock}</TableCell>
                       <TableCell className="px-6">
