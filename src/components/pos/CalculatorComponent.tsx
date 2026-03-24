@@ -45,17 +45,23 @@ export function CalculatorComponent({
     setIsReset(false);
   };
 
-  const handleCalculate = () => {
+  const calculateResult = () => {
+    if (!equation) return parseInt(display || "0");
     try {
       const fullEq = equation + display;
       // eslint-disable-next-line no-eval
       const result = eval(fullEq.replace('×', '*').replace('÷', '/'));
-      setDisplay(Math.round(result).toString());
-      setEquation("");
-      setIsReset(false);
+      return Math.round(result);
     } catch (e) {
-      setDisplay("0");
+      return parseInt(display || "0");
     }
+  };
+
+  const handleCalculate = () => {
+    const result = calculateResult();
+    setDisplay(result.toString());
+    setEquation("");
+    setIsReset(false);
   };
 
   const clear = () => {
@@ -71,20 +77,21 @@ export function CalculatorComponent({
   };
 
   const handleFinalizeNormal = () => {
-    const amount = parseInt(display);
+    const amount = calculateResult();
     if (!isNaN(amount)) {
-      // Forzar reset total: volver a la base (que será 0 tras el cobro)
       setIsReset(true);
       setEquation("");
+      setDisplay(amount.toString());
       onFinalize(amount);
     }
   };
 
   const handleFinalizeKeepAmount = () => {
-    const amount = parseInt(display);
+    const amount = calculateResult();
     if (!isNaN(amount)) {
-      // No resetear: mantener el número actual en pantalla ignorando el cambio de baseValue
       setIsReset(false);
+      setEquation("");
+      setDisplay(amount.toString());
       onFinalize(amount);
     }
   };
