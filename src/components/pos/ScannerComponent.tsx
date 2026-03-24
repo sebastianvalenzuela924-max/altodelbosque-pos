@@ -12,6 +12,8 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const scannerRef = useRef<Html5Qrcode | null>(null);
+  const lastDetectedText = useRef<string | null>(null);
+  const lastDetectedTime = useRef<number>(0);
   const { toast } = useToast();
 
   const stopScanner = async () => {
@@ -32,12 +34,10 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
       const capabilities = videoTrack.getCapabilities() as any;
       const constraints = {} as any;
 
-      // Intentar aplicar Zoom si el dispositivo lo soporta (evita acercarse demasiado y desenfocar)
       if (capabilities.zoom) {
         constraints.zoom = Math.min(2.0, capabilities.zoom.max);
       }
       
-      // Intentar forzar enfoque continuo
       if (capabilities.focusMode?.includes('continuous')) {
         constraints.focusMode = 'continuous';
       }
@@ -70,11 +70,9 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
           });
         }
 
-        // Configuración para forzar al usuario a alejarse (donde hay mejor enfoque)
         const config = {
           fps: 30,
           qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
-            // Rectángulo ancho para códigos de barras, centrado
             const width = Math.min(viewfinderWidth * 0.85, 450);
             const height = Math.min(viewfinderHeight * 0.35, 200);
             return { width, height };
@@ -82,7 +80,6 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
           aspectRatio: 1.0,
           videoConstraints: {
             facingMode: "environment",
-            // Solicitamos alta resolución para capturar detalles finos desde lejos
             width: { min: 1280, ideal: 1920 },
             height: { min: 720, ideal: 1080 },
           },
@@ -92,12 +89,18 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
           { facingMode: "environment" },
           config,
           (decodedText) => {
+            const now = Date.now();
+            // Evitar duplicados inmediatos (cooldown de 2 segundos para el mismo código)
+            if (decodedText === lastDetectedText.current && (now - lastDetectedTime.current < 2000)) {
+              return;
+            }
+            lastDetectedText.current = decodedText;
+            lastDetectedTime.current = now;
             onScan(decodedText);
           },
           () => {} 
         );
 
-        // Intentar aplicar zoom después de que la cámara se inicie
         const videoElement = document.querySelector("#qr-reader video") as HTMLVideoElement;
         if (videoElement && videoElement.srcObject) {
           const stream = videoElement.srcObject as MediaStream;
@@ -113,11 +116,6 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
         setError("Error de cámara. Por favor, revisa los permisos.");
         setIsEnabled(false);
         setIsLoading(false);
-        toast({
-          variant: "destructive",
-          title: "Error de Cámara",
-          description: "Asegúrate de dar permisos de cámara en tu navegador.",
-        });
       }
     }, 500);
   };

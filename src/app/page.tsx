@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
@@ -45,6 +44,7 @@ function ProductSearchBox({
               results.map((p) => (
                 <button
                   key={p.id}
+                  type="button"
                   onClick={() => {
                     onAdd(p);
                     setQuery("");
@@ -110,7 +110,6 @@ export default function POSPage() {
     return map;
   }, [allProducts]);
 
-  // Búsqueda manual por nombre
   const searchResults = useMemo(() => {
     if (!searchQuery || !allProducts) return [];
     const q = searchQuery.toLowerCase().trim();
@@ -159,12 +158,14 @@ export default function POSPage() {
     if (!cleanBarcode || isLoadingInventory || isScanLocked) return;
 
     const now = Date.now();
-    if (lastScanRef.current && lastScanRef.current.code === cleanBarcode && (now - lastScanRef.current.time < 3000)) {
+    
+    // Doble verificación: ref síncrona para evitar re-entrada inmediata
+    if (lastScanRef.current && lastScanRef.current.code === cleanBarcode && (now - lastScanRef.current.time < 2000)) {
       return;
     }
 
-    setIsScanLocked(true);
     lastScanRef.current = { code: cleanBarcode, time: now };
+    setIsScanLocked(true);
     
     const product = productMap.get(cleanBarcode);
 
@@ -178,9 +179,10 @@ export default function POSPage() {
       });
     }
 
+    // Cooldown visual más corto para feedback del usuario
     setTimeout(() => {
       setIsScanLocked(false);
-    }, 3000);
+    }, 1500);
   };
 
   const handleFinalize = (manualFinalAmount?: number) => {
@@ -295,7 +297,6 @@ export default function POSPage() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in fade-in duration-500">
       <div className="lg:col-span-7 flex flex-col h-full gap-6">
-        {/* Búsqueda por Nombre Arriba de la Caja */}
         <section className="space-y-3">
           <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 px-1">
             <PackageSearch className="w-4 h-4" /> Búsqueda Rápida de Inventario
@@ -433,7 +434,7 @@ export default function POSPage() {
             </h3>
             {isScanLocked && (
               <span className="text-[10px] font-bold text-amber-600 flex items-center gap-1 animate-pulse">
-                <Clock className="w-3 h-3" /> Pausa procesado...
+                <Clock className="w-3 h-3" /> Procesando...
               </span>
             )}
           </div>
@@ -442,7 +443,6 @@ export default function POSPage() {
           </div>
         </section>
 
-        {/* Búsqueda Manual de Productos debajo del Escáner */}
         <section className="space-y-3">
           <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 px-1">
             <PackageSearch className="w-4 h-4" /> Búsqueda por Nombre
