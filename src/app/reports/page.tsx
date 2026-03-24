@@ -11,13 +11,15 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import React from 'react';
 
-type DateFilter = "today" | "month" | "all";
+type DateFilter = "today" | "yesterday" | "month" | "all" | "custom";
 
 export default function ReportsPage() {
   const [mounted, setMounted] = useState(false);
   const [dateFilter, setDateFilter] = useState<DateFilter>("all");
+  const [customDate, setCustomDate] = useState<string>("");
   const firestore = useFirestore();
 
   useEffect(() => {
@@ -41,15 +43,31 @@ export default function ReportsPage() {
     
     return allSales.filter(sale => {
       const saleDate = sale.saleDateTime?.toDate?.() || new Date();
+      
       if (dateFilter === "today") {
         return saleDate.toDateString() === now.toDateString();
       }
+      
+      if (dateFilter === "yesterday") {
+        const yesterday = new Date(now);
+        yesterday.setDate(now.getDate() - 1);
+        return saleDate.toDateString() === yesterday.toDateString();
+      }
+
+      if (dateFilter === "custom" && customDate) {
+        // customDate viene en formato YYYY-MM-DD
+        const [year, month, day] = customDate.split('-').map(Number);
+        const selectedDate = new Date(year, month - 1, day);
+        return saleDate.toDateString() === selectedDate.toDateString();
+      }
+      
       if (dateFilter === "month") {
         return saleDate.getMonth() === now.getMonth() && saleDate.getFullYear() === now.getFullYear();
       }
+      
       return true;
     });
-  }, [allSales, dateFilter, mounted]);
+  }, [allSales, dateFilter, customDate, mounted]);
 
   const productRanking = useMemo(() => {
     if (!filteredSales || !mounted) return [];
@@ -131,20 +149,35 @@ export default function ReportsPage() {
           <p className="text-muted-foreground">Analiza el rendimiento y stock de tu negocio.</p>
         </div>
 
-        <div className="bg-white p-1 rounded-2xl flex items-center border shadow-sm w-full md:w-auto">
-          <div className="pl-3 text-muted-foreground">
-            <CalendarDays className="w-4 h-4" />
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+          <div className="bg-white p-1 rounded-2xl flex items-center border shadow-sm w-full md:w-auto">
+            <div className="pl-3 text-muted-foreground">
+              <CalendarDays className="w-4 h-4" />
+            </div>
+            <Select value={dateFilter} onValueChange={(v: DateFilter) => setDateFilter(v)}>
+              <SelectTrigger className="border-none shadow-none focus:ring-0 w-full md:w-[180px] font-bold h-10">
+                <SelectValue placeholder="Periodo" />
+              </SelectTrigger>
+              <SelectContent className="rounded-2xl border-none shadow-2xl">
+                <SelectItem value="today">Hoy</SelectItem>
+                <SelectItem value="yesterday">Ayer</SelectItem>
+                <SelectItem value="custom">Día Específico</SelectItem>
+                <SelectItem value="month">Este Mes</SelectItem>
+                <SelectItem value="all">Todo el Historial</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-          <Select value={dateFilter} onValueChange={(v: DateFilter) => setDateFilter(v)}>
-            <SelectTrigger className="border-none shadow-none focus:ring-0 w-full md:w-[180px] font-bold h-10">
-              <SelectValue placeholder="Periodo" />
-            </SelectTrigger>
-            <SelectContent className="rounded-2xl border-none shadow-2xl">
-              <SelectItem value="today">Hoy</SelectItem>
-              <SelectItem value="month">Este Mes</SelectItem>
-              <SelectItem value="all">Todo el Historial</SelectItem>
-            </SelectContent>
-          </Select>
+
+          {dateFilter === "custom" && (
+            <div className="w-full sm:w-auto animate-in slide-in-from-right-2 duration-300">
+              <Input 
+                type="date" 
+                className="h-12 rounded-2xl border-none bg-white shadow-sm font-bold px-4 focus-visible:ring-primary"
+                value={customDate}
+                onChange={(e) => setCustomDate(e.target.value)}
+              />
+            </div>
+          )}
         </div>
       </div>
 
@@ -152,7 +185,7 @@ export default function ReportsPage() {
         <Card className="border-none shadow-lg bg-primary text-white rounded-3xl">
           <CardHeader className="pb-2">
             <CardDescription className="text-primary-foreground/70 font-black uppercase text-[10px] tracking-widest">
-              {dateFilter === 'today' ? 'Ventas Hoy' : dateFilter === 'month' ? 'Ventas Mes' : 'Total Histórico'}
+              {dateFilter === 'today' ? 'Ventas Hoy' : dateFilter === 'yesterday' ? 'Ventas Ayer' : dateFilter === 'custom' ? `Venta ${customDate}` : dateFilter === 'month' ? 'Ventas Mes' : 'Total Histórico'}
             </CardDescription>
             <CardTitle className="text-3xl font-black font-mono">${Math.round(totalRevenue).toLocaleString('es-CL')}</CardTitle>
           </CardHeader>
@@ -255,7 +288,7 @@ export default function ReportsPage() {
         <TabsContent value="categorias" className="space-y-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card className="border-none shadow-xl bg-white rounded-3xl p-6">
-              <CardTitle className="text-lg font-black mb-6 uppercase tracking-tighter">Recaudación ({dateFilter})</CardTitle>
+              <CardTitle className="text-lg font-black mb-6 uppercase tracking-tighter">Recaudación por Categoría</CardTitle>
               <div className="h-[250px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={categoryStats}>
