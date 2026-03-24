@@ -4,10 +4,11 @@
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import { collection, query, orderBy } from "firebase/firestore";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from "recharts";
-import { DollarSign, Package, TrendingUp, Calendar, ShoppingBag, ArrowUpRight, Loader2, BarChart3, ListFilter } from "lucide-react";
+import { PieChart, Pie, Tooltip, ResponsiveContainer, Cell, Legend } from "recharts";
+import { DollarSign, Package, TrendingUp, Calendar, ShoppingBag, ArrowUpRight, Loader2, ListFilter, Table as TableIcon, ChevronRight } from "lucide-react";
 import { useMemo, useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 export default function ReportsPage() {
   const [mounted, setMounted] = useState(false);
@@ -24,7 +25,7 @@ export default function ReportsPage() {
   const { data: sales, isLoading } = useCollection(salesQuery);
 
   const stats = useMemo(() => {
-    if (!sales || !mounted) return { daily: 0, monthly: 0, totalSales: 0, itemCount: 0, unitsSold: 0 };
+    if (!sales || !mounted) return { daily: 0, monthly: 0, totalSales: 0, unitsSold: 0 };
 
     const today = new Date();
     const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
@@ -44,7 +45,6 @@ export default function ReportsPage() {
       })
       .reduce((sum, s) => sum + (s.totalAmount || 0), 0);
 
-    // Unidades totales basadas en el resumen de items
     const unitsSold = sales.reduce((sum, s) => {
       if (s.itemsSummary) {
         return sum + s.itemsSummary.reduce((itemSum: number, item: any) => itemSum + (item.quantity || 0), 0);
@@ -60,23 +60,37 @@ export default function ReportsPage() {
     };
   }, [sales, mounted]);
 
-  const chartData = useMemo(() => {
+  // Agrupación de ventas por día para el desglose detallado
+  const dailyBreakdown = useMemo(() => {
     if (!sales || !mounted) return [];
-    return Array.from({ length: 7 }, (_, i) => {
-      const d = new Date();
-      d.setDate(d.getDate() - (6 - i));
-      const dayStr = d.toLocaleDateString('es-ES', { weekday: 'short' });
-      const amount = sales
-        .filter(s => {
-          const sd = s.saleDateTime?.toDate?.() || new Date();
-          return sd.toDateString() === d.toDateString();
-        })
-        .reduce((sum, s) => sum + (s.totalAmount || 0), 0);
-      return { name: dayStr, amount: Math.round(amount) };
+    
+    const groups: Record<string, { date: Date, products: Record<string, { name: string, quantity: number, total: number }> }> = {};
+    
+    sales.forEach(sale => {
+      const d = sale.saleDateTime?.toDate?.() || new Date();
+      const dateKey = d.toDateString();
+      
+      if (!groups[dateKey]) {
+        groups[dateKey] = { date: d, products: {} };
+      }
+      
+      if (sale.itemsSummary) {
+        sale.itemsSummary.forEach((item: any) => {
+          const prodKey = item.id === 'manual' ? `Manual: ${item.name}` : item.name;
+          if (!groups[dateKey].products[prodKey]) {
+            groups[dateKey].products[prodKey] = { name: prodKey, quantity: 0, total: 0 };
+          }
+          groups[dateKey].products[prodKey].quantity += item.quantity || 0;
+          groups[dateKey].products[prodKey].total += Math.round(item.price * item.quantity) || 0;
+        });
+      }
     });
+
+    return Object.values(groups).sort((a, b) => b.date.getTime() - a.date.getTime());
   }, [sales, mounted]);
 
-  const topProductsDetailed = useMemo(() => {
+  // Ranking completo de productos (sin límite de 10)
+  const allProductsRanking = useMemo(() => {
     if (!sales || !mounted) return [];
     const productStats: Record<string, { name: string, quantity: number, total: number }> = {};
     
@@ -93,9 +107,7 @@ export default function ReportsPage() {
       }
     });
 
-    return Object.values(productStats)
-      .sort((a, b) => b.quantity - a.quantity)
-      .slice(0, 10);
+    return Object.values(productStats).sort((a, b) => b.quantity - a.quantity);
   }, [sales, mounted]);
 
   const COLORS = ['#3366CC', '#8B4ADF', '#10b981', '#f59e0b', '#ef4444', '#64748b', '#ec4899', '#8b5cf6', '#06b6d4', '#f97316'];
@@ -113,8 +125,8 @@ export default function ReportsPage() {
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-black text-primary">Análisis de Negocio</h1>
-          <p className="text-muted-foreground">Analiza qué productos se venden más y tu rendimiento diario.</p>
+          <h1 className="text-3xl font-black text-primary">Reportes de Venta</h1>
+          <p className="text-muted-foreground">Desglose detallado de qué y cuánto vendes cada día.</p>
         </div>
       </div>
 
@@ -129,14 +141,14 @@ export default function ReportsPage() {
           </CardHeader>
           <CardContent>
             <div className="flex items-center text-xs text-primary-foreground/80 mt-2">
-              <ArrowUpRight className="w-4 h-4 mr-1" /> Ingresos del día actual
+              <ArrowUpRight className="w-4 h-4 mr-1" /> Ingresos de hoy
             </div>
           </CardContent>
         </Card>
 
         <Card className="border-none shadow-lg bg-accent text-white">
           <CardHeader className="pb-2">
-            <CardDescription className="text-accent-foreground/70 font-black uppercase text-[10px] tracking-widest">Mensual</CardDescription>
+            <CardDescription className="text-accent-foreground/70 font-black uppercase text-[10px] tracking-widest">Este Mes</CardDescription>
             <CardTitle className="text-3xl font-black flex items-center justify-between">
               ${Math.round(stats.monthly).toLocaleString('es-CL')}
               <TrendingUp className="w-8 h-8 opacity-20" />
@@ -144,14 +156,14 @@ export default function ReportsPage() {
           </CardHeader>
           <CardContent>
             <div className="flex items-center text-xs text-accent-foreground/80 mt-2">
-              <Calendar className="w-4 h-4 mr-1" /> Acumulado del mes
+              <Calendar className="w-4 h-4 mr-1" /> Acumulado mensual
             </div>
           </CardContent>
         </Card>
 
         <Card className="border-none shadow-lg bg-white">
           <CardHeader className="pb-2">
-            <CardDescription className="text-muted-foreground font-black uppercase text-[10px] tracking-widest">Transacciones</CardDescription>
+            <CardDescription className="text-muted-foreground font-black uppercase text-[10px] tracking-widest">Boletas</CardDescription>
             <CardTitle className="text-3xl font-black flex items-center justify-between text-primary">
               {stats.totalSales}
               <ShoppingBag className="w-8 h-8 text-primary/10" />
@@ -159,14 +171,14 @@ export default function ReportsPage() {
           </CardHeader>
           <CardContent>
             <div className="flex items-center text-xs text-slate-400 mt-2">
-              Total de boletas emitidas
+              Total de ventas realizadas
             </div>
           </CardContent>
         </Card>
 
         <Card className="border-none shadow-lg bg-white">
           <CardHeader className="pb-2">
-            <CardDescription className="text-muted-foreground font-black uppercase text-[10px] tracking-widest">Unidades Vendidas</CardDescription>
+            <CardDescription className="text-muted-foreground font-black uppercase text-[10px] tracking-widest">Unidades</CardDescription>
             <CardTitle className="text-3xl font-black flex items-center justify-between text-accent">
               {stats.unitsSold}
               <Package className="w-8 h-8 text-accent/10" />
@@ -174,61 +186,89 @@ export default function ReportsPage() {
           </CardHeader>
           <CardContent>
             <div className="flex items-center text-xs text-slate-400 mt-2">
-              Cantidad total de artículos
+              Artículos totales vendidos
             </div>
           </CardContent>
         </Card>
       </div>
 
-      <Tabs defaultValue="ventas" className="w-full">
+      <Tabs defaultValue="diario" className="w-full">
         <TabsList className="bg-white border p-1 rounded-2xl h-14 w-full md:w-auto grid grid-cols-2 md:inline-flex mb-6">
-          <TabsTrigger value="ventas" className="rounded-xl font-bold data-[state=active]:bg-primary data-[state=active]:text-white">
-            <BarChart3 className="w-4 h-4 mr-2" /> Rendimiento
+          <TabsTrigger value="diario" className="rounded-xl font-bold data-[state=active]:bg-primary data-[state=active]:text-white">
+            <TableIcon className="w-4 h-4 mr-2" /> Ventas por Día
           </TabsTrigger>
-          <TabsTrigger value="productos" className="rounded-xl font-bold data-[state=active]:bg-primary data-[state=active]:text-white">
-            <ListFilter className="w-4 h-4 mr-2" /> Top Productos
+          <TabsTrigger value="ranking" className="rounded-xl font-bold data-[state=active]:bg-primary data-[state=active]:text-white">
+            <ListFilter className="w-4 h-4 mr-2" /> Ranking Completo
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="ventas" className="animate-in slide-in-from-bottom-4 duration-500">
-          <Card className="border-none shadow-xl bg-white overflow-hidden rounded-3xl">
-            <CardHeader className="pb-0 pt-8 px-8">
-              <CardTitle className="text-2xl font-black text-slate-800">Ingresos Últimos 7 Días</CardTitle>
-              <CardDescription>Visualización del flujo de caja semanal.</CardDescription>
-            </CardHeader>
-            <CardContent className="h-[400px] p-8">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 12, fontWeight: 700}} />
-                  <YAxis axisLine={false} tickLine={false} tick={{fontSize: 12}} />
-                  <Tooltip 
-                    cursor={{fill: 'hsl(var(--muted))', opacity: 0.4}} 
-                    contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)'}}
-                    formatter={(value: any) => [`$${value.toLocaleString('es-CL')}`, 'Ingresos']}
-                  />
-                  <Bar dataKey="amount" fill="hsl(var(--primary))" radius={[8, 8, 0, 0]} barSize={40}>
-                     {chartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={index === 6 ? '#8B4ADF' : '#3366CC'} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
+        <TabsContent value="diario" className="animate-in slide-in-from-bottom-4 duration-500">
+          <div className="space-y-4">
+            {dailyBreakdown.length > 0 ? (
+              dailyBreakdown.map((day, dayIdx) => (
+                <Card key={dayIdx} className="border-none shadow-md overflow-hidden rounded-2xl">
+                  <Accordion type="single" collapsible className="w-full">
+                    <AccordionItem value="day-detail" className="border-none">
+                      <AccordionTrigger className="hover:no-underline px-6 py-4 bg-slate-50/50">
+                        <div className="flex items-center gap-4 text-left w-full">
+                          <div className="bg-primary/10 p-3 rounded-xl text-primary">
+                            <Calendar className="w-5 h-5" />
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="font-black text-slate-800 uppercase tracking-tighter">
+                              {day.date.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}
+                            </h3>
+                            <p className="text-xs text-muted-foreground font-bold">
+                              {Object.values(day.products).length} productos distintos vendidos
+                            </p>
+                          </div>
+                          <div className="text-right mr-4">
+                            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Recaudado</p>
+                            <p className="text-lg font-black text-primary font-mono">
+                              ${Object.values(day.products).reduce((sum, p) => sum + p.total, 0).toLocaleString('es-CL')}
+                            </p>
+                          </div>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="p-0 border-t border-slate-100">
+                        <div className="divide-y divide-slate-50">
+                          {Object.values(day.products).sort((a, b) => b.quantity - a.quantity).map((prod, pIdx) => (
+                            <div key={pIdx} className="flex justify-between items-center p-4 px-8 hover:bg-slate-50 transition-colors">
+                              <div className="flex flex-col">
+                                <span className="font-bold text-slate-700">{prod.name}</span>
+                                <span className="text-[10px] font-black text-primary uppercase">Unidades: {prod.quantity}</span>
+                              </div>
+                              <div className="text-right font-black font-mono text-slate-600">
+                                ${prod.total.toLocaleString('es-CL')}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
+                </Card>
+              ))
+            ) : (
+              <div className="text-center py-20 bg-white rounded-3xl border-2 border-dashed">
+                <Package className="w-12 h-12 mx-auto mb-2 text-slate-200" />
+                <p className="text-slate-400 font-bold">No hay ventas registradas.</p>
+              </div>
+            )}
+          </div>
         </TabsContent>
 
-        <TabsContent value="productos" className="animate-in slide-in-from-bottom-4 duration-500">
+        <TabsContent value="ranking" className="animate-in slide-in-from-bottom-4 duration-500">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <Card className="lg:col-span-7 border-none shadow-xl bg-white rounded-3xl">
               <CardHeader className="p-8">
-                <CardTitle className="text-2xl font-black text-slate-800">Ranking de Ventas</CardTitle>
-                <CardDescription>Los 10 productos con mayor rotación (unidades).</CardDescription>
+                <CardTitle className="text-2xl font-black text-slate-800">Ranking General de Ventas</CardTitle>
+                <CardDescription>Lista completa de todos los productos vendidos, ordenados por unidades.</CardDescription>
               </CardHeader>
               <CardContent className="px-8 pb-8">
                 <div className="space-y-4">
-                  {topProductsDetailed.length > 0 ? (
-                    topProductsDetailed.map((product, idx) => (
+                  {allProductsRanking.length > 0 ? (
+                    allProductsRanking.map((product, idx) => (
                       <div key={idx} className="flex items-center gap-4 group">
                         <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-white shrink-0`} style={{ backgroundColor: COLORS[idx % COLORS.length] }}>
                           {idx + 1}
@@ -242,7 +282,7 @@ export default function ReportsPage() {
                             <div 
                               className="h-full rounded-full transition-all duration-1000" 
                               style={{ 
-                                width: `${(product.quantity / topProductsDetailed[0].quantity) * 100}%`,
+                                width: `${(product.quantity / allProductsRanking[0].quantity) * 100}%`,
                                 backgroundColor: COLORS[idx % COLORS.length]
                               }}
                             />
@@ -253,7 +293,7 @@ export default function ReportsPage() {
                   ) : (
                     <div className="text-center py-20 opacity-30">
                       <Package className="w-12 h-12 mx-auto mb-2" />
-                      <p>No hay datos de productos registrados aún.</p>
+                      <p>No hay datos disponibles.</p>
                     </div>
                   )}
                 </div>
@@ -262,15 +302,15 @@ export default function ReportsPage() {
 
             <Card className="lg:col-span-5 border-none shadow-xl bg-white rounded-3xl">
               <CardHeader className="p-8">
-                <CardTitle className="text-2xl font-black text-slate-800">Distribución de Ingresos</CardTitle>
-                <CardDescription>Aporte monetario por producto.</CardDescription>
+                <CardTitle className="text-2xl font-black text-slate-800">Distribución Monetaria</CardTitle>
+                <CardDescription>Aporte al ingreso total por producto (Top 10).</CardDescription>
               </CardHeader>
               <CardContent className="h-[400px] flex flex-col items-center justify-center p-8">
-                {topProductsDetailed.length > 0 ? (
+                {allProductsRanking.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
-                        data={topProductsDetailed.slice(0, 5)}
+                        data={allProductsRanking.slice(0, 10)}
                         cx="50%"
                         cy="50%"
                         innerRadius={80}
@@ -278,7 +318,7 @@ export default function ReportsPage() {
                         paddingAngle={5}
                         dataKey="total"
                       >
-                        {topProductsDetailed.slice(0, 5).map((entry, index) => (
+                        {allProductsRanking.slice(0, 10).map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
