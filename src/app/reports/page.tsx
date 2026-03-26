@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
@@ -6,7 +5,7 @@ import { collection, query, orderBy } from "firebase/firestore";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { DollarSign, Package, TrendingUp, Calendar, ShoppingBag, Loader2, ListFilter, Trophy, CheckCircle2, Filter, ShieldAlert, ShieldCheck, AlertTriangle, Tag, ArrowRight, Wallet } from "lucide-react";
 import { useMemo, useState, useEffect } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/tabs";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -324,23 +323,27 @@ export default function ReportsPage() {
                     </AccordionTrigger>
                     
                     <AccordionContent className="px-3 md:px-6 pb-6 pt-2 bg-slate-50/50">
-                      <div className="grid gap-2 mt-2">
-                        <div className="flex items-center justify-between px-2 mb-2">
-                          <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Rendimiento por producto (Mayores ventas primero)</span>
-                          <span className="text-[10px] font-bold text-slate-400">Total period: {cat.unitsSold} u.</span>
+                      <div className="grid gap-3 mt-4">
+                        <div className="flex items-center justify-between px-2 mb-1">
+                          <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Rendimiento por producto</span>
                         </div>
                         {cat.products.map((p: any) => {
                           const status = getProductStatus(p.stock, p.idealStock, p.warningStock);
                           const productTotalRevenue = Math.round(p.price * p.soldThisPeriod);
                           return (
                             <div key={p.id} className={cn(
-                              "bg-white p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between border transition-all gap-4",
-                              status === 'danger' ? "border-red-200 shadow-sm" : "border-slate-100"
+                              "bg-white p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between border-2 transition-all gap-4 shadow-sm hover:shadow-md hover:border-primary/20",
+                              status === 'danger' ? "border-red-300 bg-red-50/30" : "border-slate-200"
                             )}>
                               <div className="flex items-center gap-3 flex-1 min-w-0">
-                                {status === 'danger' ? <ShieldAlert className="w-5 h-5 text-destructive" /> : 
-                                 status === 'warning' ? <AlertTriangle className="w-5 h-5 text-amber-500" /> : 
-                                 <ShieldCheck className="w-5 h-5 text-green-500" />}
+                                <div className={cn(
+                                  "w-10 h-10 rounded-full flex items-center justify-center shrink-0",
+                                  status === 'danger' ? "bg-red-100" : status === 'warning' ? "bg-amber-100" : "bg-green-100"
+                                )}>
+                                  {status === 'danger' ? <ShieldAlert className="w-5 h-5 text-destructive" /> : 
+                                   status === 'warning' ? <AlertTriangle className="w-5 h-5 text-amber-500" /> : 
+                                   <ShieldCheck className="w-5 h-5 text-green-500" />}
+                                </div>
                                 <div className="min-w-0">
                                   <p className="font-bold text-sm text-slate-700 truncate">{p.name}</p>
                                   <div className="flex items-center gap-2 mt-0.5">
@@ -373,7 +376,7 @@ export default function ReportsPage() {
 
                                 <Link 
                                   href={`/inventory?search=${p.id}`}
-                                  className="flex items-center justify-center rounded-full bg-slate-50 hover:bg-primary/10 text-primary h-10 w-10 transition-colors shrink-0"
+                                  className="flex items-center justify-center rounded-2xl bg-slate-50 hover:bg-primary/10 text-primary h-12 w-12 transition-all border border-slate-100 shrink-0 shadow-sm"
                                 >
                                   <ArrowRight className="w-5 h-5" />
                                 </Link>
