@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
@@ -155,9 +156,10 @@ export default function InventoryPage() {
 
   const handleDiscardPending = () => {
     setPendingBarcode(null);
-    scanBlockedRef.current = false;
-    document.body.style.pointerEvents = 'auto';
-    document.body.style.overflow = 'auto';
+    // Reiniciamos la guardia del escáner con un delay para evitar bucles si el producto sigue ahí
+    setTimeout(() => {
+      scanBlockedRef.current = false;
+    }, 500);
   };
 
   const handleConfirmScanAndEdit = () => {
@@ -167,14 +169,15 @@ export default function InventoryPage() {
     const existing = products?.find(p => p.id === barcode);
     setSelectedProduct(existing || { id: barcode });
     
-    // Cerramos el aviso primero
+    // Capturamos el código antes de resetear
+    const targetBarcode = barcode;
     setPendingBarcode(null);
-    scanBlockedRef.current = false;
-
-    // Abrimos el formulario con un pequeño delay para que no choquen los diálogos
+    
+    // Delay controlado para limpiar la pantalla antes de abrir el editor
     setTimeout(() => {
+      scanBlockedRef.current = false;
       setIsDialogOpen(true);
-    }, 150);
+    }, 200);
   };
 
   const handleCloseProductDialog = () => {
@@ -299,9 +302,9 @@ export default function InventoryPage() {
                     onPointerLeave={handlePointerUp}
                     className={cn(
                       "transition-colors border-b select-none touch-none", 
-                      status === "peligro" ? "bg-red-50 hover:bg-red-100" : 
-                      status === "precaución" ? "bg-amber-50 hover:bg-amber-100" : 
-                      status === "ok" ? "bg-green-50 hover:bg-green-100" : "hover:bg-slate-50"
+                      status === "peligro" ? "bg-red-100 hover:bg-red-200" : 
+                      status === "precaución" ? "bg-amber-100 hover:bg-amber-200" : 
+                      status === "ok" ? "bg-green-100 hover:bg-green-200" : "hover:bg-slate-50"
                     )}
                   >
                     <TableCell className="px-6">
