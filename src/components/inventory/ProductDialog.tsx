@@ -57,7 +57,6 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
   }, [product, open]);
 
   const handleSave = () => {
-    // Validamos campos mínimos excepto el ID, que puede ser auto-generado
     if (!formData.name || !formData.price || !formData.idealStock) {
       toast({ title: "Faltan datos", description: "El nombre, precio y stock ideal son obligatorios.", variant: "destructive" });
       return;
@@ -65,9 +64,7 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
 
     setLoading(true);
     
-    // Si no hay ID, generamos uno interno basado en timestamp y un corto aleatorio
     const finalId = formData.id.trim() || `INT-${Date.now().toString().slice(-6)}-${Math.random().toString(36).substring(2, 5).toUpperCase()}`;
-    
     const docRef = doc(firestore, "products", finalId);
     
     const enteredCat = formData.category.trim();
@@ -99,7 +96,6 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent 
         className="max-w-[95vw] sm:max-w-lg border-none shadow-2xl rounded-3xl p-0 overflow-hidden max-h-[90vh] flex flex-col gap-0"
-        onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <DialogHeader className="p-6 pb-2 shrink-0 bg-white border-b z-10">
           <DialogTitle className="flex items-center gap-2 text-2xl font-black text-primary">
@@ -141,7 +137,7 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
           
           <div className="grid gap-2">
             <Label htmlFor="name" className="font-bold text-slate-500 text-xs uppercase tracking-widest">Nombre del Producto</Label>
-            <Input id="name" value={formData.name} className="h-12 rounded-xl bg-slate-50 border-none font-bold text-lg" onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="Ej: Empanada de Pino" />
+            <Input id="name" value={formData.name} className="h-12 rounded-xl bg-slate-50 border-none font-bold text-lg" onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="Ej: Empanada de Pino" autoFocus />
           </div>
 
           <div className="grid gap-2">

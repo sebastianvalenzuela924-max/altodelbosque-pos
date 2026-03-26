@@ -38,11 +38,9 @@ export default function InventoryPage() {
   const { toast } = useToast();
 
   // FAIL-SAFE CRÍTICO: Asegura que el navegador recupere el control de clics y scroll
-  // cuando no hay diálogos abiertos. Esto previene el bloqueo de navegación.
   useEffect(() => {
     const isAnyModalOpen = isDialogOpen || isScannerOpen || !!pendingBarcode || !!productToDelete || !!quickStockProduct;
     if (!isAnyModalOpen) {
-      // Forzamos la limpieza del DOM que a veces Radix UI deja colgada
       document.body.style.pointerEvents = 'auto';
       document.body.style.overflow = 'auto';
     }
@@ -143,18 +141,34 @@ export default function InventoryPage() {
 
   const handleScanResult = (barcode: string) => {
     setIsScannerOpen(false);
-    // Usamos un pequeño delay para que el Dialog del scanner se cierre físicamente
-    // antes de abrir el aviso de código detectado.
+    // Pequeño retraso para que el Dialog del scanner se cierre físicamente
     setTimeout(() => {
       setPendingBarcode(barcode);
-    }, 150);
+    }, 200);
   };
 
   const handleDiscardPending = () => {
     setPendingBarcode(null);
-    // Aseguramos navegación libre inmediatamente
     document.body.style.pointerEvents = 'auto';
     document.body.style.overflow = 'auto';
+  };
+
+  const handleConfirmScanAndEdit = () => {
+    const existing = products?.find(p => p.id === pendingBarcode);
+    const barcode = pendingBarcode;
+    
+    // Limpiamos primero el aviso de detección
+    setPendingBarcode(null);
+    
+    // Abrimos el formulario de edición con un pequeño delay para evitar colisiones de foco
+    setTimeout(() => {
+      if (existing) {
+        setSelectedProduct(existing);
+      } else {
+        setSelectedProduct({ id: barcode });
+      }
+      setIsDialogOpen(true);
+    }, 150);
   };
 
   return (
@@ -270,7 +284,7 @@ export default function InventoryPage() {
 
       {/* Carga Rápida stock */}
       <Dialog open={!!quickStockProduct} onOpenChange={(open) => !open && setQuickStockProduct(null)}>
-        <DialogContent className="rounded-3xl border-none shadow-2xl max-w-[90vw] sm:max-w-sm p-6" onOpenAutoFocus={(e) => e.preventDefault()}>
+        <DialogContent className="rounded-3xl border-none shadow-2xl max-w-[90vw] sm:max-w-sm p-6">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-xl font-black text-primary uppercase">Carga Rápida</DialogTitle>
           </DialogHeader>
@@ -317,14 +331,7 @@ export default function InventoryPage() {
             <AlertDialogCancel onClick={handleDiscardPending} className="rounded-2xl h-14 flex-1 border-slate-200 font-bold">
               DESCARTAR
             </AlertDialogCancel>
-            <AlertDialogAction onClick={() => { 
-              const existing = products?.find(p => p.id === pendingBarcode);
-              const barcode = pendingBarcode;
-              setPendingBarcode(null);
-              if (existing) { setSelectedProduct(existing); }
-              else { setSelectedProduct({ id: barcode }); }
-              setIsDialogOpen(true);
-            }} className="rounded-2xl h-14 flex-1 font-black bg-primary">
+            <AlertDialogAction onClick={handleConfirmScanAndEdit} className="rounded-2xl h-14 flex-1 font-black bg-primary">
               EDITAR / CREAR
             </AlertDialogAction>
           </AlertDialogFooter>
