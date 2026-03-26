@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { quickProductRegistration } from "@/ai/flows/quick-product-registration";
-import { Sparkles, Loader2, Barcode } from "lucide-react";
+import { Sparkles, Loader2, Barcode, Target, AlertTriangle } from "lucide-react";
 import { useFirestore, setDocumentNonBlocking, useCollection, useMemoFirebase } from "@/firebase";
 import { doc, collection } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
@@ -30,6 +30,7 @@ export function QuickAddDialog({
   const [price, setPrice] = useState("");
   const [stock, setStock] = useState("");
   const [idealStock, setIdealStock] = useState("10");
+  const [warningStock, setWarningStock] = useState("");
   const [category, setCategory] = useState("");
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -57,6 +58,7 @@ export function QuickAddDialog({
       price === "" && setPrice(Math.round(result.suggestedPrice).toString());
       category === "" && setCategory(result.suggestedCategory);
       setIdealStock(result.suggestedIdealStock.toString());
+      setWarningStock("");
       toast({ title: "IA: Datos sugeridos" });
     } catch (e) {
       toast({ title: "IA no disponible", variant: "destructive" });
@@ -66,7 +68,7 @@ export function QuickAddDialog({
   };
 
   const handleSave = () => {
-    if (!name || !price || !idealStock) {
+    if (!name || !price) {
       toast({ title: "Faltan datos", variant: "destructive" });
       return;
     }
@@ -81,7 +83,8 @@ export function QuickAddDialog({
       name,
       price: Math.round(parseFloat(price)) || 0,
       stock: parseInt(stock) || 0,
-      idealStock: parseInt(idealStock) || 10,
+      idealStock: idealStock ? parseInt(idealStock) : null,
+      warningStock: warningStock ? parseInt(warningStock) : null,
       category: finalCategory
     };
 
@@ -136,14 +139,30 @@ export function QuickAddDialog({
                   <Input type="number" className="h-12 rounded-xl bg-slate-50 border-none font-black" value={price} onChange={e => setPrice(e.target.value)} />
                 </div>
                 <div className="grid gap-2">
-                  <Label className="font-bold text-xs uppercase text-slate-500">Normal (Ideal)</Label>
-                  <Input type="number" className="h-12 rounded-xl bg-primary/5 border-none font-black text-primary" value={idealStock} onChange={e => setIdealStock(e.target.value)} />
+                  <Label className="font-bold text-xs uppercase text-slate-500">Stock Inicial</Label>
+                  <Input type="number" className="h-12 rounded-xl bg-slate-50 border-none font-black" value={stock} onChange={e => setStock(e.target.value)} placeholder="0" />
                 </div>
             </div>
-            
-            <div className="grid gap-2">
-              <Label className="font-bold text-xs uppercase text-slate-500">Stock Inicial (Opcional)</Label>
-              <Input type="number" className="h-12 rounded-xl bg-slate-50 border-none font-black" value={stock} onChange={e => setStock(e.target.value)} placeholder="0" />
+
+            <div className="grid grid-cols-2 gap-4 pt-2 border-t">
+                <div className="grid gap-2">
+                  <Label className="font-bold text-[9px] uppercase text-slate-400 flex items-center gap-1"><Target className="w-3 h-3"/> Ideal (%)</Label>
+                  <Input 
+                    type="number" 
+                    className="h-12 rounded-xl bg-primary/5 border-none font-black text-primary text-center" 
+                    value={idealStock} 
+                    onChange={e => { setIdealStock(e.target.value); setWarningStock(""); }} 
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label className="font-bold text-[9px] uppercase text-slate-400 flex items-center gap-1"><AlertTriangle className="w-3 h-3"/> Aviso (Fijo)</Label>
+                  <Input 
+                    type="number" 
+                    className="h-12 rounded-xl bg-destructive/5 border-none font-black text-destructive text-center" 
+                    value={warningStock} 
+                    onChange={e => { setWarningStock(e.target.value); setIdealStock(""); }} 
+                  />
+                </div>
             </div>
           </div>
           

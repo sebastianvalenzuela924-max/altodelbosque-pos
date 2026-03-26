@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -8,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { useFirestore, setDocumentNonBlocking } from "@/firebase";
 import { doc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Package, Tag, Target, HelpCircle } from "lucide-react";
+import { Loader2, Package, Tag, Target, HelpCircle, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -29,6 +30,7 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
     price: "",
     stock: "",
     idealStock: "",
+    warningStock: "",
     category: ""
   });
   const [loading, setLoading] = useState(false);
@@ -41,7 +43,8 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
         name: product.name || "",
         price: product.price ? Math.round(product.price).toString() : "",
         stock: product.stock !== undefined ? product.stock.toString() : "",
-        idealStock: product.idealStock !== undefined ? product.idealStock.toString() : "10",
+        idealStock: product.idealStock !== undefined ? product.idealStock.toString() : "",
+        warningStock: product.warningStock !== undefined ? product.warningStock.toString() : "",
         category: product.category || ""
       });
     } else {
@@ -51,19 +54,19 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
         price: "",
         stock: "",
         idealStock: "10",
+        warningStock: "",
         category: ""
       });
     }
   }, [product, open]);
 
   const handleSave = () => {
-    if (!formData.name || !formData.price || !formData.idealStock) {
-      toast({ title: "Faltan datos", description: "El nombre, precio y stock ideal son obligatorios.", variant: "destructive" });
+    if (!formData.name || !formData.price) {
+      toast({ title: "Faltan datos", description: "El nombre y precio son obligatorios.", variant: "destructive" });
       return;
     }
 
     setLoading(true);
-    
     const finalId = formData.id.trim() || `INT-${Date.now().toString().slice(-6)}-${Math.random().toString(36).substring(2, 5).toUpperCase()}`;
     const docRef = doc(firestore, "products", finalId);
     
@@ -76,12 +79,12 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
       name: formData.name,
       price: Math.round(parseFloat(formData.price)) || 0,
       stock: parseInt(formData.stock) || 0,
-      idealStock: parseInt(formData.idealStock) || 10,
+      idealStock: formData.idealStock ? parseInt(formData.idealStock) : null,
+      warningStock: formData.warningStock ? parseInt(formData.warningStock) : null,
       category: finalCategory
     };
 
     setDocumentNonBlocking(docRef, data, { merge: true });
-    
     toast({ 
       title: product?.id ? "Producto Actualizado" : "Producto Creado", 
       description: `Se guardó correctamente con el código: ${finalId}` 
@@ -109,16 +112,6 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
             <div className="grid gap-2">
               <div className="flex items-center gap-2">
                 <Label htmlFor="id" className="font-bold text-slate-500 text-xs uppercase tracking-widest">Código</Label>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <HelpCircle className="w-3 h-3 text-slate-300 cursor-help" />
-                    </TooltipTrigger>
-                    <TooltipContent className="bg-slate-800 text-white border-none rounded-xl text-[10px]">
-                      Si lo dejas vacío, se generará uno automático.
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
               </div>
               <Input 
                 id="id" 
@@ -159,16 +152,46 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="stock" className="font-bold text-slate-500 text-xs uppercase tracking-widest">Stock Inicial</Label>
+              <Label htmlFor="stock" className="font-bold text-slate-500 text-xs uppercase tracking-widest">Stock Actual</Label>
               <Input id="stock" type="number" className="h-12 rounded-xl bg-slate-50 border-none font-black" value={formData.stock} onChange={e => setFormData({ ...formData, stock: e.target.value })} placeholder="0" />
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="idealStock" className="font-bold text-slate-500 text-xs uppercase tracking-widest flex items-center gap-1">
-                <Target className="w-3 h-3" /> Stock Ideal
-              </Label>
-              <Input id="idealStock" type="number" className="h-12 rounded-xl bg-primary/5 border-primary/20 font-black text-primary" value={formData.idealStock} onChange={e => setFormData({ ...formData, idealStock: e.target.value })} placeholder="10" />
+
+            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-4">
+               <p className="text-[10px] font-black uppercase text-slate-400 text-center tracking-widest">Configuración de Alerta (Elige una)</p>
+               
+               <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="idealStock" className="font-bold text-slate-500 text-[9px] uppercase tracking-widest flex items-center gap-1">
+                    <Target className="w-3 h-3" /> Por % (Ideal)
+                  </Label>
+                  <Input 
+                    id="idealStock" 
+                    type="number" 
+                    className="h-12 rounded-xl bg-white border-none font-black text-primary text-center" 
+                    value={formData.idealStock} 
+                    onChange={e => setFormData({ ...formData, idealStock: e.target.value, warningStock: "" })} 
+                    placeholder="Ejem: 10" 
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="warningStock" className="font-bold text-slate-500 text-[9px] uppercase tracking-widest flex items-center gap-1">
+                    <AlertTriangle className="w-3 h-3" /> Fijo (Aviso)
+                  </Label>
+                  <Input 
+                    id="warningStock" 
+                    type="number" 
+                    className="h-12 rounded-xl bg-white border-none font-black text-destructive text-center" 
+                    value={formData.warningStock} 
+                    onChange={e => setFormData({ ...formData, warningStock: e.target.value, idealStock: "" })} 
+                    placeholder="Ejem: 5" 
+                  />
+                </div>
+               </div>
+               <p className="text-[8px] text-center text-slate-400 font-bold italic">
+                 {formData.warningStock ? "Usando 'Aviso': Peligro si el stock baja de este número." : "Usando 'Ideal': Peligro si el stock baja del 25% del ideal."}
+               </p>
             </div>
           </div>
           

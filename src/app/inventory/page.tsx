@@ -45,12 +45,10 @@ function InventoryContent() {
   
   const { toast } = useToast();
 
-  // Procesar búsqueda desde URL (ej: de reportes) de forma limpia y consumirla
   useEffect(() => {
     const search = searchParams.get("search");
     if (search && search.trim() !== "") {
       setSearchTerm(search.trim());
-      // Limpiamos el parámetro de la URL inmediatamente para que no persista al recargar
       if (typeof window !== 'undefined') {
         const newUrl = window.location.pathname;
         window.history.replaceState({}, '', newUrl);
@@ -80,7 +78,10 @@ function InventoryContent() {
     return Array.from(cats).sort();
   }, [products]);
 
-  const getProductStatus = (stock: number, ideal: number) => {
+  const getProductStatus = (stock: number, ideal: number, warning?: number) => {
+    if (warning !== undefined && warning > 0) {
+      return stock < warning ? "peligro" : "ok";
+    }
     const idealVal = ideal || 10;
     if (stock < idealVal * 0.25) return "peligro";
     if (stock < idealVal * 0.5) return "precaución";
@@ -95,8 +96,9 @@ function InventoryContent() {
       Precio_Venta: Math.round(p.price),
       Stock_Actual: p.stock,
       Stock_Ideal: p.idealStock || 10,
+      Stock_Aviso: p.warningStock || 0,
       Categoria: p.category || "General",
-      Estado: getProductStatus(p.stock, p.idealStock).toUpperCase()
+      Estado: getProductStatus(p.stock, p.idealStock, p.warningStock).toUpperCase()
     }));
     exportToExcel("Inventario_AltodelBosque", data, "Productos");
     toast({ title: "Exportación exitosa", description: "Se ha descargado el inventario en Excel." });
@@ -109,7 +111,7 @@ function InventoryContent() {
       const q = searchTerm.toLowerCase().trim();
       const matchesSearch = q === "" || p.name.toLowerCase().includes(q) || String(p.id).includes(q);
       const matchesCategory = categoryFilter === "all" || (p.category || "General") === categoryFilter;
-      const status = getProductStatus(p.stock, p.idealStock);
+      const status = getProductStatus(p.stock, p.idealStock, p.warningStock);
       const matchesStatus = statusFilter === "all" || status === statusFilter;
       
       return matchesSearch && matchesCategory && matchesStatus;
@@ -122,8 +124,8 @@ function InventoryContent() {
         case "price-asc": return a.price - b.price;
         case "price-desc": return b.price - a.price;
         case "status-critical":
-          const aStatus = getProductStatus(a.stock, a.idealStock);
-          const bStatus = getProductStatus(b.stock, b.idealStock);
+          const aStatus = getProductStatus(a.stock, a.idealStock, a.warningStock);
+          const bStatus = getProductStatus(b.stock, b.idealStock, b.warningStock);
           if (aStatus === "peligro" && bStatus !== "peligro") return -1;
           if (aStatus !== "peligro" && bStatus === "peligro") return 1;
           if (aStatus === "precaución" && bStatus === "ok") return -1;
@@ -167,7 +169,6 @@ function InventoryContent() {
 
   const handleScanResult = (barcode: string) => {
     if (scanBlockedRef.current || pendingBarcode !== null) return;
-    
     scanBlockedRef.current = true;
     setPendingBarcode(barcode);
     setIsScannerOpen(false);
@@ -183,12 +184,9 @@ function InventoryContent() {
   const handleConfirmScanAndEdit = () => {
     const barcode = pendingBarcode?.trim();
     if (!barcode) return;
-
     const existing = products?.find(p => p.id === barcode);
     setSelectedProduct(existing || { id: barcode });
-    
     setPendingBarcode(null);
-    
     setTimeout(() => {
       scanBlockedRef.current = false;
       setIsDialogOpen(true);
@@ -305,7 +303,7 @@ function InventoryContent() {
             <TableHeader className="bg-slate-50/30">
               <TableRow className="border-none">
                 <TableHead className="px-6 font-black uppercase text-[10px] tracking-widest">Producto</TableHead>
-                <TableHead className="px-6 font-black uppercase text-[10px] tracking-widest">Stock / Ideal</TableHead>
+                <TableHead className="px-6 font-black uppercase text-[10px] tracking-widest">Stock / Meta</TableHead>
                 <TableHead className="px-6 font-black uppercase text-[10px] tracking-widest">Categoría</TableHead>
                 <TableHead className="px-6 font-black uppercase text-[10px] tracking-widest">Estado</TableHead>
                 <TableHead className="px-6 text-right font-black uppercase text-[10px] tracking-widest">Acciones</TableHead>
@@ -321,7 +319,7 @@ function InventoryContent() {
                   </TableCell>
                 </TableRow>
               ) : processedProducts.map((p) => {
-                const status = getProductStatus(p.stock, p.idealStock);
+                const status = getProductStatus(p.stock, p.idealStock, p.warningStock);
                 return (
                   <TableRow 
                     key={p.id} 
@@ -342,7 +340,9 @@ function InventoryContent() {
                     <TableCell className="px-6">
                       <div className="flex flex-col">
                         <span className="font-black text-lg">{p.stock}</span>
-                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Ideal: {p.idealStock || 10}</span>
+                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+                          {p.warningStock ? `Aviso: < ${p.warningStock}` : `Ideal: ${p.idealStock || 10}`}
+                        </span>
                       </div>
                     </TableCell>
                     <TableCell className="px-6">

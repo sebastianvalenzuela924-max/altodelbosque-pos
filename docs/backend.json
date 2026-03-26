@@ -27,6 +27,10 @@
           "type": "number",
           "description": "The desired amount of stock for this product to be considered in optimal state."
         },
+        "warningStock": {
+          "type": "number",
+          "description": "A fixed threshold. If stock is below this number, the product is in danger state."
+        },
         "category": {
           "type": "string",
           "description": "The category the product belongs to."
@@ -36,8 +40,7 @@
         "id",
         "name",
         "price",
-        "stock",
-        "idealStock"
+        "stock"
       ]
     },
     "Sale": {

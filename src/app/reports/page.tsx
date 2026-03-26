@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
@@ -19,7 +20,6 @@ type DateFilter = "today" | "yesterday" | "month" | "all" | "custom";
 
 export default function ReportsPage() {
   const [mounted, setMounted] = useState(false);
-  // Predeterminado en "Hoy" por solicitud del usuario
   const [dateFilter, setDateFilter] = useState<DateFilter>("today");
   const [customDate, setCustomDate] = useState<string>("");
   const firestore = useFirestore();
@@ -28,7 +28,6 @@ export default function ReportsPage() {
     setMounted(true);
   }, []);
 
-  // Consultas a Firestore
   const salesQuery = useMemoFirebase(() => {
     return query(collection(firestore, "sales"), orderBy("saleDateTime", "desc"));
   }, [firestore]);
@@ -40,15 +39,16 @@ export default function ReportsPage() {
   const { data: allSales, isLoading: isLoadingSales } = useCollection(salesQuery);
   const { data: allProducts, isLoading: isLoadingProducts } = useCollection(productsQuery);
 
-  // Lógica de cálculo de estado de stock
-  const getProductStatus = (stock: number, ideal: number) => {
+  const getProductStatus = (stock: number, ideal: number, warning?: number) => {
+    if (warning !== undefined && warning > 0) {
+      return stock < warning ? "danger" : "ok";
+    }
     const idealVal = ideal || 10;
     if (stock < idealVal * 0.25) return "danger";
     if (stock < idealVal * 0.5) return "warning";
     return "ok";
   };
 
-  // Filtrado de ventas por fecha
   const filteredSales = useMemo(() => {
     if (!allSales || !mounted) return [];
     const now = new Date();
@@ -72,18 +72,16 @@ export default function ReportsPage() {
       if (dateFilter === "month") {
         return saleDate.getMonth() === now.getMonth() && saleDate.getFullYear() === now.getFullYear();
       }
-      return true; // "all"
+      return true;
     });
   }, [allSales, dateFilter, customDate, mounted]);
 
-  // Estadísticas por categoría
   const categoryStats = useMemo(() => {
     if (!allProducts || !mounted) return [];
     
     const stats: Record<string, any> = {};
     const productSoldMap: Record<string, number> = {};
 
-    // Mapear ventas por producto para el periodo actual
     filteredSales.forEach(sale => {
       sale.itemsSummary?.forEach((item: any) => {
         if (item.id) {
@@ -92,7 +90,6 @@ export default function ReportsPage() {
       });
     });
     
-    // Inicializar categorías con info de productos
     allProducts.forEach(p => {
       const cat = p.category || "General";
       const key = cat.toLowerCase();
@@ -111,13 +108,12 @@ export default function ReportsPage() {
       const soldThisPeriod = productSoldMap[p.id] || 0;
       
       stats[key].productCount++;
-      if (getProductStatus(p.stock, p.idealStock) === "danger") {
+      if (getProductStatus(p.stock, p.idealStock, p.warningStock) === "danger") {
         stats[key].stockCritical++;
       }
       stats[key].products.push({ ...p, soldThisPeriod });
     });
 
-    // Sumar ventas reales filtradas para totales de categoría
     filteredSales.forEach(sale => {
       sale.itemsSummary?.forEach((item: any) => {
         const key = (item.category || "General").toLowerCase();
@@ -128,7 +124,6 @@ export default function ReportsPage() {
       });
     });
 
-    // Ordenar categorías por ingresos y productos por cantidad vendida (descendente)
     return Object.values(stats)
       .map((cat: any) => ({
         ...cat,
@@ -137,7 +132,6 @@ export default function ReportsPage() {
       .sort((a: any, b: any) => b.totalRevenue - a.totalRevenue);
   }, [filteredSales, allProducts, mounted]);
 
-  // Top productos vendidos (Ranking general)
   const topProducts = useMemo(() => {
     const productCounts: Record<string, any> = {};
     filteredSales.forEach(sale => {
@@ -167,10 +161,8 @@ export default function ReportsPage() {
 
   const totalRevenue = filteredSales.reduce((sum, s) => sum + (s.totalAmount || 0), 0);
   const totalSalesCount = filteredSales.length;
-  const criticalProductsCount = allProducts?.filter(p => getProductStatus(p.stock, p.idealStock) === "danger").length || 0;
-  const inventoryHealth = allProducts?.length ? Math.round((allProducts.filter(p => getProductStatus(p.stock, p.idealStock) === "ok").length / allProducts.length) * 100) : 100;
-  
-  // Cálculo del valor total del inventario (Precio * Stock de todos los productos)
+  const criticalProductsCount = allProducts?.filter(p => getProductStatus(p.stock, p.idealStock, p.warningStock) === "danger").length || 0;
+  const inventoryHealth = allProducts?.length ? Math.round((allProducts.filter(p => getProductStatus(p.stock, p.idealStock, p.warningStock) === "ok").length / allProducts.length) * 100) : 100;
   const totalInventoryValue = allProducts?.reduce((sum, p) => sum + (Math.round(p.price) * (p.stock || 0)), 0) || 0;
 
   return (
@@ -338,7 +330,7 @@ export default function ReportsPage() {
                           <span className="text-[10px] font-bold text-slate-400">Total period: {cat.unitsSold} u.</span>
                         </div>
                         {cat.products.map((p: any) => {
-                          const status = getProductStatus(p.stock, p.idealStock);
+                          const status = getProductStatus(p.stock, p.idealStock, p.warningStock);
                           const productTotalRevenue = Math.round(p.price * p.soldThisPeriod);
                           return (
                             <div key={p.id} className={cn(
@@ -353,7 +345,7 @@ export default function ReportsPage() {
                                   <p className="font-bold text-sm text-slate-700 truncate">{p.name}</p>
                                   <div className="flex items-center gap-2 mt-0.5">
                                     <span className="text-[10px] text-slate-400 font-bold uppercase">
-                                      Stock: <span className={cn(status === 'danger' ? "text-destructive font-black" : "text-slate-500")}>{p.stock}</span> / Ideal: {p.idealStock}
+                                      Stock: <span className={cn(status === 'danger' ? "text-destructive font-black" : "text-slate-500")}>{p.stock}</span> / {p.warningStock ? `Aviso: < ${p.warningStock}` : `Ideal: ${p.idealStock}`}
                                     </span>
                                     <span className="text-slate-300">•</span>
                                     <span className="text-[10px] text-primary font-black flex items-center gap-1">
