@@ -13,7 +13,7 @@ import { exportToExcel } from "@/lib/export";
 import { useToast } from "@/hooks/use-toast";
 import { ProductDialog } from "@/components/inventory/ProductDialog";
 import { ScannerComponent } from "@/components/pos/ScannerComponent";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
