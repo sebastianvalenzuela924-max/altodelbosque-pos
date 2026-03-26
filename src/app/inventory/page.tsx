@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useRef, useEffect, Suspense } from "react";
@@ -8,7 +9,7 @@ import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Search, FileSpreadsheet, Edit3, Plus, Trash2, Package, Scan, Loader2, ShieldAlert, ShieldCheck, ShieldQuestion, MousePointer2, Filter } from "lucide-react";
+import { Search, FileSpreadsheet, Edit3, Plus, Trash2, Package, Scan, Loader2, ShieldAlert, ShieldCheck, ShieldQuestion, MousePointer2, Filter, X } from "lucide-react";
 import { exportToExcel } from "@/lib/export";
 import { useToast } from "@/hooks/use-toast";
 import { ProductDialog } from "@/components/inventory/ProductDialog";
@@ -18,13 +19,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 
 type SortOption = "name" | "stock-asc" | "stock-desc" | "status-critical" | "price-asc" | "price-desc" | "category-asc" | "category-desc";
 
 function InventoryContent() {
   const firestore = useFirestore();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>("name");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
@@ -43,13 +45,16 @@ function InventoryContent() {
   
   const { toast } = useToast();
 
-  // Procesar búsqueda desde URL (ej: de reportes) de forma limpia
+  // Procesar búsqueda desde URL (ej: de reportes) de forma limpia y consumirla
   useEffect(() => {
     const search = searchParams.get("search");
     if (search && search.trim() !== "") {
       setSearchTerm(search.trim());
-    } else {
-      setSearchTerm("");
+      // Limpiamos el parámetro de la URL inmediatamente para que no persista al recargar
+      if (typeof window !== 'undefined') {
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, '', newUrl);
+      }
     }
   }, [searchParams]);
 
@@ -232,11 +237,19 @@ function InventoryContent() {
           <div className="relative w-full">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input 
-              className="pl-12 h-12 bg-white rounded-2xl font-bold border-none shadow-sm" 
+              className="pl-12 pr-10 h-12 bg-white rounded-2xl font-bold border-none shadow-sm" 
               placeholder="Buscar por nombre o código..." 
               value={searchTerm} 
               onChange={e => setSearchTerm(e.target.value)} 
             />
+            {searchTerm && (
+              <button 
+                onClick={() => setSearchTerm("")}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
           </div>
           
           <div className="flex flex-wrap gap-2 items-center">
