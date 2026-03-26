@@ -5,6 +5,7 @@ import { collection, query, orderBy, doc } from "firebase/firestore";
 import { Card } from "@/components/ui/card";
 import { FileSpreadsheet, Calendar, History, ShoppingBag, DollarSign, Loader2, Package, ChevronRight, Trash2, Eraser, AlertCircle, Filter, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { exportToExcel } from "@/lib/export";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useState, useMemo } from "react";
