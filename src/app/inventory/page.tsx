@@ -32,13 +32,13 @@ export default function InventoryPage() {
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   
   const [pendingBarcode, setPendingBarcode] = useState<string | null>(null);
+  const scanBlockedRef = useRef(false);
   
   const [productToDelete, setProductToDelete] = useState<any | null>(null);
   const [quickStockProduct, setQuickStockProduct] = useState<any | null>(null);
   const [quickAddValue, setQuickAddValue] = useState("");
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
   
-  const scanProcessedRef = useRef(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -111,7 +111,7 @@ export default function InventoryPage() {
         case "category-asc": return (a.category || "").localeCompare(b.category || "");
         case "category-desc": return (b.category || "").localeCompare(b.category || "");
         case "name":
-        default: return a.name.compareLocale ? a.name.localeCompare(b.name) : a.name > b.name ? 1 : -1;
+        default: return a.name.localeCompare(b.name);
       }
     });
   }, [products, searchTerm, sortBy, categoryFilter, statusFilter]);
@@ -146,30 +146,32 @@ export default function InventoryPage() {
   };
 
   const handleScanResult = (barcode: string) => {
-    if (scanProcessedRef.current || pendingBarcode !== null) return;
+    if (scanBlockedRef.current || pendingBarcode !== null) return;
     
-    scanProcessedRef.current = true;
-    setIsScannerOpen(false); 
-    setPendingBarcode(barcode); 
+    scanBlockedRef.current = true; // Bloqueo de ráfaga
+    setPendingBarcode(barcode);
+    setIsScannerOpen(false);
   };
 
   const handleDiscardPending = () => {
     setPendingBarcode(null);
+    scanBlockedRef.current = false;
     document.body.style.pointerEvents = 'auto';
     document.body.style.overflow = 'auto';
   };
 
   const handleConfirmScanAndEdit = () => {
     const barcode = pendingBarcode?.trim();
-    if (!barcode) {
-      toast({ title: "Código requerido", variant: "destructive" });
-      return;
-    }
+    if (!barcode) return;
 
     const existing = products?.find(p => p.id === barcode);
     setSelectedProduct(existing || { id: barcode });
-    setPendingBarcode(null);
     
+    // Cerramos el aviso primero
+    setPendingBarcode(null);
+    scanBlockedRef.current = false;
+
+    // Abrimos el formulario con un pequeño delay para que no choquen los diálogos
     setTimeout(() => {
       setIsDialogOpen(true);
     }, 150);
@@ -178,15 +180,11 @@ export default function InventoryPage() {
   const handleCloseProductDialog = () => {
     setIsDialogOpen(false);
     setSelectedProduct(null);
-    setPendingBarcode(null);
-    setTimeout(() => {
-      scanProcessedRef.current = false;
-    }, 500);
   };
 
   const handleOpenScanner = () => {
     setPendingBarcode(null);
-    scanProcessedRef.current = false; 
+    scanBlockedRef.current = false;
     setIsScannerOpen(true);
   };
 
@@ -301,9 +299,9 @@ export default function InventoryPage() {
                     onPointerLeave={handlePointerUp}
                     className={cn(
                       "transition-colors border-b select-none touch-none", 
-                      status === "peligro" ? "bg-red-200 hover:bg-red-300" : 
-                      status === "precaución" ? "bg-amber-200 hover:bg-amber-300" : 
-                      status === "ok" ? "bg-green-200 hover:bg-green-300" : "hover:bg-slate-50"
+                      status === "peligro" ? "bg-red-50 hover:bg-red-100" : 
+                      status === "precaución" ? "bg-amber-50 hover:bg-amber-100" : 
+                      status === "ok" ? "bg-green-50 hover:bg-green-100" : "hover:bg-slate-50"
                     )}
                   >
                     <TableCell className="px-6">
