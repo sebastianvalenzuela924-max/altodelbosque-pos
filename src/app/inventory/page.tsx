@@ -30,7 +30,6 @@ export default function InventoryPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   
-  // Estados para la gestión de escaneo
   const [pendingBarcode, setPendingBarcode] = useState<string | null>(null);
   const [scannedBarcode, setScannedBarcode] = useState<string | null>(null);
   
@@ -150,8 +149,8 @@ export default function InventoryPage() {
     scanProcessedRef.current = true;
     
     setIsScannerOpen(false);
-    setScannedBarcode(barcode); // Guardamos el código de forma persistente
-    setPendingBarcode(barcode); // Mostramos el aviso
+    setScannedBarcode(barcode);
+    setPendingBarcode(barcode);
   };
 
   const handleDiscardPending = () => {
@@ -159,27 +158,26 @@ export default function InventoryPage() {
     setScannedBarcode(null);
     scanProcessedRef.current = false;
     // Forzamos restauración de eventos
-    document.body.style.pointerEvents = 'auto';
-    document.body.style.overflow = 'auto';
+    setTimeout(() => {
+      document.body.style.pointerEvents = 'auto';
+      document.body.style.overflow = 'auto';
+    }, 100);
   };
 
   const handleConfirmScanAndEdit = () => {
     const barcode = scannedBarcode;
     if (!barcode) return;
 
-    // 1. Limpiamos el aviso inmediatamente
     setPendingBarcode(null);
     setScannedBarcode(null);
-    scanProcessedRef.current = false;
+    scanProcessedRef.current = true; // Mantenemos bloqueado hasta abrir el editor
 
-    // 2. Preparamos el producto (existente o nuevo)
     const existing = products?.find(p => p.id === barcode);
     setSelectedProduct(existing || { id: barcode });
     
-    // 3. Abrimos el editor con un delay para que Radix limpie el overlay anterior
     setTimeout(() => {
       setIsDialogOpen(true);
-    }, 250);
+    }, 200);
   };
 
   return (
@@ -293,7 +291,6 @@ export default function InventoryPage() {
         </CardContent>
       </Card>
 
-      {/* Carga Rápida stock */}
       <Dialog open={!!quickStockProduct} onOpenChange={(open) => !open && setQuickStockProduct(null)}>
         <DialogContent className="rounded-3xl border-none shadow-2xl max-w-[90vw] sm:max-w-sm p-6">
           <DialogHeader>
@@ -313,43 +310,40 @@ export default function InventoryPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialogo de Producto */}
       <ProductDialog open={isDialogOpen} onClose={() => setIsDialogOpen(false)} product={selectedProduct} categories={categories} onSaved={() => {}} />
 
-      {/* Dialogo Scanner */}
       <Dialog open={isScannerOpen} onOpenChange={setIsScannerOpen}>
         <DialogContent className="p-0 overflow-hidden rounded-3xl max-w-[90vw] sm:max-w-2xl border-none shadow-2xl">
           <DialogHeader className="sr-only">
             <DialogTitle>Escáner de Inventario</DialogTitle>
-            <DialogDescription>Escanea un código de barras para buscar o registrar un producto.</DialogDescription>
+            <DialogDescription>Escanea un código de barras.</DialogDescription>
           </DialogHeader>
           <ScannerComponent onScan={handleScanResult} />
         </DialogContent>
       </Dialog>
 
-      {/* Dialogo Código Detectado */}
-      <AlertDialog open={!!pendingBarcode} onOpenChange={(open) => !open && handleDiscardPending()}>
-        <AlertDialogContent className="rounded-3xl p-8 max-w-[90vw] sm:max-w-lg border-none shadow-2xl">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-2xl font-black text-primary text-center">Código Detectado</AlertDialogTitle>
-            <AlertDialogDescription className="text-center py-4">
+      {/* Aviso Código Detectado - Reemplazado por Dialog con X */}
+      <Dialog open={!!pendingBarcode} onOpenChange={(open) => !open && handleDiscardPending()}>
+        <DialogContent className="rounded-3xl p-8 max-w-[90vw] sm:max-w-lg border-none shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-black text-primary text-center">Código Detectado</DialogTitle>
+            <DialogDescription className="text-center py-4">
               <span className="font-mono font-bold text-3xl text-slate-800 bg-slate-100 px-6 py-3 rounded-2xl inline-block border-2 border-slate-200">
                 {pendingBarcode}
               </span>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="flex flex-col sm:flex-row gap-2 mt-4">
-            <Button variant="outline" onClick={handleDiscardPending} className="rounded-2xl h-14 flex-1 border-slate-200 font-bold">
-              DESCARTAR
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-2 mt-4">
+            <Button onClick={handleConfirmScanAndEdit} className="rounded-2xl h-14 w-full font-black bg-primary text-white hover:bg-primary/90 shadow-xl shadow-primary/20">
+              EDITAR / CREAR PRODUCTO
             </Button>
-            <Button onClick={handleConfirmScanAndEdit} className="rounded-2xl h-14 flex-1 font-black bg-primary text-white hover:bg-primary/90">
-              EDITAR / CREAR
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            <p className="text-[10px] text-center text-slate-400 font-black uppercase tracking-widest mt-4">
+              Pulsa la X o fuera para cancelar
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
 
-      {/* Borrado Producto */}
       <AlertDialog open={!!productToDelete} onOpenChange={(open) => !open && setProductToDelete(null)}>
         <AlertDialogContent className="rounded-3xl max-w-[90vw] sm:max-w-md border-none shadow-2xl">
           <AlertDialogHeader>
