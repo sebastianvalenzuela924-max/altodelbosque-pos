@@ -3,7 +3,7 @@
 import { useCollection, useFirestore, useMemoFirebase, deleteDocumentNonBlocking } from "@/firebase";
 import { collection, query, orderBy, doc } from "firebase/firestore";
 import { Card } from "@/components/ui/card";
-import { FileSpreadsheet, Calendar, History, ShoppingBag, Loader2, ChevronRight, Trash2, Eraser, AlertCircle, X } from "lucide-react";
+import { FileSpreadsheet, Calendar, History, ShoppingBag, Loader2, ChevronRight, Trash2, Eraser, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { exportToExcel } from "@/lib/export";
@@ -20,7 +20,6 @@ type BulkDeleteType = 'day' | 'month' | 'all';
 
 export default function HistoryPage() {
   const [isMounted, setIsMounted] = useState(false);
-  const [isCleaning, setIsCleaning] = useState(false);
   const [dateFilter, setDateFilter] = useState<DateFilter>("today");
   const [customDate, setCustomDate] = useState<string>("");
   const firestore = useFirestore();
@@ -67,7 +66,7 @@ export default function HistoryPage() {
   }, [allSales, dateFilter, customDate, isMounted]);
 
   const handleExport = () => {
-    if (!filteredSales) return;
+    if (!filteredSales || filteredSales.length === 0) return;
     const flattened = filteredSales.flatMap(s => {
       const date = s.saleDateTime?.toDate?.() || (s.saleDateTime ? new Date(s.saleDateTime) : new Date());
       if (s.itemsSummary && s.itemsSummary.length > 0) {
@@ -96,7 +95,7 @@ export default function HistoryPage() {
       }];
     });
     exportToExcel(`Historial_${dateFilter}`, flattened, "Ventas");
-    toast({ title: "Exportación exitosa", description: "Se ha descargado el Excel." });
+    toast({ title: "Exportación exitosa" });
   };
 
   const confirmDeleteIndividual = () => {
@@ -108,67 +107,52 @@ export default function HistoryPage() {
   };
 
   const confirmBulkDelete = () => {
-    if (!bulkDeleteType || !allSales) {
-      setBulkDeleteType(null);
-      return;
-    }
+    if (!bulkDeleteType || !allSales) return;
     
     const type = bulkDeleteType;
-    setBulkDeleteType(null);
-    setIsCleaning(true);
+    const now = new Date();
     
-    try {
-      const now = new Date();
-      const targets = allSales.filter(s => {
-        const d = s.saleDateTime?.toDate?.() || (s.saleDateTime ? new Date(s.saleDateTime) : null);
-        if (!d) return false;
+    // Identificar objetivos ANTES de cerrar el diálogo
+    const targets = allSales.filter(s => {
+      const d = s.saleDateTime?.toDate?.() || (s.saleDateTime ? new Date(s.saleDateTime) : null);
+      if (!d) return false;
 
-        if (type === 'day') return d.toDateString() === now.toDateString();
-        if (type === 'month') return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-        if (type === 'all') return true;
-        return false;
-      });
+      if (type === 'day') return d.toDateString() === now.toDateString();
+      if (type === 'month') return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+      if (type === 'all') return true;
+      return false;
+    });
 
-      if (targets.length === 0) {
-        toast({ title: "Nada que borrar", description: "No hay registros para este periodo." });
-        setIsCleaning(false);
-      } else {
-        targets.forEach(t => {
-          const docRef = doc(firestore, "sales", t.id);
-          deleteDocumentNonBlocking(docRef);
-        });
-        toast({ title: "Limpieza en curso", description: `Borrando ${targets.length} registros...` });
-        // Simular un tiempo de procesamiento para dar feedback visual
-        setTimeout(() => setIsCleaning(false), 1500);
-      }
-    } catch (error) {
-      console.error("Error during bulk delete:", error);
-      toast({ variant: "destructive", title: "Error en la limpieza" });
-      setIsCleaning(false);
+    // Cerrar diálogo inmediatamente
+    setBulkDeleteType(null);
+
+    if (targets.length === 0) {
+      toast({ title: "Sin registros para borrar", description: "No se encontraron ventas en el periodo seleccionado." });
+      return;
     }
+
+    // Ejecutar borrado
+    targets.forEach(t => {
+      deleteDocumentNonBlocking(doc(firestore, "sales", t.id));
+    });
+
+    toast({ 
+      title: "Limpieza iniciada", 
+      description: `Borrando ${targets.length} registros...` 
+    });
   };
 
   if (!isMounted) return <div className="min-h-screen bg-background" />;
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500 relative pb-20">
-      {isCleaning && (
-        <div className="fixed inset-0 z-[100] bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center animate-in fade-in duration-300">
-          <div className="bg-white p-8 rounded-3xl shadow-2xl flex flex-col items-center border">
-            <Loader2 className="w-12 h-12 animate-spin text-primary mb-4" />
-            <h2 className="text-xl font-black text-primary uppercase tracking-tighter">Limpiando...</h2>
-            <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest mt-2">Actualizando base de datos</p>
-          </div>
-        </div>
-      )}
-
+    <div className="space-y-6 animate-in fade-in duration-500 pb-20">
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-3xl shadow-sm border">
         <div>
           <h1 className="text-2xl font-black text-primary flex items-center gap-2 uppercase tracking-tighter">
             <History className="w-6 h-6" />
             Historial
           </h1>
-          <p className="text-muted-foreground text-xs font-bold">Registro de transacciones.</p>
+          <p className="text-muted-foreground text-xs font-bold">Registro de transacciones diarias.</p>
         </div>
         
         <div className="flex flex-wrap gap-2 w-full md:w-auto">
@@ -196,22 +180,22 @@ export default function HistoryPage() {
           )}
 
           <div className="flex gap-2 ml-auto">
-            <Button variant="outline" onClick={handleExport} disabled={!filteredSales.length || isCleaning} className="h-11 w-11 p-0 rounded-2xl border-slate-200">
+            <Button variant="outline" onClick={handleExport} disabled={!filteredSales.length} className="h-11 w-11 p-0 rounded-2xl border-slate-200">
               <FileSpreadsheet className="w-4 h-4 text-green-600" />
             </Button>
             
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" disabled={isCleaning || !allSales?.length} className="h-11 w-11 p-0 rounded-2xl border-destructive/20 text-destructive hover:bg-destructive/5">
+                <Button variant="outline" disabled={!allSales?.length} className="h-11 w-11 p-0 rounded-2xl border-destructive/20 text-destructive hover:bg-destructive/5">
                   <Eraser className="w-4 h-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56 rounded-2xl p-2 border-none shadow-2xl">
                 <DropdownMenuLabel className="font-black text-[10px] uppercase tracking-widest opacity-50 px-3 py-2">Opciones de Borrado</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => setBulkDeleteType('day')} className="rounded-xl py-3 cursor-pointer">Borrar registros de Hoy</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setBulkDeleteType('month')} className="rounded-xl py-3 cursor-pointer">Borrar registros del Mes</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setBulkDeleteType('all')} className="rounded-xl py-3 cursor-pointer text-destructive font-bold">BORRAR TODO EL HISTORIAL</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setBulkDeleteType('day')} className="rounded-xl py-3 cursor-pointer">Borrar registros de Hoy</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setBulkDeleteType('month')} className="rounded-xl py-3 cursor-pointer">Borrar registros del Mes</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setBulkDeleteType('all')} className="rounded-xl py-3 cursor-pointer text-destructive font-bold">BORRAR TODO EL HISTORIAL</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -264,7 +248,6 @@ export default function HistoryPage() {
                         <Button 
                           variant="ghost" 
                           size="icon" 
-                          disabled={isCleaning}
                           className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100 transition-opacity rounded-full" 
                           onClick={(e) => {
                             e.stopPropagation();
@@ -302,7 +285,7 @@ export default function HistoryPage() {
         )}
       </div>
 
-      <AlertDialog open={!!saleToDelete} onOpenChange={() => setSaleToDelete(null)}>
+      <AlertDialog open={!!saleToDelete} onOpenChange={(open) => !open && setSaleToDelete(null)}>
         <AlertDialogContent className="rounded-3xl p-8 border-none shadow-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-xl font-black text-destructive flex items-center gap-2 uppercase">
@@ -326,7 +309,7 @@ export default function HistoryPage() {
               <Eraser className="w-5 h-5" /> Confirmar Limpieza
             </AlertDialogTitle>
             <AlertDialogDescription className="text-slate-500 text-xs font-bold py-2">
-              Esta acción eliminará permanentemente los registros seleccionados ({bulkDeleteType === 'day' ? 'de hoy' : bulkDeleteType === 'month' ? 'de este mes' : 'de todo el historial'}). <br/><br/>
+              Esta acción eliminará permanentemente los registros de: <span className="font-black text-slate-800">{bulkDeleteType === 'day' ? 'Hoy' : bulkDeleteType === 'month' ? 'Este Mes' : 'Todo el Historial'}</span>. <br/><br/>
               <span className="font-black">ESTA ACCIÓN NO SE PUEDE DESHACER.</span>
             </AlertDialogDescription>
           </AlertDialogHeader>
