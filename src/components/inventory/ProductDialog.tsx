@@ -41,10 +41,10 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
       setFormData({
         id: product.id || "",
         name: product.name || "",
-        price: product.price ? Math.round(product.price).toString() : "",
-        stock: product.stock !== undefined ? product.stock.toString() : "",
-        idealStock: product.idealStock !== undefined ? product.idealStock.toString() : "",
-        warningStock: product.warningStock !== undefined ? product.warningStock.toString() : "",
+        price: (product.price !== undefined && product.price !== null) ? Math.round(product.price).toString() : "",
+        stock: (product.stock !== undefined && product.stock !== null) ? product.stock.toString() : "",
+        idealStock: (product.idealStock !== undefined && product.idealStock !== null) ? product.idealStock.toString() : "",
+        warningStock: (product.warningStock !== undefined && product.warningStock !== null) ? product.warningStock.toString() : "",
         category: product.category || ""
       });
     } else {
