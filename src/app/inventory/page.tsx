@@ -13,7 +13,7 @@ import { exportToExcel } from "@/lib/export";
 import { useToast } from "@/hooks/use-toast";
 import { ProductDialog } from "@/components/inventory/ProductDialog";
 import { ScannerComponent } from "@/components/pos/ScannerComponent";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
@@ -93,14 +93,15 @@ function InventoryContent() {
       ID_Producto: p.id,
       Nombre: p.name,
       Precio_Venta: Math.round(p.price),
+      Precio_Neto_Sin_IVA: Math.round(p.price / 1.19),
       Stock_Actual: p.stock,
-      Stock_Ideal: p.idealStock || 10,
+      Stock_Ideal: p.idealStock || 0,
       Stock_Aviso: p.warningStock || 0,
       Categoria: p.category || "General",
       Estado: getProductStatus(p.stock, p.idealStock, p.warningStock).toUpperCase()
     }));
-    exportToExcel("Inventario_AltodelBosque", data, "Productos");
-    toast({ title: "Exportación exitosa", description: "Se ha descargado el inventario en Excel." });
+    exportToExcel("Inventario_AltodelBosque_Completo", data, "Productos");
+    toast({ title: "Exportación exitosa", description: "Se ha descargado el inventario completo en Excel." });
   };
 
   const processedProducts = useMemo(() => {
