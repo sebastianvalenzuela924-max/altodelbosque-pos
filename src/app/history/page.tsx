@@ -25,6 +25,15 @@ export default function HistoryPage() {
     setIsMounted(true);
   }, []);
 
+  // Vigilante de desbloqueo: Asegura que el body recupere el control si no hay modales activos
+  useEffect(() => {
+    const isAnyActive = !!saleToDelete || !!bulkDeleteType || isCleaning;
+    if (!isAnyActive && typeof document !== 'undefined') {
+      document.body.style.pointerEvents = 'auto';
+      document.body.style.overflow = 'auto';
+    }
+  }, [saleToDelete, bulkDeleteType, isCleaning]);
+
   const salesQuery = useMemoFirebase(() => {
     return query(collection(firestore, "sales"), orderBy("saleDateTime", "desc"));
   }, [firestore]);
@@ -75,44 +84,49 @@ export default function HistoryPage() {
   const confirmBulkDelete = async () => {
     if (!bulkDeleteType || !sales) return;
     
-    setIsCleaning(true);
     const type = bulkDeleteType;
-    setBulkDeleteType(null);
-
-    const now = new Date();
-    let targets: any[] = [];
-
-    if (type === 'day') {
-      targets = sales.filter(s => {
-        const d = s.saleDateTime?.toDate?.();
-        if (!d) return false;
-        return d.toDateString() === now.toDateString();
-      });
-    } else if (type === 'month') {
-      targets = sales.filter(s => {
-        const d = s.saleDateTime?.toDate?.();
-        if (!d) return false;
-        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-      });
-    } else if (type === 'all') {
-      targets = sales;
-    }
-
-    if (targets.length === 0) {
-      toast({ title: "Sin registros", description: "No se encontraron ventas para borrar en este rango." });
-      setIsCleaning(false);
-    } else {
-      targets.forEach(t => {
-        deleteDocumentNonBlocking(doc(firestore, "sales", t.id));
-      });
+    setBulkDeleteType(null); // Cerramos el dialogo primero
+    
+    // Pequeño retraso para que Radix limpie el body antes de que entremos nosotros
+    setTimeout(() => {
+      setIsCleaning(true);
       
-      toast({ 
-        title: "Limpieza completada", 
-        description: `Se han eliminado ${targets.length} registros del historial y reportes.` 
-      });
-      
-      setTimeout(() => setIsCleaning(false), 500);
-    }
+      const now = new Date();
+      let targets: any[] = [];
+
+      if (type === 'day') {
+        targets = sales.filter(s => {
+          const d = s.saleDateTime?.toDate?.();
+          if (!d) return false;
+          return d.toDateString() === now.toDateString();
+        });
+      } else if (type === 'month') {
+        targets = sales.filter(s => {
+          const d = s.saleDateTime?.toDate?.();
+          if (!d) return false;
+          return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+        });
+      } else if (type === 'all') {
+        targets = sales;
+      }
+
+      if (targets.length === 0) {
+        toast({ title: "Sin registros", description: "No se encontraron ventas para borrar en este rango." });
+        setIsCleaning(false);
+      } else {
+        targets.forEach(t => {
+          deleteDocumentNonBlocking(doc(firestore, "sales", t.id));
+        });
+        
+        toast({ 
+          title: "Limpieza completada", 
+          description: `Se han eliminado ${targets.length} registros del historial y reportes.` 
+        });
+        
+        // Tiempo suficiente para que Firestore procese y el usuario vea el feedback
+        setTimeout(() => setIsCleaning(false), 800);
+      }
+    }, 100);
   };
 
   if (!isMounted) {
