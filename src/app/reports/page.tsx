@@ -5,7 +5,7 @@ import { collection, query, orderBy } from "firebase/firestore";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { DollarSign, Package, TrendingUp, Calendar, ShoppingBag, Loader2, ListFilter, Trophy, CheckCircle2, Filter, ShieldAlert, ShieldCheck, AlertTriangle, Tag, ArrowRight, Wallet } from "lucide-react";
 import { useMemo, useState, useEffect } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
