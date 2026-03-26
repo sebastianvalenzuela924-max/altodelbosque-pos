@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useMemo, useRef, useEffect, Suspense } from "react";
 import { useCollection, useFirestore, useMemoFirebase, deleteDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase";
 import { collection, doc, query, orderBy, increment } from "firebase/firestore";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
@@ -9,7 +9,7 @@ import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Search, FileSpreadsheet, Edit3, Plus, Trash2, Package, Scan, Loader2, ShieldAlert, ShieldCheck, ShieldQuestion, MousePointer2, Filter } from "lucide-react";
+import { Search, FileSpreadsheet, Edit3, Plus, Trash2, Package, Scan, Loader2, ShieldAlert, ShieldCheck, ShieldQuestion, MousePointer2, Filter } from "lucide-center";
 import { exportToExcel } from "@/lib/export";
 import { useToast } from "@/hooks/use-toast";
 import { ProductDialog } from "@/components/inventory/ProductDialog";
@@ -19,11 +19,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useSearchParams } from "next/navigation";
 
 type SortOption = "name" | "stock-asc" | "stock-desc" | "status-critical" | "price-asc" | "price-desc" | "category-asc" | "category-desc";
 
-export default function InventoryPage() {
+function InventoryContent() {
   const firestore = useFirestore();
+  const searchParams = useSearchParams();
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>("name");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
@@ -41,6 +43,14 @@ export default function InventoryPage() {
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
   
   const { toast } = useToast();
+
+  // Procesar búsqueda desde URL (ej: de reportes)
+  useEffect(() => {
+    const search = searchParams.get("search");
+    if (search) {
+      setSearchTerm(search);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     const isAnyModalOpen = isDialogOpen || isScannerOpen || (pendingBarcode !== null) || !!productToDelete || !!quickStockProduct;
@@ -149,14 +159,13 @@ export default function InventoryPage() {
   const handleScanResult = (barcode: string) => {
     if (scanBlockedRef.current || pendingBarcode !== null) return;
     
-    scanBlockedRef.current = true; // Bloqueo de ráfaga
+    scanBlockedRef.current = true;
     setPendingBarcode(barcode);
     setIsScannerOpen(false);
   };
 
   const handleDiscardPending = () => {
     setPendingBarcode(null);
-    // Reiniciamos la guardia del escáner con un delay para evitar bucles si el producto sigue ahí
     setTimeout(() => {
       scanBlockedRef.current = false;
     }, 500);
@@ -169,11 +178,8 @@ export default function InventoryPage() {
     const existing = products?.find(p => p.id === barcode);
     setSelectedProduct(existing || { id: barcode });
     
-    // Capturamos el código antes de resetear
-    const targetBarcode = barcode;
     setPendingBarcode(null);
     
-    // Delay controlado para limpiar la pantalla antes de abrir el editor
     setTimeout(() => {
       scanBlockedRef.current = false;
       setIsDialogOpen(true);
@@ -424,5 +430,13 @@ export default function InventoryPage() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+export default function InventoryPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><Loader2 className="w-12 h-12 animate-spin text-primary" /></div>}>
+      <InventoryContent />
+    </Suspense>
   );
 }

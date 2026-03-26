@@ -4,7 +4,7 @@
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import { collection, query, orderBy } from "firebase/firestore";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { DollarSign, Package, TrendingUp, Calendar, ShoppingBag, Loader2, ListFilter, Trophy, CheckCircle2, Filter, ShieldAlert, ShieldCheck, AlertTriangle, Tag } from "lucide-react";
+import { DollarSign, Package, TrendingUp, Calendar, ShoppingBag, Loader2, ListFilter, Trophy, CheckCircle2, Filter, ShieldAlert, ShieldCheck, AlertTriangle, Tag, ArrowRight } from "lucide-react";
 import { useMemo, useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +12,8 @@ import { cn } from "@/lib/utils";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
 import React from 'react';
 
 type DateFilter = "today" | "yesterday" | "month" | "all" | "custom";
@@ -347,7 +349,7 @@ export default function ReportsPage() {
                                 </div>
                               </div>
                               
-                              <div className="flex items-center justify-between sm:justify-end gap-6 sm:gap-8 w-full sm:w-auto border-t sm:border-t-0 pt-3 sm:pt-0">
+                              <div className="flex items-center justify-between sm:justify-end gap-4 sm:gap-6 w-full sm:w-auto border-t sm:border-t-0 pt-3 sm:pt-0">
                                 <div className="flex flex-col items-start sm:items-end">
                                   <p className="text-[9px] font-black text-primary uppercase tracking-widest mb-0.5">Vendidos</p>
                                   <div className="flex items-center gap-1.5">
@@ -356,12 +358,18 @@ export default function ReportsPage() {
                                   </div>
                                 </div>
                                 
-                                <div className="flex flex-col items-end min-w-[100px]">
+                                <div className="flex flex-col items-end min-w-[90px]">
                                   <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Subtotal</p>
                                   <p className="text-lg font-black text-slate-800 font-mono leading-none tracking-tighter">
                                     ${productTotalRevenue.toLocaleString('es-CL')}
                                   </p>
                                 </div>
+
+                                <Link href={`/inventory?search=${p.id}`}>
+                                  <Button variant="ghost" size="icon" className="rounded-full bg-slate-50 hover:bg-primary/10 text-primary h-10 w-10">
+                                    <ArrowRight className="w-5 h-5" />
+                                  </Button>
+                                </Link>
                               </div>
                             </div>
                           );
