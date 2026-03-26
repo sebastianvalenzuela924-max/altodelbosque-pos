@@ -68,7 +68,7 @@ export default function HistoryPage() {
     if (!saleToDelete) return;
     const docRef = doc(firestore, "sales", saleToDelete.id);
     deleteDocumentNonBlocking(docRef);
-    toast({ title: "Venta eliminada", description: "El registro ha sido borrado." });
+    toast({ title: "Venta eliminada", description: "El registro ha sido borrado de la base de datos." });
     setSaleToDelete(null);
   };
 
@@ -77,7 +77,7 @@ export default function HistoryPage() {
     
     setIsCleaning(true);
     const type = bulkDeleteType;
-    setBulkDeleteType(null); // Cerramos el diálogo inmediatamente para evitar bloqueos visuales
+    setBulkDeleteType(null);
 
     const now = new Date();
     let targets: any[] = [];
@@ -102,17 +102,15 @@ export default function HistoryPage() {
       toast({ title: "Sin registros", description: "No se encontraron ventas para borrar en este rango." });
       setIsCleaning(false);
     } else {
-      // Procesamos las eliminaciones
       targets.forEach(t => {
         deleteDocumentNonBlocking(doc(firestore, "sales", t.id));
       });
       
       toast({ 
         title: "Limpieza completada", 
-        description: `Se han eliminado ${targets.length} registros.` 
+        description: `Se han eliminado ${targets.length} registros del historial y reportes.` 
       });
       
-      // Damos un pequeño respiro al hilo principal antes de quitar el loader
       setTimeout(() => setIsCleaning(false), 500);
     }
   };
@@ -126,9 +124,9 @@ export default function HistoryPage() {
       {isCleaning && (
         <div className="fixed inset-0 z-[100] bg-white/60 backdrop-blur-md flex flex-col items-center justify-center animate-in fade-in duration-300">
           <Loader2 className="w-12 h-12 animate-spin text-primary mb-4" />
-          <h2 className="text-xl font-black text-primary tracking-tighter uppercase">Limpiando Historial</h2>
+          <h2 className="text-xl font-black text-primary tracking-tighter uppercase">Limpiando Datos</h2>
           <p className="text-[10px] text-muted-foreground font-black uppercase tracking-[0.2em] mt-2">
-            Por favor, no cierres la aplicación
+            Actualizando historial y reportes...
           </p>
         </div>
       )}
@@ -139,7 +137,7 @@ export default function HistoryPage() {
             <History className="w-8 h-8" />
             Historial
           </h1>
-          <p className="text-muted-foreground">Gestiona tus ventas y depura el historial.</p>
+          <p className="text-muted-foreground">Gestiona tus ventas. Borrar datos afectará a tus reportes.</p>
         </div>
         <div className="flex gap-2 w-full md:w-auto">
           <DropdownMenu>
@@ -291,8 +289,9 @@ export default function HistoryPage() {
               ¿Eliminar Registro?
             </AlertDialogTitle>
             <AlertDialogDescription className="text-slate-500 pt-2">
-              Esta acción borrará definitivamente la venta con ID <span className="font-mono font-bold text-slate-800">#{saleToDelete?.id?.slice(-8)}</span>.
-              Los cambios en el stock no se revertirán.
+              Esta acción borrará definitivamente la venta <span className="font-mono font-bold text-slate-800">#{saleToDelete?.id?.slice(-8)}</span>.
+              <br/><br/>
+              <span className="text-destructive font-bold uppercase text-[10px] tracking-widest">Aviso:</span> Esta venta ya no aparecerá en tus reportes e ingresos totales.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2 pt-4">
@@ -312,9 +311,9 @@ export default function HistoryPage() {
               Limpieza Masiva
             </AlertDialogTitle>
             <AlertDialogDescription className="text-slate-500 pt-2">
-              {bulkDeleteType === 'day' && "¿Estás seguro de que quieres borrar TODAS las ventas de HOY?"}
-              {bulkDeleteType === 'month' && "¿Estás seguro de que quieres borrar TODAS las ventas de ESTE MES?"}
-              {bulkDeleteType === 'all' && "¡ATENCIÓN! Esto borrará el HISTORIAL COMPLETO. Esta acción no se puede deshacer."}
+              {bulkDeleteType === 'day' && "¿Borrar TODAS las ventas de hoy? Esto pondrá a cero tus reportes diarios."}
+              {bulkDeleteType === 'month' && "¿Borrar TODAS las ventas de este mes? Tus reportes mensuales se verán afectados."}
+              {bulkDeleteType === 'all' && "¡ATENCIÓN! Esto borrará el HISTORIAL Y REPORTES COMPLETOS. Tus ingresos acumulados volverán a cero."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2 pt-4">
