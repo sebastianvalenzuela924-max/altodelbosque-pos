@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
@@ -34,15 +35,19 @@ export default function InventoryPage() {
   const [quickStockProduct, setQuickStockProduct] = useState<any | null>(null);
   const [quickAddValue, setQuickAddValue] = useState("");
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
+  
+  // Ref para evitar procesar múltiples lecturas de una misma ráfaga de escaneo
+  const scanProcessedRef = useRef(false);
 
   const { toast } = useToast();
 
-  // FAIL-SAFE CRÍTICO: Asegura que el navegador recupere el control de clics y scroll
+  // FAIL-SAFE: Asegura que el navegador recupere el control cuando todo se cierra
   useEffect(() => {
     const isAnyModalOpen = isDialogOpen || isScannerOpen || !!pendingBarcode || !!productToDelete || !!quickStockProduct;
     if (!isAnyModalOpen) {
       document.body.style.pointerEvents = 'auto';
       document.body.style.overflow = 'auto';
+      scanProcessedRef.current = false; // Resetear el bloqueo de ráfaga
     }
   }, [isDialogOpen, isScannerOpen, pendingBarcode, productToDelete, quickStockProduct]);
 
@@ -140,15 +145,20 @@ export default function InventoryPage() {
   };
 
   const handleScanResult = (barcode: string) => {
+    if (scanProcessedRef.current) return;
+    scanProcessedRef.current = true;
+    
     setIsScannerOpen(false);
-    // Pequeño retraso para que el Dialog del scanner se cierre físicamente
+    // Retraso para asegurar que el DOM del scanner se limpie antes de abrir el aviso
     setTimeout(() => {
       setPendingBarcode(barcode);
-    }, 200);
+    }, 300);
   };
 
   const handleDiscardPending = () => {
     setPendingBarcode(null);
+    scanProcessedRef.current = false;
+    // Forzar restauración de UI
     document.body.style.pointerEvents = 'auto';
     document.body.style.overflow = 'auto';
   };
@@ -157,10 +167,8 @@ export default function InventoryPage() {
     const existing = products?.find(p => p.id === pendingBarcode);
     const barcode = pendingBarcode;
     
-    // Limpiamos primero el aviso de detección
     setPendingBarcode(null);
     
-    // Abrimos el formulario de edición con un pequeño delay para evitar colisiones de foco
     setTimeout(() => {
       if (existing) {
         setSelectedProduct(existing);
@@ -168,7 +176,7 @@ export default function InventoryPage() {
         setSelectedProduct({ id: barcode });
       }
       setIsDialogOpen(true);
-    }, 150);
+    }, 200);
   };
 
   return (
@@ -189,7 +197,7 @@ export default function InventoryPage() {
             <FileSpreadsheet className="w-4 h-4 mr-2 text-green-600" /> Exportar
           </Button>
           <Button variant="outline" className="flex-1 md:flex-none h-11 rounded-2xl" onClick={() => {
-             setPendingBarcode(null);
+             scanProcessedRef.current = false;
              setIsScannerOpen(true);
           }}>
             <Scan className="w-4 h-4 mr-2" /> Escanear
