@@ -18,7 +18,8 @@ type DateFilter = "today" | "yesterday" | "month" | "all" | "custom";
 
 export default function ReportsPage() {
   const [mounted, setMounted] = useState(false);
-  const [dateFilter, setDateFilter] = useState<DateFilter>("all");
+  // Cambiado de "all" a "today" por solicitud del usuario
+  const [dateFilter, setDateFilter] = useState<DateFilter>("today");
   const [customDate, setCustomDate] = useState<string>("");
   const firestore = useFirestore();
 
@@ -270,7 +271,6 @@ export default function ReportsPage() {
 
           <Accordion type="multiple" className="space-y-3">
             {categoryStats.map((cat, idx) => {
-              const revenuePercentage = totalRevenue > 0 ? Math.round((cat.totalRevenue / totalRevenue) * 100) : 0;
               const hasCritical = cat.stockCritical > 0;
 
               return (
@@ -294,8 +294,10 @@ export default function ReportsPage() {
                             {hasCritical && <Badge className="bg-destructive text-[8px] font-black uppercase tracking-tighter animate-pulse">¡RECONSTITUIR!</Badge>}
                           </div>
                           <div className="flex flex-wrap gap-2 mt-1">
-                            <Badge variant="outline" className="text-[8px] font-black uppercase border-slate-200">{cat.productCount} Prod.</Badge>
-                            <Badge variant="outline" className="text-[8px] font-black uppercase bg-primary/5 text-primary border-primary/10">{revenuePercentage}% del Total</Badge>
+                            {/* Reemplazado prod. y % por Unidades Vendidas según solicitud */}
+                            <Badge variant="outline" className="text-[9px] font-black uppercase bg-primary/5 text-primary border-primary/20 rounded-lg px-2.5 py-1">
+                              Ventas: {cat.unitsSold} u.
+                            </Badge>
                           </div>
                         </div>
 
