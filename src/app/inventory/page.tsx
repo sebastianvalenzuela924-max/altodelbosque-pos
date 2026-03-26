@@ -164,19 +164,25 @@ export default function InventoryPage() {
   };
 
   const handleConfirmScanAndEdit = () => {
-    const existing = products?.find(p => p.id === pendingBarcode);
+    if (!pendingBarcode) return;
+
     const barcode = pendingBarcode;
+    const existing = products?.find(p => p.id === barcode);
     
+    // 1. Limpiamos el aviso de código detectado
     setPendingBarcode(null);
     
+    // 2. Preparamos el producto para el diálogo
+    if (existing) {
+      setSelectedProduct(existing);
+    } else {
+      setSelectedProduct({ id: barcode });
+    }
+    
+    // 3. Abrimos el diálogo de edición con un delay para evitar conflictos de overlays de Radix
     setTimeout(() => {
-      if (existing) {
-        setSelectedProduct(existing);
-      } else {
-        setSelectedProduct({ id: barcode });
-      }
       setIsDialogOpen(true);
-    }, 200);
+    }, 350);
   };
 
   return (
