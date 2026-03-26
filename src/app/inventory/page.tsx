@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
@@ -339,7 +338,10 @@ export default function InventoryPage() {
 
       {/* Aviso Código Detectado - Campo Editable */}
       <Dialog open={pendingBarcode !== null} onOpenChange={(open) => !open && handleDiscardPending()}>
-        <DialogContent className="rounded-3xl p-8 max-w-[90vw] sm:max-w-lg border-none shadow-2xl">
+        <DialogContent 
+          className="rounded-3xl p-8 max-w-[90vw] sm:max-w-lg border-none shadow-2xl"
+          onOpenAutoFocus={(e) => e.preventDefault()}
+        >
           <DialogHeader>
             <DialogTitle className="text-2xl font-black text-primary text-center">Código Detectado</DialogTitle>
             <DialogDescription className="text-center py-4 space-y-2">
