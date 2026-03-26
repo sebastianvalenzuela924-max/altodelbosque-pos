@@ -31,7 +31,6 @@ export default function InventoryPage() {
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   
   const [pendingBarcode, setPendingBarcode] = useState<string | null>(null);
-  const [scannedBarcode, setScannedBarcode] = useState<string | null>(null);
   
   const [productToDelete, setProductToDelete] = useState<any | null>(null);
   const [quickStockProduct, setQuickStockProduct] = useState<any | null>(null);
@@ -148,22 +147,16 @@ export default function InventoryPage() {
     scanProcessedRef.current = true;
     
     setIsScannerOpen(false);
-    setScannedBarcode(barcode);
     setPendingBarcode(barcode);
   };
 
   const handleDiscardPending = () => {
     setPendingBarcode(null);
-    setScannedBarcode(null);
+    scanProcessedRef.current = false;
     
     // Restauramos controles de interfaz
     document.body.style.pointerEvents = 'auto';
     document.body.style.overflow = 'auto';
-
-    // Pequeño retardo antes de permitir otro escaneo para evitar bucles si el producto sigue ahí
-    setTimeout(() => {
-      scanProcessedRef.current = false;
-    }, 1000);
   };
 
   const handleConfirmScanAndEdit = () => {
@@ -173,27 +166,34 @@ export default function InventoryPage() {
       return;
     }
 
-    // Guardamos referencia y limpiamos aviso
-    setPendingBarcode(null);
-    setScannedBarcode(null);
-    
     const existing = products?.find(p => p.id === barcode);
     setSelectedProduct(existing || { id: barcode });
     
-    // Abrimos editor tras pequeña pausa para limpiar el DOM
+    // Limpiamos aviso de código pendiente antes de abrir editor
+    setPendingBarcode(null);
+    
+    // Abrimos editor tras pequeña pausa para limpiar el DOM y liberar focos
     setTimeout(() => {
       setIsDialogOpen(true);
-      // scanProcessedRef se mantiene true hasta que el diálogo de edición se cierre (en onClose)
+      // El reset de scanProcessedRef ocurre al cerrar el diálogo de edición
     }, 150);
   };
 
   const handleCloseProductDialog = () => {
     setIsDialogOpen(false);
     setSelectedProduct(null);
+    setPendingBarcode(null);
     // Permitimos nuevos escaneos tras cerrar el editor
     setTimeout(() => {
       scanProcessedRef.current = false;
     }, 500);
+  };
+
+  const handleOpenScanner = () => {
+    // REINICIO TOTAL: Limpia cualquier residuo de escaneos anteriores
+    setPendingBarcode(null);
+    scanProcessedRef.current = false;
+    setIsScannerOpen(true);
   };
 
   return (
@@ -213,10 +213,7 @@ export default function InventoryPage() {
           <Button variant="outline" className="flex-1 md:flex-none h-11 rounded-2xl" onClick={handleExport} disabled={!products?.length}>
             <FileSpreadsheet className="w-4 h-4 mr-2 text-green-600" /> Exportar
           </Button>
-          <Button variant="outline" className="flex-1 md:flex-none h-11 rounded-2xl" onClick={() => {
-             scanProcessedRef.current = false;
-             setIsScannerOpen(true);
-          }}>
+          <Button variant="outline" className="flex-1 md:flex-none h-11 rounded-2xl" onClick={handleOpenScanner}>
             <Scan className="w-4 h-4 mr-2" /> Escanear
           </Button>
           <Button className="flex-1 md:flex-none bg-accent hover:bg-accent/90 h-11 rounded-2xl font-black" onClick={() => { setSelectedProduct(null); setIsDialogOpen(true); }}>
@@ -338,7 +335,7 @@ export default function InventoryPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Aviso Código Detectado */}
+      {/* Aviso Código Detectado - Campo Editable */}
       <Dialog open={pendingBarcode !== null} onOpenChange={(open) => !open && handleDiscardPending()}>
         <DialogContent className="rounded-3xl p-8 max-w-[90vw] sm:max-w-lg border-none shadow-2xl">
           <DialogHeader>
