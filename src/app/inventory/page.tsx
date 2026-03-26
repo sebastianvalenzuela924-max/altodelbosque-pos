@@ -29,16 +29,17 @@ export default function InventoryPage() {
   const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
-  const [pendingBarcode, setPendingBarcode] = useState<string | null>(null);
-  const [productToDelete, setProductToDelete] = useState<any | null>(null);
   
+  // Estados para la gestión de escaneo
+  const [pendingBarcode, setPendingBarcode] = useState<string | null>(null);
+  const [scannedBarcode, setScannedBarcode] = useState<string | null>(null);
+  
+  const [productToDelete, setProductToDelete] = useState<any | null>(null);
   const [quickStockProduct, setQuickStockProduct] = useState<any | null>(null);
   const [quickAddValue, setQuickAddValue] = useState("");
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
   
-  // Ref para evitar procesar múltiples lecturas de una misma ráfaga de escaneo
   const scanProcessedRef = useRef(false);
-
   const { toast } = useToast();
 
   // FAIL-SAFE: Asegura que el navegador recupere el control cuando todo se cierra
@@ -47,7 +48,7 @@ export default function InventoryPage() {
     if (!isAnyModalOpen) {
       document.body.style.pointerEvents = 'auto';
       document.body.style.overflow = 'auto';
-      scanProcessedRef.current = false; // Resetear el bloqueo de ráfaga
+      scanProcessedRef.current = false;
     }
   }, [isDialogOpen, isScannerOpen, pendingBarcode, productToDelete, quickStockProduct]);
 
@@ -149,40 +150,35 @@ export default function InventoryPage() {
     scanProcessedRef.current = true;
     
     setIsScannerOpen(false);
-    // Retraso para asegurar que el DOM del scanner se limpie antes de abrir el aviso
-    setTimeout(() => {
-      setPendingBarcode(barcode);
-    }, 300);
+    setScannedBarcode(barcode); // Guardamos el código de forma persistente
+    setPendingBarcode(barcode); // Mostramos el aviso
   };
 
   const handleDiscardPending = () => {
     setPendingBarcode(null);
+    setScannedBarcode(null);
     scanProcessedRef.current = false;
-    // Forzar restauración de UI
     document.body.style.pointerEvents = 'auto';
     document.body.style.overflow = 'auto';
   };
 
   const handleConfirmScanAndEdit = () => {
-    if (!pendingBarcode) return;
+    const barcode = scannedBarcode;
+    if (!barcode) return;
 
-    const barcode = pendingBarcode;
-    const existing = products?.find(p => p.id === barcode);
-    
-    // 1. Limpiamos el aviso de código detectado
+    // 1. Limpiamos el aviso inmediatamente
     setPendingBarcode(null);
+    setScannedBarcode(null);
+    scanProcessedRef.current = false;
+
+    // 2. Preparamos el producto (existente o nuevo)
+    const existing = products?.find(p => p.id === barcode);
+    setSelectedProduct(existing || { id: barcode });
     
-    // 2. Preparamos el producto para el diálogo
-    if (existing) {
-      setSelectedProduct(existing);
-    } else {
-      setSelectedProduct({ id: barcode });
-    }
-    
-    // 3. Abrimos el diálogo de edición con un delay para evitar conflictos de overlays de Radix
+    // 3. Abrimos el editor con un delay para que Radix limpie el overlay anterior
     setTimeout(() => {
       setIsDialogOpen(true);
-    }, 350);
+    }, 250);
   };
 
   return (
@@ -342,12 +338,12 @@ export default function InventoryPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex flex-col sm:flex-row gap-2 mt-4">
-            <AlertDialogCancel onClick={handleDiscardPending} className="rounded-2xl h-14 flex-1 border-slate-200 font-bold">
+            <Button variant="outline" onClick={handleDiscardPending} className="rounded-2xl h-14 flex-1 border-slate-200 font-bold">
               DESCARTAR
-            </AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmScanAndEdit} className="rounded-2xl h-14 flex-1 font-black bg-primary">
+            </Button>
+            <Button onClick={handleConfirmScanAndEdit} className="rounded-2xl h-14 flex-1 font-black bg-primary text-white hover:bg-primary/90">
               EDITAR / CREAR
-            </AlertDialogAction>
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
