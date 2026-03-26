@@ -4,7 +4,7 @@
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import { collection, query, orderBy } from "firebase/firestore";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { DollarSign, Package, TrendingUp, Calendar, ShoppingBag, Loader2, ListFilter, Trophy, CheckCircle2, Filter, ShieldAlert, ShieldCheck, AlertTriangle, Tag, ArrowRight } from "lucide-react";
+import { DollarSign, Package, TrendingUp, Calendar, ShoppingBag, Loader2, ListFilter, Trophy, CheckCircle2, Filter, ShieldAlert, ShieldCheck, AlertTriangle, Tag, ArrowRight, Wallet } from "lucide-react";
 import { useMemo, useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -170,6 +170,9 @@ export default function ReportsPage() {
   const totalSalesCount = filteredSales.length;
   const criticalProductsCount = allProducts?.filter(p => getProductStatus(p.stock, p.idealStock) === "danger").length || 0;
   const inventoryHealth = allProducts?.length ? Math.round((allProducts.filter(p => getProductStatus(p.stock, p.idealStock) === "ok").length / allProducts.length) * 100) : 100;
+  
+  // Cálculo del valor total del inventario (Precio * Stock de todos los productos)
+  const totalInventoryValue = allProducts?.reduce((sum, p) => sum + (Math.round(p.price) * (p.stock || 0)), 0) || 0;
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-20">
@@ -212,15 +215,27 @@ export default function ReportsPage() {
         </div>
       </header>
 
-      <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <Card className="border-none shadow-md bg-primary text-white rounded-3xl overflow-hidden relative group">
           <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
             <DollarSign className="w-16 h-16" />
           </div>
           <CardHeader className="pb-2">
             <CardDescription className="text-white/60 font-black text-[10px] uppercase tracking-widest">Ingresos Periodo</CardDescription>
-            <CardTitle className="text-3xl font-black font-mono tracking-tighter">
+            <CardTitle className="text-2xl font-black font-mono tracking-tighter">
               ${Math.round(totalRevenue).toLocaleString('es-CL')}
+            </CardTitle>
+          </CardHeader>
+        </Card>
+
+        <Card className="border-none shadow-md bg-accent text-white rounded-3xl overflow-hidden relative group">
+          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
+            <Wallet className="w-16 h-16" />
+          </div>
+          <CardHeader className="pb-2">
+            <CardDescription className="text-white/60 font-black text-[10px] uppercase tracking-widest">Valor Inventario</CardDescription>
+            <CardTitle className="text-2xl font-black font-mono tracking-tighter">
+              ${Math.round(totalInventoryValue).toLocaleString('es-CL')}
             </CardTitle>
           </CardHeader>
         </Card>
@@ -231,7 +246,7 @@ export default function ReportsPage() {
           </div>
           <CardHeader className="pb-2">
             <CardDescription className="text-slate-400 font-black text-[10px] uppercase tracking-widest">Ventas Realizadas</CardDescription>
-            <CardTitle className="text-3xl font-black text-slate-800">{totalSalesCount}</CardTitle>
+            <CardTitle className="text-2xl font-black text-slate-800">{totalSalesCount}</CardTitle>
           </CardHeader>
         </Card>
 
@@ -241,7 +256,7 @@ export default function ReportsPage() {
           </div>
           <CardHeader className="pb-2">
             <CardDescription className="text-slate-400 font-black text-[10px] uppercase tracking-widest">Reponer Urgente</CardDescription>
-            <CardTitle className={cn("text-3xl font-black", criticalProductsCount > 0 ? "text-destructive" : "text-slate-800")}>
+            <CardTitle className={cn("text-2xl font-black", criticalProductsCount > 0 ? "text-destructive" : "text-slate-800")}>
               {criticalProductsCount}
             </CardTitle>
           </CardHeader>
@@ -253,7 +268,7 @@ export default function ReportsPage() {
           </div>
           <CardHeader className="pb-2">
             <CardDescription className="text-slate-400 font-black text-[10px] uppercase tracking-widest">Salud Inventario</CardDescription>
-            <CardTitle className={cn("text-3xl font-black", inventoryHealth > 80 ? "text-green-600" : "text-amber-600")}>
+            <CardTitle className={cn("text-2xl font-black", inventoryHealth > 80 ? "text-green-600" : "text-amber-600")}>
               {inventoryHealth}%
             </CardTitle>
           </CardHeader>
