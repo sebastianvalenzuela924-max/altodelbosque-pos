@@ -3,7 +3,7 @@
 import { useCollection, useFirestore, useMemoFirebase, deleteDocumentNonBlocking } from "@/firebase";
 import { collection, query, orderBy, doc } from "firebase/firestore";
 import { Card } from "@/components/ui/card";
-import { FileSpreadsheet, Calendar, History, ShoppingBag, Loader2, ChevronRight, Trash2, Eraser, AlertCircle } from "lucide-react";
+import { FileSpreadsheet, Calendar, History, ShoppingBag, Loader2, ChevronRight, Trash2, Eraser, AlertCircle, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { exportToExcel } from "@/lib/export";
@@ -117,37 +117,35 @@ export default function HistoryPage() {
     setBulkDeleteType(null);
     setIsCleaning(true);
     
-    // Ejecutar en el siguiente tick para permitir que el diálogo se cierre visualmente
-    setTimeout(() => {
-      try {
-        const now = new Date();
-        const targets = allSales.filter(s => {
-          const d = s.saleDateTime?.toDate?.() || (s.saleDateTime ? new Date(s.saleDateTime) : null);
-          if (!d) return false;
+    try {
+      const now = new Date();
+      const targets = allSales.filter(s => {
+        const d = s.saleDateTime?.toDate?.() || (s.saleDateTime ? new Date(s.saleDateTime) : null);
+        if (!d) return false;
 
-          if (type === 'day') return d.toDateString() === now.toDateString();
-          if (type === 'month') return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-          if (type === 'all') return true;
-          return false;
+        if (type === 'day') return d.toDateString() === now.toDateString();
+        if (type === 'month') return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+        if (type === 'all') return true;
+        return false;
+      });
+
+      if (targets.length === 0) {
+        toast({ title: "Nada que borrar", description: "No hay registros para este periodo." });
+        setIsCleaning(false);
+      } else {
+        targets.forEach(t => {
+          const docRef = doc(firestore, "sales", t.id);
+          deleteDocumentNonBlocking(docRef);
         });
-
-        if (targets.length === 0) {
-          toast({ title: "Nada que borrar", description: "No hay registros para este periodo." });
-        } else {
-          targets.forEach(t => {
-            const docRef = doc(firestore, "sales", t.id);
-            deleteDocumentNonBlocking(docRef);
-          });
-          toast({ title: "Limpieza exitosa", description: `Se eliminaron ${targets.length} ventas.` });
-        }
-      } catch (error) {
-        console.error("Error during bulk delete:", error);
-        toast({ variant: "destructive", title: "Error en la limpieza" });
-      } finally {
-        // Asegurarse de quitar el overlay de limpieza después de un breve delay
-        setTimeout(() => setIsCleaning(false), 800);
+        toast({ title: "Limpieza en curso", description: `Borrando ${targets.length} registros...` });
+        // Simular un tiempo de procesamiento para dar feedback visual
+        setTimeout(() => setIsCleaning(false), 1500);
       }
-    }, 100);
+    } catch (error) {
+      console.error("Error during bulk delete:", error);
+      toast({ variant: "destructive", title: "Error en la limpieza" });
+      setIsCleaning(false);
+    }
   };
 
   if (!isMounted) return <div className="min-h-screen bg-background" />;
@@ -155,10 +153,12 @@ export default function HistoryPage() {
   return (
     <div className="space-y-6 animate-in fade-in duration-500 relative pb-20">
       {isCleaning && (
-        <div className="fixed inset-0 z-[100] bg-white/90 backdrop-blur-md flex flex-col items-center justify-center">
-          <Loader2 className="w-12 h-12 animate-spin text-primary mb-4" />
-          <h2 className="text-xl font-black text-primary uppercase tracking-tighter">Limpiando Historial</h2>
-          <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest mt-2">Por favor espera...</p>
+        <div className="fixed inset-0 z-[100] bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center animate-in fade-in duration-300">
+          <div className="bg-white p-8 rounded-3xl shadow-2xl flex flex-col items-center border">
+            <Loader2 className="w-12 h-12 animate-spin text-primary mb-4" />
+            <h2 className="text-xl font-black text-primary uppercase tracking-tighter">Limpiando...</h2>
+            <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest mt-2">Actualizando base de datos</p>
+          </div>
         </div>
       )}
 
@@ -196,7 +196,7 @@ export default function HistoryPage() {
           )}
 
           <div className="flex gap-2 ml-auto">
-            <Button variant="outline" onClick={handleExport} disabled={!filteredSales.length} className="h-11 w-11 p-0 rounded-2xl border-slate-200">
+            <Button variant="outline" onClick={handleExport} disabled={!filteredSales.length || isCleaning} className="h-11 w-11 p-0 rounded-2xl border-slate-200">
               <FileSpreadsheet className="w-4 h-4 text-green-600" />
             </Button>
             
