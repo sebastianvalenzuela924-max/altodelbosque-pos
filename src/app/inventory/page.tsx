@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useRef, useEffect, Suspense } from "react";
@@ -9,7 +8,7 @@ import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Search, FileSpreadsheet, Edit3, Plus, Trash2, Package, Scan, Loader2, ShieldAlert, ShieldCheck, ShieldQuestion, MousePointer2, Filter, X } from "lucide-react";
+import { Search, FileSpreadsheet, Edit3, Plus, Trash2, Package, Scan, Loader2, ShieldAlert, ShieldCheck, ShieldQuestion, MousePointer2, Filter, X, Tag } from "lucide-react";
 import { exportToExcel } from "@/lib/export";
 import { useToast } from "@/hooks/use-toast";
 import { ProductDialog } from "@/components/inventory/ProductDialog";
@@ -299,85 +298,102 @@ function InventoryContent() {
           </div>
         </CardHeader>
         <CardContent className="p-0">
-          <Table>
-            <TableHeader className="bg-slate-50/30">
-              <TableRow className="border-none">
-                <TableHead className="px-6 font-black uppercase text-[10px] tracking-widest">Producto</TableHead>
-                <TableHead className="px-6 font-black uppercase text-[10px] tracking-widest">Stock / Meta</TableHead>
-                <TableHead className="px-6 font-black uppercase text-[10px] tracking-widest">Categoría</TableHead>
-                <TableHead className="px-6 font-black uppercase text-[10px] tracking-widest">Estado</TableHead>
-                <TableHead className="px-6 text-right font-black uppercase text-[10px] tracking-widest">Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                <TableRow><TableCell colSpan={5} className="h-64 text-center"><Loader2 className="w-8 h-8 animate-spin mx-auto" /></TableCell></TableRow>
-              ) : processedProducts.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="h-64 text-center text-slate-400 font-bold uppercase tracking-widest">
-                    No se encontraron productos con estos filtros
-                  </TableCell>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader className="bg-slate-50/30">
+                <TableRow className="border-none">
+                  <TableHead className="px-6 font-black uppercase text-[10px] tracking-widest min-w-[200px]">Producto</TableHead>
+                  <TableHead className="px-6 font-black uppercase text-[10px] tracking-widest min-w-[120px]">Stock / Meta</TableHead>
+                  <TableHead className="px-6 font-black uppercase text-[10px] tracking-widest min-w-[120px]">Categoría</TableHead>
+                  <TableHead className="px-6 font-black uppercase text-[10px] tracking-widest min-w-[120px]">Estado</TableHead>
+                  <TableHead className="px-6 font-black uppercase text-[10px] tracking-widest min-w-[120px]">Precio Unitario</TableHead>
+                  <TableHead className="px-6 font-black uppercase text-[10px] tracking-widest min-w-[140px]">Precio Neto (Sin IVA)</TableHead>
+                  <TableHead className="px-6 text-right font-black uppercase text-[10px] tracking-widest min-w-[100px]">Acciones</TableHead>
                 </TableRow>
-              ) : processedProducts.map((p) => {
-                const status = getProductStatus(p.stock, p.idealStock, p.warningStock);
-                return (
-                  <TableRow 
-                    key={p.id} 
-                    onPointerDown={() => handlePointerDown(p)}
-                    onPointerUp={handlePointerUp}
-                    onPointerLeave={handlePointerUp}
-                    className={cn(
-                      "transition-colors border-b select-none touch-none", 
-                      status === "peligro" ? "bg-red-100 hover:bg-red-200" : 
-                      status === "precaución" ? "bg-amber-100 hover:bg-amber-200" : 
-                      status === "ok" ? "bg-green-100 hover:bg-green-200" : "hover:bg-slate-50"
-                    )}
-                  >
-                    <TableCell className="px-6">
-                      <p className="font-bold text-sm">{p.name}</p>
-                      <p className="text-[10px] font-mono text-slate-400">#{p.id}</p>
-                    </TableCell>
-                    <TableCell className="px-6">
-                      <div className="flex flex-col">
-                        <span className="font-black text-lg">{p.stock}</span>
-                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
-                          {p.warningStock ? `Aviso: < ${p.warningStock}` : `Ideal: ${p.idealStock || 10}`}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="px-6">
-                      <Badge variant="outline" className="text-[9px] font-black uppercase border-slate-300 bg-white/50">{p.category || "General"}</Badge>
-                    </TableCell>
-                    <TableCell className="px-6">
-                      {status === "peligro" ? (
-                        <Badge className="bg-destructive text-white border-none flex items-center gap-1 rounded-full px-3 py-1 font-black text-[9px] uppercase">
-                          <ShieldAlert className="w-3 h-3" /> Peligro
-                        </Badge>
-                      ) : status === "precaución" ? (
-                        <Badge className="bg-amber-600 hover:bg-amber-700 border-none flex items-center gap-1 rounded-full px-3 py-1 font-black text-[9px] uppercase text-white">
-                          <ShieldQuestion className="w-3 h-3" /> Precaución
-                        </Badge>
-                      ) : (
-                        <Badge className="bg-green-700 text-white border-none flex items-center gap-1 rounded-full px-3 py-1 font-black text-[9px] uppercase">
-                          <ShieldCheck className="w-3 h-3" /> OK
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="px-6 text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="icon" className="text-primary hover:bg-primary/20 rounded-full" onClick={() => { setSelectedProduct(p); setIsDialogOpen(true); }}>
-                          <Edit3 className="w-4 h-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 rounded-full" onClick={() => setProductToDelete(p)}>
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  <TableRow><TableCell colSpan={7} className="h-64 text-center"><Loader2 className="w-8 h-8 animate-spin mx-auto" /></TableCell></TableRow>
+                ) : processedProducts.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="h-64 text-center text-slate-400 font-bold uppercase tracking-widest">
+                      No se encontraron productos con estos filtros
                     </TableCell>
                   </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+                ) : processedProducts.map((p) => {
+                  const status = getProductStatus(p.stock, p.idealStock, p.warningStock);
+                  const netPrice = Math.round(p.price / 1.19);
+                  return (
+                    <TableRow 
+                      key={p.id} 
+                      onPointerDown={() => handlePointerDown(p)}
+                      onPointerUp={handlePointerUp}
+                      onPointerLeave={handlePointerUp}
+                      className={cn(
+                        "transition-colors border-b select-none touch-none", 
+                        status === "peligro" ? "bg-red-100 hover:bg-red-200" : 
+                        status === "precaución" ? "bg-amber-100 hover:bg-amber-200" : 
+                        status === "ok" ? "bg-green-100 hover:bg-green-200" : "hover:bg-slate-50"
+                      )}
+                    >
+                      <TableCell className="px-6">
+                        <p className="font-bold text-sm">{p.name}</p>
+                        <p className="text-[10px] font-mono text-slate-400">#{p.id}</p>
+                      </TableCell>
+                      <TableCell className="px-6">
+                        <div className="flex flex-col">
+                          <span className="font-black text-lg">{p.stock}</span>
+                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+                            {p.warningStock ? `Aviso: < ${p.warningStock}` : `Ideal: ${p.idealStock || 10}`}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="px-6">
+                        <Badge variant="outline" className="text-[9px] font-black uppercase border-slate-300 bg-white/50">{p.category || "General"}</Badge>
+                      </TableCell>
+                      <TableCell className="px-6">
+                        {status === "peligro" ? (
+                          <Badge className="bg-destructive text-white border-none flex items-center gap-1 rounded-full px-3 py-1 font-black text-[9px] uppercase">
+                            <ShieldAlert className="w-3 h-3" /> Peligro
+                          </Badge>
+                        ) : status === "precaución" ? (
+                          <Badge className="bg-amber-600 hover:bg-amber-700 border-none flex items-center gap-1 rounded-full px-3 py-1 font-black text-[9px] uppercase text-white">
+                            <ShieldQuestion className="w-3 h-3" /> Precaución
+                          </Badge>
+                        ) : (
+                          <Badge className="bg-green-700 text-white border-none flex items-center gap-1 rounded-full px-3 py-1 font-black text-[9px] uppercase">
+                            <ShieldCheck className="w-3 h-3" /> OK
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="px-6">
+                        <div className="flex flex-col">
+                          <span className="font-black text-slate-800 text-sm">${Math.round(p.price).toLocaleString('es-CL')}</span>
+                          <span className="text-[8px] text-slate-400 font-black uppercase tracking-widest">P. Venta</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="px-6">
+                        <div className="flex flex-col">
+                          <span className="font-black text-slate-600 text-sm">${netPrice.toLocaleString('es-CL')}</span>
+                          <span className="text-[8px] text-slate-400 font-black uppercase tracking-widest">Neto (IVA)</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="px-6 text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button variant="ghost" size="icon" className="text-primary hover:bg-primary/20 rounded-full" onClick={() => { setSelectedProduct(p); setIsDialogOpen(true); }}>
+                            <Edit3 className="w-4 h-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 rounded-full" onClick={() => setProductToDelete(p)}>
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
 
