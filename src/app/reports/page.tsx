@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
@@ -380,10 +379,11 @@ export default function ReportsPage() {
                                   </p>
                                 </div>
 
-                                <Link href={`/inventory?search=${p.id}`}>
-                                  <Button variant="ghost" size="icon" className="rounded-full bg-slate-50 hover:bg-primary/10 text-primary h-10 w-10">
-                                    <ArrowRight className="w-5 h-5" />
-                                  </Button>
+                                <Link 
+                                  href={`/inventory?search=${p.id}`}
+                                  className="flex items-center justify-center rounded-full bg-slate-50 hover:bg-primary/10 text-primary h-10 w-10 transition-colors shrink-0"
+                                >
+                                  <ArrowRight className="w-5 h-5" />
                                 </Link>
                               </div>
                             </div>
