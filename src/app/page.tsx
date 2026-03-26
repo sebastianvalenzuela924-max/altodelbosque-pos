@@ -152,9 +152,9 @@ export default function POSPage() {
     if (!cleanBarcode || isLoadingInventory) return;
 
     // LÓGICA DE LENTITUD Y DUPLICADOS:
-    // Evita registrar el mismo producto más de una vez cada 2 segundos.
+    // Evita registrar el mismo producto más de una vez cada 3 segundos.
     const now = Date.now();
-    if (lastScanRef.current && lastScanRef.current.code === cleanBarcode && (now - lastScanRef.current.time < 2000)) {
+    if (lastScanRef.current && lastScanRef.current.code === cleanBarcode && (now - lastScanRef.current.time < 3000)) {
       return;
     }
 
