@@ -306,9 +306,9 @@ function InventoryContent() {
                   <TableHead className="px-6 font-black uppercase text-[10px] tracking-widest min-w-[200px]">Producto</TableHead>
                   <TableHead className="px-6 font-black uppercase text-[10px] tracking-widest min-w-[120px]">Stock / Meta</TableHead>
                   <TableHead className="px-6 font-black uppercase text-[10px] tracking-widest min-w-[120px]">Categoría</TableHead>
-                  <TableHead className="px-6 font-black uppercase text-[10px] tracking-widest min-w-[120px]">Estado</TableHead>
                   <TableHead className="px-6 font-black uppercase text-[10px] tracking-widest min-w-[120px]">Precio Unitario</TableHead>
                   <TableHead className="px-6 font-black uppercase text-[10px] tracking-widest min-w-[140px]">Precio Neto (Sin IVA)</TableHead>
+                  <TableHead className="px-6 font-black uppercase text-[10px] tracking-widest min-w-[120px]">Estado</TableHead>
                   <TableHead className="px-6 text-right font-black uppercase text-[10px] tracking-widest min-w-[100px]">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
@@ -353,6 +353,18 @@ function InventoryContent() {
                         <Badge variant="outline" className="text-[9px] font-black uppercase border-slate-300 bg-white/50">{p.category || "General"}</Badge>
                       </TableCell>
                       <TableCell className="px-6">
+                        <div className="flex flex-col">
+                          <span className="font-black text-slate-800 text-sm">${Math.round(p.price).toLocaleString('es-CL')}</span>
+                          <span className="text-[8px] text-slate-400 font-black uppercase tracking-widest">P. Venta</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="px-6">
+                        <div className="flex flex-col">
+                          <span className="font-black text-slate-600 text-sm">${netPrice.toLocaleString('es-CL')}</span>
+                          <span className="text-[8px] text-slate-400 font-black uppercase tracking-widest">Neto (IVA)</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="px-6">
                         {status === "peligro" ? (
                           <Badge className="bg-destructive text-white border-none flex items-center gap-1 rounded-full px-3 py-1 font-black text-[9px] uppercase">
                             <ShieldAlert className="w-3 h-3" /> Peligro
@@ -366,18 +378,6 @@ function InventoryContent() {
                             <ShieldCheck className="w-3 h-3" /> OK
                           </Badge>
                         )}
-                      </TableCell>
-                      <TableCell className="px-6">
-                        <div className="flex flex-col">
-                          <span className="font-black text-slate-800 text-sm">${Math.round(p.price).toLocaleString('es-CL')}</span>
-                          <span className="text-[8px] text-slate-400 font-black uppercase tracking-widest">P. Venta</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="px-6">
-                        <div className="flex flex-col">
-                          <span className="font-black text-slate-600 text-sm">${netPrice.toLocaleString('es-CL')}</span>
-                          <span className="text-[8px] text-slate-400 font-black uppercase tracking-widest">Neto (IVA)</span>
-                        </div>
                       </TableCell>
                       <TableCell className="px-6 text-right">
                         <div className="flex justify-end gap-1">
