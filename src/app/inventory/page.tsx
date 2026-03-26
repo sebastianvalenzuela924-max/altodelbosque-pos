@@ -158,6 +158,7 @@ export default function InventoryPage() {
     setPendingBarcode(null);
     setScannedBarcode(null);
     scanProcessedRef.current = false;
+    // Forzamos restauración de eventos
     document.body.style.pointerEvents = 'auto';
     document.body.style.overflow = 'auto';
   };
