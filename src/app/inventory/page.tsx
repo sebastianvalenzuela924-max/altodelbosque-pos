@@ -43,19 +43,23 @@ function InventoryContent() {
   
   const { toast } = useToast();
 
-  // Procesar búsqueda desde URL (ej: de reportes)
+  // Procesar búsqueda desde URL (ej: de reportes) de forma limpia
   useEffect(() => {
     const search = searchParams.get("search");
-    if (search) {
-      setSearchTerm(search);
+    if (search && search.trim() !== "") {
+      setSearchTerm(search.trim());
+    } else {
+      setSearchTerm("");
     }
   }, [searchParams]);
 
   useEffect(() => {
     const isAnyModalOpen = isDialogOpen || isScannerOpen || (pendingBarcode !== null) || !!productToDelete || !!quickStockProduct;
     if (!isAnyModalOpen) {
-      document.body.style.pointerEvents = 'auto';
-      document.body.style.overflow = 'auto';
+      if (typeof document !== 'undefined') {
+        document.body.style.pointerEvents = 'auto';
+        document.body.style.overflow = 'auto';
+      }
     }
   }, [isDialogOpen, isScannerOpen, pendingBarcode, productToDelete, quickStockProduct]);
 
@@ -97,7 +101,8 @@ function InventoryContent() {
     if (!products) return [];
 
     let filtered = products.filter(p => {
-      const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.id.includes(searchTerm);
+      const q = searchTerm.toLowerCase().trim();
+      const matchesSearch = q === "" || p.name.toLowerCase().includes(q) || String(p.id).includes(q);
       const matchesCategory = categoryFilter === "all" || (p.category || "General") === categoryFilter;
       const status = getProductStatus(p.stock, p.idealStock);
       const matchesStatus = statusFilter === "all" || status === statusFilter;
@@ -226,7 +231,12 @@ function InventoryContent() {
         <CardHeader className="bg-slate-50/50 pb-6 border-b space-y-4">
           <div className="relative w-full">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input className="pl-12 h-12 bg-white rounded-2xl font-bold border-none shadow-sm" placeholder="Buscar por nombre o código..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+            <Input 
+              className="pl-12 h-12 bg-white rounded-2xl font-bold border-none shadow-sm" 
+              placeholder="Buscar por nombre o código..." 
+              value={searchTerm} 
+              onChange={e => setSearchTerm(e.target.value)} 
+            />
           </div>
           
           <div className="flex flex-wrap gap-2 items-center">
