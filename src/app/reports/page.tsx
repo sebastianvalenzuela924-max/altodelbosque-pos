@@ -4,7 +4,7 @@
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import { collection, query, orderBy } from "firebase/firestore";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { DollarSign, Package, TrendingUp, Calendar, ShoppingBag, Loader2, ListFilter, Trophy, CheckCircle2, Filter, ShieldAlert, ShieldCheck, AlertTriangle } from "lucide-react";
+import { DollarSign, Package, TrendingUp, Calendar, ShoppingBag, Loader2, ListFilter, Trophy, CheckCircle2, Filter, ShieldAlert, ShieldCheck, AlertTriangle, Tag } from "lucide-react";
 import { useMemo, useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -18,7 +18,7 @@ type DateFilter = "today" | "yesterday" | "month" | "all" | "custom";
 
 export default function ReportsPage() {
   const [mounted, setMounted] = useState(false);
-  // Cambiado de "all" a "today" por solicitud del usuario
+  // Predeterminado en "Hoy" por solicitud del usuario
   const [dateFilter, setDateFilter] = useState<DateFilter>("today");
   const [customDate, setCustomDate] = useState<string>("");
   const firestore = useFirestore();
@@ -127,10 +127,16 @@ export default function ReportsPage() {
       });
     });
 
-    return Object.values(stats).sort((a: any, b: any) => b.totalRevenue - a.totalRevenue);
+    // Ordenar categorías por ingresos y productos por cantidad vendida (descendente)
+    return Object.values(stats)
+      .map((cat: any) => ({
+        ...cat,
+        products: cat.products.sort((a: any, b: any) => b.soldThisPeriod - a.soldThisPeriod)
+      }))
+      .sort((a: any, b: any) => b.totalRevenue - a.totalRevenue);
   }, [filteredSales, allProducts, mounted]);
 
-  // Top productos vendidos
+  // Top productos vendidos (Ranking general)
   const topProducts = useMemo(() => {
     const productCounts: Record<string, any> = {};
     filteredSales.forEach(sale => {
@@ -146,7 +152,7 @@ export default function ReportsPage() {
     });
     return Object.values(productCounts)
       .sort((a, b) => b.quantity - a.quantity)
-      .slice(0, 5);
+      .slice(0, 10);
   }, [filteredSales]);
 
   if (!mounted || isLoadingSales || isLoadingProducts) {
@@ -172,7 +178,7 @@ export default function ReportsPage() {
             Reportes
           </h1>
           <p className="text-muted-foreground text-sm font-bold mt-1">
-            Análisis de rendimiento basado en stock ideal.
+            Rendimiento de ventas por día y categoría.
           </p>
         </div>
         
@@ -258,7 +264,7 @@ export default function ReportsPage() {
             <ListFilter className="w-4 h-4 mr-2" /> Por Categoría
           </TabsTrigger>
           <TabsTrigger value="products" className="rounded-xl font-bold uppercase text-[10px] tracking-widest data-[state=active]:bg-primary data-[state=active]:text-white">
-            <Trophy className="w-4 h-4 mr-2" /> Top Productos
+            <Trophy className="w-4 h-4 mr-2" /> Ranking Ventas
           </TabsTrigger>
         </TabsList>
 
@@ -291,10 +297,9 @@ export default function ReportsPage() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
                             <h3 className="font-black text-lg uppercase tracking-tighter text-slate-800 truncate">{cat.category}</h3>
-                            {hasCritical && <Badge className="bg-destructive text-[8px] font-black uppercase tracking-tighter animate-pulse">¡RECONSTITUIR!</Badge>}
+                            {hasCritical && <Badge className="bg-destructive text-[8px] font-black uppercase tracking-tighter animate-pulse">¡FALTA STOCK!</Badge>}
                           </div>
                           <div className="flex flex-wrap gap-2 mt-1">
-                            {/* Reemplazado prod. y % por Unidades Vendidas según solicitud */}
                             <Badge variant="outline" className="text-[9px] font-black uppercase bg-primary/5 text-primary border-primary/20 rounded-lg px-2.5 py-1">
                               Ventas: {cat.unitsSold} u.
                             </Badge>
@@ -313,8 +318,8 @@ export default function ReportsPage() {
                     <AccordionContent className="px-3 md:px-6 pb-6 pt-2 bg-slate-50/50">
                       <div className="grid gap-2 mt-2">
                         <div className="flex items-center justify-between px-2 mb-2">
-                          <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Desempeño por producto</span>
-                          <span className="text-[10px] font-bold text-slate-400">Total unidades: {cat.unitsSold}</span>
+                          <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Rendimiento por producto (Mayores ventas primero)</span>
+                          <span className="text-[10px] font-bold text-slate-400">Total period: {cat.unitsSold} u.</span>
                         </div>
                         {cat.products.map((p: any) => {
                           const status = getProductStatus(p.stock, p.idealStock);
@@ -330,15 +335,21 @@ export default function ReportsPage() {
                                  <ShieldCheck className="w-5 h-5 text-green-500" />}
                                 <div className="min-w-0">
                                   <p className="font-bold text-sm text-slate-700 truncate">{p.name}</p>
-                                  <p className="text-[10px] text-slate-400 font-bold uppercase">
-                                    Stock: <span className={cn(status === 'danger' ? "text-destructive font-black" : "text-slate-500")}>{p.stock}</span> / Ideal: {p.idealStock}
-                                  </p>
+                                  <div className="flex items-center gap-2 mt-0.5">
+                                    <span className="text-[10px] text-slate-400 font-bold uppercase">
+                                      Stock: <span className={cn(status === 'danger' ? "text-destructive font-black" : "text-slate-500")}>{p.stock}</span> / Ideal: {p.idealStock}
+                                    </span>
+                                    <span className="text-slate-300">•</span>
+                                    <span className="text-[10px] text-primary font-black flex items-center gap-1">
+                                      <Tag className="w-2.5 h-2.5" /> ${Math.round(p.price).toLocaleString('es-CL')}
+                                    </span>
+                                  </div>
                                 </div>
                               </div>
                               
                               <div className="flex items-center justify-between sm:justify-end gap-6 sm:gap-8 w-full sm:w-auto border-t sm:border-t-0 pt-3 sm:pt-0">
                                 <div className="flex flex-col items-start sm:items-end">
-                                  <p className="text-[9px] font-black text-primary uppercase tracking-widest mb-0.5">Llevados</p>
+                                  <p className="text-[9px] font-black text-primary uppercase tracking-widest mb-0.5">Vendidos</p>
                                   <div className="flex items-center gap-1.5">
                                     <span className="text-2xl font-black text-primary leading-none">{p.soldThisPeriod}</span>
                                     <span className="text-[10px] font-black text-primary/60 uppercase">u.</span>
@@ -346,7 +357,7 @@ export default function ReportsPage() {
                                 </div>
                                 
                                 <div className="flex flex-col items-end min-w-[100px]">
-                                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Ingreso Total</p>
+                                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Subtotal</p>
                                   <p className="text-lg font-black text-slate-800 font-mono leading-none tracking-tighter">
                                     ${productTotalRevenue.toLocaleString('es-CL')}
                                   </p>
@@ -372,14 +383,14 @@ export default function ReportsPage() {
                 Los más vendidos
               </CardTitle>
               <CardDescription className="text-xs font-bold uppercase tracking-widest text-slate-400">
-                Ranking basado en unidades despachadas
+                Basado en unidades totales del periodo
               </CardDescription>
             </CardHeader>
             <CardContent>
               {topProducts.length === 0 ? (
                 <div className="text-center py-20 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
                    <Package className="w-16 h-16 mx-auto mb-4 text-slate-200" />
-                   <p className="text-slate-400 font-bold uppercase tracking-widest">No hay ventas registradas</p>
+                   <p className="text-slate-400 font-bold uppercase tracking-widest">No hay ventas en este periodo</p>
                 </div>
               ) : (
                 <div className="space-y-4">
