@@ -37,6 +37,7 @@ export default function InventoryPage() {
   const [quickAddValue, setQuickAddValue] = useState("");
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
   
+  // scanProcessedRef actúa como un guardia que solo permite UN escaneo por sesión
   const scanProcessedRef = useRef(false);
   const { toast } = useToast();
 
@@ -143,18 +144,20 @@ export default function InventoryPage() {
   };
 
   const handleScanResult = (barcode: string) => {
-    if (scanProcessedRef.current) return;
-    scanProcessedRef.current = true;
+    // PROTECCIÓN CRÍTICA: Si ya estamos procesando un código o hay uno en pantalla, ignorar.
+    if (scanProcessedRef.current || pendingBarcode !== null) return;
     
-    setIsScannerOpen(false);
-    setPendingBarcode(barcode);
+    scanProcessedRef.current = true;
+    setIsScannerOpen(false); // Cerramos el escáner inmediatamente
+    setPendingBarcode(barcode); // Mostramos el aviso de código detectado
   };
 
   const handleDiscardPending = () => {
     setPendingBarcode(null);
-    scanProcessedRef.current = false;
+    // NOTA: NO reseteamos scanProcessedRef.current aquí.
+    // Esto garantiza que el mismo código no re-dispare el diálogo mientras la cámara se apaga.
+    // El reseteo ocurrirá cuando el usuario pulse de nuevo el botón "Escanear".
     
-    // Restauramos controles de interfaz
     document.body.style.pointerEvents = 'auto';
     document.body.style.overflow = 'auto';
   };
@@ -172,10 +175,9 @@ export default function InventoryPage() {
     // Limpiamos aviso de código pendiente antes de abrir editor
     setPendingBarcode(null);
     
-    // Abrimos editor tras pequeña pausa para limpiar el DOM y liberar focos
+    // Abrimos editor tras pequeña pausa para limpiar el DOM
     setTimeout(() => {
       setIsDialogOpen(true);
-      // El reset de scanProcessedRef ocurre al cerrar el diálogo de edición
     }, 150);
   };
 
@@ -183,16 +185,16 @@ export default function InventoryPage() {
     setIsDialogOpen(false);
     setSelectedProduct(null);
     setPendingBarcode(null);
-    // Permitimos nuevos escaneos tras cerrar el editor
+    // Permitimos nuevos escaneos tras cerrar el editor después de un cooldown
     setTimeout(() => {
       scanProcessedRef.current = false;
     }, 500);
   };
 
   const handleOpenScanner = () => {
-    // REINICIO TOTAL: Limpia cualquier residuo de escaneos anteriores
+    // REINICIO TOTAL: Limpia absolutamente todo antes de abrir la cámara
     setPendingBarcode(null);
-    scanProcessedRef.current = false;
+    scanProcessedRef.current = false; 
     setIsScannerOpen(true);
   };
 
