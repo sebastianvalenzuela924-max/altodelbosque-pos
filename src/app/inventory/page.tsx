@@ -8,7 +8,7 @@ import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Search, FileSpreadsheet, Edit3, Plus, Trash2, Package, Scan, Loader2, ShieldAlert, ShieldCheck, ShieldQuestion, MousePointer2 } from "lucide-react";
+import { Search, FileSpreadsheet, Edit3, Plus, Trash2, Package, Scan, Loader2, ShieldAlert, ShieldCheck, ShieldQuestion, MousePointer2, Filter } from "lucide-react";
 import { exportToExcel } from "@/lib/export";
 import { useToast } from "@/hooks/use-toast";
 import { ProductDialog } from "@/components/inventory/ProductDialog";
@@ -17,6 +17,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type SortOption = "name" | "stock-asc" | "stock-desc" | "status-critical" | "price-asc" | "price-desc" | "category-asc" | "category-desc";
 
@@ -25,6 +26,7 @@ export default function InventoryPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>("name");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
@@ -36,11 +38,9 @@ export default function InventoryPage() {
   const [quickAddValue, setQuickAddValue] = useState("");
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
   
-  // scanProcessedRef actúa como un guardia que solo permite UN escaneo por sesión
   const scanProcessedRef = useRef(false);
   const { toast } = useToast();
 
-  // FAIL-SAFE: Asegura que el navegador recupere el control cuando todo se cierra
   useEffect(() => {
     const isAnyModalOpen = isDialogOpen || isScannerOpen || (pendingBarcode !== null) || !!productToDelete || !!quickStockProduct;
     if (!isAnyModalOpen) {
@@ -89,7 +89,10 @@ export default function InventoryPage() {
     let filtered = products.filter(p => {
       const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.id.includes(searchTerm);
       const matchesCategory = categoryFilter === "all" || (p.category || "General") === categoryFilter;
-      return matchesSearch && matchesCategory;
+      const status = getProductStatus(p.stock, p.idealStock);
+      const matchesStatus = statusFilter === "all" || status === statusFilter;
+      
+      return matchesSearch && matchesCategory && matchesStatus;
     });
 
     return filtered.sort((a, b) => {
@@ -108,10 +111,10 @@ export default function InventoryPage() {
         case "category-asc": return (a.category || "").localeCompare(b.category || "");
         case "category-desc": return (b.category || "").localeCompare(b.category || "");
         case "name":
-        default: return a.name.localeCompare(b.name);
+        default: return a.name.compareLocale ? a.name.localeCompare(b.name) : a.name > b.name ? 1 : -1;
       }
     });
-  }, [products, searchTerm, sortBy, categoryFilter]);
+  }, [products, searchTerm, sortBy, categoryFilter, statusFilter]);
 
   const handlePointerDown = (product: any) => {
     longPressTimer.current = setTimeout(() => {
@@ -143,20 +146,15 @@ export default function InventoryPage() {
   };
 
   const handleScanResult = (barcode: string) => {
-    // PROTECCIÓN CRÍTICA: Si ya estamos procesando un código o hay uno en pantalla, ignorar.
     if (scanProcessedRef.current || pendingBarcode !== null) return;
     
     scanProcessedRef.current = true;
-    setIsScannerOpen(false); // Cerramos el escáner inmediatamente
-    setPendingBarcode(barcode); // Mostramos el aviso de código detectado
+    setIsScannerOpen(false); 
+    setPendingBarcode(barcode); 
   };
 
   const handleDiscardPending = () => {
     setPendingBarcode(null);
-    // NOTA: NO reseteamos scanProcessedRef.current aquí.
-    // Esto garantiza que el mismo código no re-dispare el diálogo mientras la cámara se apaga.
-    // El reseteo ocurrirá cuando el usuario pulse de nuevo el botón "Escanear".
-    
     document.body.style.pointerEvents = 'auto';
     document.body.style.overflow = 'auto';
   };
@@ -170,11 +168,8 @@ export default function InventoryPage() {
 
     const existing = products?.find(p => p.id === barcode);
     setSelectedProduct(existing || { id: barcode });
-    
-    // Limpiamos aviso de código pendiente antes de abrir editor
     setPendingBarcode(null);
     
-    // Abrimos editor tras pequeña pausa para limpiar el DOM
     setTimeout(() => {
       setIsDialogOpen(true);
     }, 150);
@@ -184,14 +179,12 @@ export default function InventoryPage() {
     setIsDialogOpen(false);
     setSelectedProduct(null);
     setPendingBarcode(null);
-    // Permitimos nuevos escaneos tras cerrar el editor después de un cooldown
     setTimeout(() => {
       scanProcessedRef.current = false;
     }, 500);
   };
 
   const handleOpenScanner = () => {
-    // REINICIO TOTAL: Limpia absolutamente todo antes de abrir la cámara
     setPendingBarcode(null);
     scanProcessedRef.current = false; 
     setIsScannerOpen(true);
@@ -224,10 +217,58 @@ export default function InventoryPage() {
       </div>
 
       <Card className="border-none shadow-xl rounded-3xl overflow-hidden">
-        <CardHeader className="bg-slate-50/50 pb-6 border-b">
-          <div className="relative">
+        <CardHeader className="bg-slate-50/50 pb-6 border-b space-y-4">
+          <div className="relative w-full">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input className="pl-12 h-12 bg-white rounded-2xl font-bold" placeholder="Buscar..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+            <Input className="pl-12 h-12 bg-white rounded-2xl font-bold border-none shadow-sm" placeholder="Buscar por nombre o código..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+          </div>
+          
+          <div className="flex flex-wrap gap-2 items-center">
+            <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-2xl shadow-sm border border-slate-100 flex-1 md:flex-none">
+              <Filter className="w-3 h-3 text-slate-400" />
+              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                <SelectTrigger className="border-none h-8 p-0 focus:ring-0 shadow-none font-bold text-xs min-w-[120px]">
+                  <SelectValue placeholder="Categoría" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border-none shadow-2xl">
+                  <SelectItem value="all" className="text-xs font-bold">Todas las Categorías</SelectItem>
+                  {categories.map(cat => (
+                    <SelectItem key={cat} value={cat} className="text-xs font-bold">{cat}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-2xl shadow-sm border border-slate-100 flex-1 md:flex-none">
+              <ShieldCheck className="w-3 h-3 text-slate-400" />
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="border-none h-8 p-0 focus:ring-0 shadow-none font-bold text-xs min-w-[120px]">
+                  <SelectValue placeholder="Estado de Stock" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border-none shadow-2xl">
+                  <SelectItem value="all" className="text-xs font-bold">Cualquier Estado</SelectItem>
+                  <SelectItem value="peligro" className="text-xs font-bold text-destructive">Peligro (Crítico)</SelectItem>
+                  <SelectItem value="precaución" className="text-xs font-bold text-amber-600">Precaución (Bajo)</SelectItem>
+                  <SelectItem value="ok" className="text-xs font-bold text-green-600">Estado OK</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-2xl shadow-sm border border-slate-100 flex-1 md:flex-none ml-auto">
+              <Select value={sortBy} onValueChange={(v: SortOption) => setSortBy(v)}>
+                <SelectTrigger className="border-none h-8 p-0 focus:ring-0 shadow-none font-bold text-xs min-w-[140px]">
+                  <SelectValue placeholder="Ordenar por..." />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border-none shadow-2xl">
+                  <SelectItem value="name" className="text-xs font-bold">Nombre (A-Z)</SelectItem>
+                  <SelectItem value="status-critical" className="text-xs font-bold">Urgencia de Reposición</SelectItem>
+                  <SelectItem value="stock-asc" className="text-xs font-bold">Menor Stock</SelectItem>
+                  <SelectItem value="stock-desc" className="text-xs font-bold">Mayor Stock</SelectItem>
+                  <SelectItem value="price-asc" className="text-xs font-bold">Precio más bajo</SelectItem>
+                  <SelectItem value="price-desc" className="text-xs font-bold">Precio más alto</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="p-0">
@@ -244,6 +285,12 @@ export default function InventoryPage() {
             <TableBody>
               {isLoading ? (
                 <TableRow><TableCell colSpan={5} className="h-64 text-center"><Loader2 className="w-8 h-8 animate-spin mx-auto" /></TableCell></TableRow>
+              ) : processedProducts.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="h-64 text-center text-slate-400 font-bold uppercase tracking-widest">
+                    No se encontraron productos con estos filtros
+                  </TableCell>
+                </TableRow>
               ) : processedProducts.map((p) => {
                 const status = getProductStatus(p.stock, p.idealStock);
                 return (
@@ -336,7 +383,6 @@ export default function InventoryPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Aviso Código Detectado - Campo Editable */}
       <Dialog open={pendingBarcode !== null} onOpenChange={(open) => !open && handleDiscardPending()}>
         <DialogContent 
           className="rounded-3xl p-8 max-w-[90vw] sm:max-w-lg border-none shadow-2xl"
