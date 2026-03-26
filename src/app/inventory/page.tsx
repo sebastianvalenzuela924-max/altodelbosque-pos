@@ -47,7 +47,6 @@ export default function InventoryPage() {
     if (!isAnyModalOpen) {
       document.body.style.pointerEvents = 'auto';
       document.body.style.overflow = 'auto';
-      scanProcessedRef.current = false;
     }
   }, [isDialogOpen, isScannerOpen, pendingBarcode, productToDelete, quickStockProduct]);
 
@@ -156,28 +155,42 @@ export default function InventoryPage() {
   const handleDiscardPending = () => {
     setPendingBarcode(null);
     setScannedBarcode(null);
-    scanProcessedRef.current = false;
-    // Forzamos restauración de eventos
+    
+    // Restauramos controles de interfaz
+    document.body.style.pointerEvents = 'auto';
+    document.body.style.overflow = 'auto';
+
+    // Pequeño retardo antes de permitir otro escaneo para evitar bucles si el producto sigue ahí
     setTimeout(() => {
-      document.body.style.pointerEvents = 'auto';
-      document.body.style.overflow = 'auto';
-    }, 100);
+      scanProcessedRef.current = false;
+    }, 1000);
   };
 
   const handleConfirmScanAndEdit = () => {
     const barcode = scannedBarcode;
     if (!barcode) return;
 
+    // Guardamos referencia y limpiamos aviso
     setPendingBarcode(null);
     setScannedBarcode(null);
-    scanProcessedRef.current = true; // Mantenemos bloqueado hasta abrir el editor
-
+    
     const existing = products?.find(p => p.id === barcode);
     setSelectedProduct(existing || { id: barcode });
     
+    // Abrimos editor tras pequeña pausa para limpiar el DOM
     setTimeout(() => {
       setIsDialogOpen(true);
-    }, 200);
+      // scanProcessedRef se mantiene true hasta que el diálogo de edición se cierre (en onClose)
+    }, 150);
+  };
+
+  const handleCloseProductDialog = () => {
+    setIsDialogOpen(false);
+    setSelectedProduct(null);
+    // Permitimos nuevos escaneos tras cerrar el editor
+    setTimeout(() => {
+      scanProcessedRef.current = false;
+    }, 500);
   };
 
   return (
@@ -310,7 +323,7 @@ export default function InventoryPage() {
         </DialogContent>
       </Dialog>
 
-      <ProductDialog open={isDialogOpen} onClose={() => setIsDialogOpen(false)} product={selectedProduct} categories={categories} onSaved={() => {}} />
+      <ProductDialog open={isDialogOpen} onClose={handleCloseProductDialog} product={selectedProduct} categories={categories} onSaved={() => {}} />
 
       <Dialog open={isScannerOpen} onOpenChange={setIsScannerOpen}>
         <DialogContent className="p-0 overflow-hidden rounded-3xl max-w-[90vw] sm:max-w-2xl border-none shadow-2xl">
@@ -322,7 +335,7 @@ export default function InventoryPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Aviso Código Detectado - Reemplazado por Dialog con X */}
+      {/* Aviso Código Detectado */}
       <Dialog open={!!pendingBarcode} onOpenChange={(open) => !open && handleDiscardPending()}>
         <DialogContent className="rounded-3xl p-8 max-w-[90vw] sm:max-w-lg border-none shadow-2xl">
           <DialogHeader>
@@ -338,7 +351,7 @@ export default function InventoryPage() {
               EDITAR / CREAR PRODUCTO
             </Button>
             <p className="text-[10px] text-center text-slate-400 font-black uppercase tracking-widest mt-4">
-              Pulsa la X o fuera para cancelar
+              Pulsa la X o fuera para salir
             </p>
           </div>
         </DialogContent>
