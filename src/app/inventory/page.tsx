@@ -43,7 +43,7 @@ export default function InventoryPage() {
 
   // FAIL-SAFE: Asegura que el navegador recupere el control cuando todo se cierra
   useEffect(() => {
-    const isAnyModalOpen = isDialogOpen || isScannerOpen || !!pendingBarcode || !!productToDelete || !!quickStockProduct;
+    const isAnyModalOpen = isDialogOpen || isScannerOpen || (pendingBarcode !== null) || !!productToDelete || !!quickStockProduct;
     if (!isAnyModalOpen) {
       document.body.style.pointerEvents = 'auto';
       document.body.style.overflow = 'auto';
@@ -167,8 +167,11 @@ export default function InventoryPage() {
   };
 
   const handleConfirmScanAndEdit = () => {
-    const barcode = scannedBarcode;
-    if (!barcode) return;
+    const barcode = pendingBarcode?.trim();
+    if (!barcode) {
+      toast({ title: "Código requerido", variant: "destructive" });
+      return;
+    }
 
     // Guardamos referencia y limpiamos aviso
     setPendingBarcode(null);
@@ -336,14 +339,17 @@ export default function InventoryPage() {
       </Dialog>
 
       {/* Aviso Código Detectado */}
-      <Dialog open={!!pendingBarcode} onOpenChange={(open) => !open && handleDiscardPending()}>
+      <Dialog open={pendingBarcode !== null} onOpenChange={(open) => !open && handleDiscardPending()}>
         <DialogContent className="rounded-3xl p-8 max-w-[90vw] sm:max-w-lg border-none shadow-2xl">
           <DialogHeader>
             <DialogTitle className="text-2xl font-black text-primary text-center">Código Detectado</DialogTitle>
-            <DialogDescription className="text-center py-4">
-              <span className="font-mono font-bold text-3xl text-slate-800 bg-slate-100 px-6 py-3 rounded-2xl inline-block border-2 border-slate-200">
-                {pendingBarcode}
-              </span>
+            <DialogDescription className="text-center py-4 space-y-2">
+              <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Puedes corregir el código si es necesario:</Label>
+              <Input 
+                className="font-mono font-bold text-3xl text-center text-slate-800 bg-slate-100 h-16 rounded-2xl border-2 border-slate-200 focus-visible:ring-primary"
+                value={pendingBarcode || ""} 
+                onChange={(e) => setPendingBarcode(e.target.value)}
+              />
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-2 mt-4">
