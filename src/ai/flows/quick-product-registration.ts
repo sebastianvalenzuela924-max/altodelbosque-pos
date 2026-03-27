@@ -18,6 +18,7 @@ const QuickProductRegistrationOutputSchema = z.object({
   suggestedPrice: z.number().min(0).describe('A suggested price.'),
   suggestedCategory: z.string().describe('A suggested category.'),
   suggestedIdealStock: z.number().describe('A suggested normal/ideal stock level for this item.'),
+  suggestedDistributor: z.string().optional().describe('A suggested distributor or company name for the product.'),
 });
 export type QuickProductRegistrationOutput = z.infer<typeof QuickProductRegistrationOutputSchema>;
 
@@ -30,7 +31,7 @@ const prompt = ai.definePrompt({
   input: {schema: QuickProductRegistrationInputSchema},
   output: {schema: QuickProductRegistrationOutputSchema},
   prompt: `You are an AI assistant for a POS system. Suggest details for a new product based on its barcode.
-Suggest a name, price, category, and an "ideal stock" level (how many units should normally be in stock).
+Suggest a name, price, category, distributor/company name, and an "ideal stock" level (how many units should normally be in stock).
 
 Barcode: {{{barcode}}}
 {{#if existingProductNames}}

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useRef, useEffect, Suspense } from "react";
@@ -8,7 +9,7 @@ import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Search, FileSpreadsheet, Edit3, Plus, Trash2, Package, Scan, Loader2, ShieldAlert, ShieldCheck, ShieldQuestion, MousePointer2, Filter, X, Tag } from "lucide-react";
+import { Search, FileSpreadsheet, Edit3, Plus, Trash2, Package, Scan, Loader2, ShieldAlert, ShieldCheck, ShieldQuestion, MousePointer2, Filter, X, Tag, Truck } from "lucide-react";
 import { exportToExcel } from "@/lib/export";
 import { useToast } from "@/hooks/use-toast";
 import { ProductDialog } from "@/components/inventory/ProductDialog";
@@ -20,7 +21,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSearchParams, useRouter } from "next/navigation";
 
-type SortOption = "name" | "stock-asc" | "stock-desc" | "status-critical" | "price-asc" | "price-desc" | "category-asc" | "category-desc";
+type SortOption = "name" | "stock-asc" | "stock-desc" | "status-critical" | "price-asc" | "price-desc" | "category-asc" | "category-desc" | "distributor-asc";
 
 function InventoryContent() {
   const firestore = useFirestore();
@@ -29,6 +30,7 @@ function InventoryContent() {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>("name");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [distributorFilter, setDistributorFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -77,6 +79,12 @@ function InventoryContent() {
     return Array.from(cats).sort();
   }, [products]);
 
+  const distributors = useMemo(() => {
+    if (!products) return [];
+    const dists = new Set(products.filter(p => p.distributor).map(p => p.distributor));
+    return Array.from(dists).sort();
+  }, [products]);
+
   const getProductStatus = (stock: number, ideal: number, warning?: number) => {
     if (warning !== undefined && warning > 0) {
       return stock < warning ? "peligro" : "ok";
@@ -98,6 +106,7 @@ function InventoryContent() {
       Stock_Ideal: p.idealStock || 0,
       Stock_Aviso: p.warningStock || 0,
       Categoria: p.category || "General",
+      Distribuidora: p.distributor || "N/A",
       Estado: getProductStatus(p.stock, p.idealStock, p.warningStock).toUpperCase()
     }));
     exportToExcel("Inventario_AltodelBosque_Completo", data, "Productos");
@@ -111,10 +120,11 @@ function InventoryContent() {
       const q = searchTerm.toLowerCase().trim();
       const matchesSearch = q === "" || p.name.toLowerCase().includes(q) || String(p.id).includes(q);
       const matchesCategory = categoryFilter === "all" || (p.category || "General") === categoryFilter;
+      const matchesDistributor = distributorFilter === "all" || (p.distributor || "") === distributorFilter;
       const status = getProductStatus(p.stock, p.idealStock, p.warningStock);
       const matchesStatus = statusFilter === "all" || status === statusFilter;
       
-      return matchesSearch && matchesCategory && matchesStatus;
+      return matchesSearch && matchesCategory && matchesDistributor && matchesStatus;
     });
 
     return filtered.sort((a, b) => {
@@ -132,11 +142,12 @@ function InventoryContent() {
           return 0;
         case "category-asc": return (a.category || "").localeCompare(b.category || "");
         case "category-desc": return (b.category || "").localeCompare(b.category || "");
+        case "distributor-asc": return (a.distributor || "").localeCompare(b.distributor || "");
         case "name":
         default: return a.name.localeCompare(b.name);
       }
     });
-  }, [products, searchTerm, sortBy, categoryFilter, statusFilter]);
+  }, [products, searchTerm, sortBy, categoryFilter, distributorFilter, statusFilter]);
 
   const handlePointerDown = (product: any) => {
     longPressTimer.current = setTimeout(() => {
@@ -267,6 +278,21 @@ function InventoryContent() {
             </div>
 
             <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-2xl shadow-sm border border-slate-100 flex-1 md:flex-none">
+              <Truck className="w-3 h-3 text-slate-400" />
+              <Select value={distributorFilter} onValueChange={setDistributorFilter}>
+                <SelectTrigger className="border-none h-8 p-0 focus:ring-0 shadow-none font-bold text-xs min-w-[120px]">
+                  <SelectValue placeholder="Distribuidora" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border-none shadow-2xl">
+                  <SelectItem value="all" className="text-xs font-bold">Todas las Distribuidoras</SelectItem>
+                  {distributors.map(dist => (
+                    <SelectItem key={dist} value={dist} className="text-xs font-bold">{dist}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-2xl shadow-sm border border-slate-100 flex-1 md:flex-none">
               <ShieldCheck className="w-3 h-3 text-slate-400" />
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="border-none h-8 p-0 focus:ring-0 shadow-none font-bold text-xs min-w-[120px]">
@@ -293,6 +319,7 @@ function InventoryContent() {
                   <SelectItem value="stock-desc" className="text-xs font-bold">Mayor Stock</SelectItem>
                   <SelectItem value="price-asc" className="text-xs font-bold">Precio más bajo</SelectItem>
                   <SelectItem value="price-desc" className="text-xs font-bold">Precio más alto</SelectItem>
+                  <SelectItem value="distributor-asc" className="text-xs font-bold">Distribuidora (A-Z)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -308,16 +335,17 @@ function InventoryContent() {
                   <TableHead className="px-6 font-black uppercase text-[10px] tracking-widest min-w-[120px]">Categoría</TableHead>
                   <TableHead className="px-6 font-black uppercase text-[10px] tracking-widest min-w-[120px]">Precio Unitario</TableHead>
                   <TableHead className="px-6 font-black uppercase text-[10px] tracking-widest min-w-[140px]">Precio Neto (Sin IVA)</TableHead>
+                  <TableHead className="px-6 font-black uppercase text-[10px] tracking-widest min-w-[140px]">Distribuidora</TableHead>
                   <TableHead className="px-6 font-black uppercase text-[10px] tracking-widest min-w-[120px]">Estado</TableHead>
                   <TableHead className="px-6 text-right font-black uppercase text-[10px] tracking-widest min-w-[100px]">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading ? (
-                  <TableRow><TableCell colSpan={7} className="h-64 text-center"><Loader2 className="w-8 h-8 animate-spin mx-auto" /></TableCell></TableRow>
+                  <TableRow><TableCell colSpan={8} className="h-64 text-center"><Loader2 className="w-8 h-8 animate-spin mx-auto" /></TableCell></TableRow>
                 ) : processedProducts.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="h-64 text-center text-slate-400 font-bold uppercase tracking-widest">
+                    <TableCell colSpan={8} className="h-64 text-center text-slate-400 font-bold uppercase tracking-widest">
                       No se encontraron productos con estos filtros
                     </TableCell>
                   </TableRow>
@@ -363,6 +391,9 @@ function InventoryContent() {
                           <span className="font-black text-slate-600 text-sm">${netPrice.toLocaleString('es-CL')}</span>
                           <span className="text-[8px] text-slate-400 font-black uppercase tracking-widest">Neto (IVA)</span>
                         </div>
+                      </TableCell>
+                      <TableCell className="px-6">
+                        <span className="text-xs font-bold text-slate-600">{p.distributor || "No definida"}</span>
                       </TableCell>
                       <TableCell className="px-6">
                         {status === "peligro" ? (

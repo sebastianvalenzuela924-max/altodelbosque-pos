@@ -34,6 +34,10 @@
         "category": {
           "type": "string",
           "description": "The category the product belongs to."
+        },
+        "distributor": {
+          "type": "string",
+          "description": "The name of the company or distributor providing the product."
         }
       },
       "required": [

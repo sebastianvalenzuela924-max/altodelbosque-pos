@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { useFirestore, setDocumentNonBlocking } from "@/firebase";
 import { doc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Package, Tag, Target, HelpCircle, AlertTriangle } from "lucide-react";
+import { Loader2, Package, Tag, Target, HelpCircle, AlertTriangle, Truck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -31,7 +31,8 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
     stock: "",
     idealStock: "",
     warningStock: "",
-    category: ""
+    category: "",
+    distributor: ""
   });
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -45,7 +46,8 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
         stock: (product.stock !== undefined && product.stock !== null) ? product.stock.toString() : "",
         idealStock: (product.idealStock !== undefined && product.idealStock !== null) ? product.idealStock.toString() : "",
         warningStock: (product.warningStock !== undefined && product.warningStock !== null) ? product.warningStock.toString() : "",
-        category: product.category || ""
+        category: product.category || "",
+        distributor: product.distributor || ""
       });
     } else {
       setFormData({
@@ -55,7 +57,8 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
         stock: "",
         idealStock: "10",
         warningStock: "",
-        category: ""
+        category: "",
+        distributor: ""
       });
     }
   }, [product, open]);
@@ -81,7 +84,8 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
       stock: parseInt(formData.stock) || 0,
       idealStock: formData.idealStock ? parseInt(formData.idealStock) : null,
       warningStock: formData.warningStock ? parseInt(formData.warningStock) : null,
-      category: finalCategory
+      category: finalCategory,
+      distributor: formData.distributor.trim()
     };
 
     setDocumentNonBlocking(docRef, data, { merge: true });
@@ -133,13 +137,25 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
             <Input id="name" value={formData.name} className="h-12 rounded-xl bg-slate-50 border-none font-bold text-lg" onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="Ej: Empanada de Pino" autoFocus />
           </div>
 
-          <div className="grid gap-2">
-            <Label htmlFor="category" className="font-bold text-slate-500 text-xs uppercase tracking-widest flex items-center gap-2">
-              <Tag className="w-3 h-3" /> Categoría
-            </Label>
-            <Input id="category" value={formData.category} className="h-12 rounded-xl bg-slate-50 border-none font-bold" onChange={e => setFormData({ ...formData, category: e.target.value })} placeholder="Escribe o selecciona..." />
-            {categories.length > 0 && (
-              <ScrollArea className="w-full whitespace-nowrap pb-2 mt-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="category" className="font-bold text-slate-500 text-xs uppercase tracking-widest flex items-center gap-2">
+                <Tag className="w-3 h-3" /> Categoría
+              </Label>
+              <Input id="category" value={formData.category} className="h-12 rounded-xl bg-slate-50 border-none font-bold" onChange={e => setFormData({ ...formData, category: e.target.value })} placeholder="Ej: Bebidas" />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="distributor" className="font-bold text-slate-500 text-xs uppercase tracking-widest flex items-center gap-2">
+                <Truck className="w-3 h-3" /> Distribuidora
+              </Label>
+              <Input id="distributor" value={formData.distributor} className="h-12 rounded-xl bg-slate-50 border-none font-bold" onChange={e => setFormData({ ...formData, distributor: e.target.value })} placeholder="Ej: Coca Cola Embonor" />
+            </div>
+          </div>
+
+          {categories.length > 0 && (
+            <div className="grid gap-2">
+              <Label className="font-bold text-[10px] uppercase text-slate-400">Categorías Sugeridas</Label>
+              <ScrollArea className="w-full whitespace-nowrap pb-2">
                 <div className="flex gap-2">
                   {categories.map((cat) => (
                     <Badge key={cat} variant={formData.category.toLowerCase() === cat.toLowerCase() ? "default" : "secondary"} className="cursor-pointer rounded-lg px-3 py-1 font-bold text-[10px] uppercase" onClick={() => setFormData({ ...formData, category: cat })}>
@@ -149,8 +165,8 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
                 </div>
                 <ScrollBar orientation="horizontal" className="h-1" />
               </ScrollArea>
-            )}
-          </div>
+            </div>
+          )}
 
           <div className="grid gap-4">
             <div className="grid gap-2">

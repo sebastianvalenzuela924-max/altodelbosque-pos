@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { quickProductRegistration } from "@/ai/flows/quick-product-registration";
-import { Sparkles, Loader2, Barcode, Target, AlertTriangle } from "lucide-react";
+import { Sparkles, Loader2, Barcode, Target, AlertTriangle, Truck } from "lucide-react";
 import { useFirestore, setDocumentNonBlocking, useCollection, useMemoFirebase } from "@/firebase";
 import { doc, collection } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
@@ -32,6 +32,7 @@ export function QuickAddDialog({
   const [idealStock, setIdealStock] = useState("10");
   const [warningStock, setWarningStock] = useState("");
   const [category, setCategory] = useState("");
+  const [distributor, setDistributor] = useState("");
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
@@ -57,6 +58,7 @@ export function QuickAddDialog({
       setName(result.suggestedName);
       price === "" && setPrice(Math.round(result.suggestedPrice).toString());
       category === "" && setCategory(result.suggestedCategory);
+      distributor === "" && setDistributor(result.suggestedDistributor || "");
       setIdealStock(result.suggestedIdealStock.toString());
       setWarningStock("");
       toast({ title: "IA: Datos sugeridos" });
@@ -85,7 +87,8 @@ export function QuickAddDialog({
       stock: parseInt(stock) || 0,
       idealStock: idealStock ? parseInt(idealStock) : null,
       warningStock: warningStock ? parseInt(warningStock) : null,
-      category: finalCategory
+      category: finalCategory,
+      distributor: distributor.trim()
     };
 
     setDocumentNonBlocking(docRef, data, { merge: true });
@@ -116,21 +119,15 @@ export function QuickAddDialog({
                 <Input className="h-12 rounded-xl bg-slate-50 border-none font-bold" value={name} onChange={e => setName(e.target.value)} placeholder="Ej: Coca Cola" />
             </div>
 
-            <div className="grid gap-2">
-                <Label className="font-bold text-xs uppercase text-slate-500">Categoría</Label>
-                <Input value={category} className="h-12 rounded-xl bg-slate-50 border-none font-bold" onChange={e => setCategory(e.target.value)} placeholder="Categoría..." />
-                {existingCategories.length > 0 && (
-                  <ScrollArea className="w-full whitespace-nowrap pb-2 mt-2">
-                    <div className="flex gap-2">
-                      {existingCategories.map((cat) => (
-                        <Badge key={cat} variant={category.toLowerCase() === cat.toLowerCase() ? "default" : "secondary"} className="cursor-pointer rounded-lg px-3 py-1 font-bold text-[10px] uppercase" onClick={() => setCategory(cat)}>
-                          {cat}
-                        </Badge>
-                      ))}
-                    </div>
-                    <ScrollBar orientation="horizontal" className="h-1" />
-                  </ScrollArea>
-                )}
+            <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label className="font-bold text-xs uppercase text-slate-500">Categoría</Label>
+                  <Input value={category} className="h-12 rounded-xl bg-slate-50 border-none font-bold" onChange={e => setCategory(e.target.value)} placeholder="Ej: Bebidas" />
+                </div>
+                <div className="grid gap-2">
+                  <Label className="font-bold text-xs uppercase text-slate-500">Distribuidora</Label>
+                  <Input value={distributor} className="h-12 rounded-xl bg-slate-50 border-none font-bold" onChange={e => setDistributor(e.target.value)} placeholder="Empresa..." />
+                </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
