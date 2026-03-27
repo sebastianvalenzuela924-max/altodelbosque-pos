@@ -14,6 +14,30 @@ import { doc, collection, serverTimestamp, increment, query } from "firebase/fir
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
 
+// Función para emitir un "beep" de confirmación usando Web Audio API
+const playSuccessSound = () => {
+  if (typeof window === 'undefined') return;
+  try {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    const audioCtx = new AudioContextClass();
+    const oscillator = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // Frecuencia de confirmación (La5)
+    gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime); // Volumen suave
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+
+    oscillator.start();
+    oscillator.stop(audioCtx.currentTime + 0.1);
+  } catch (e) {
+    // Silencioso si falla (por ejemplo, restricciones de auto-play)
+  }
+};
+
 function ProductSearchBox({ 
   query, 
   setQuery, 
@@ -142,6 +166,9 @@ export default function POSPage() {
       }];
     });
     
+    // Feedback sonoro
+    playSuccessSound();
+
     // Feedback visual de escaneo exitoso
     setScanSuccess(true);
     setTimeout(() => setScanSuccess(false), 800);
@@ -165,7 +192,6 @@ export default function POSPage() {
     if (product) {
       handleAddItem(product);
     }
-    // No se muestra mensaje si el producto no es encontrado para evitar interrupciones.
   };
 
   const handleFinalize = (manualFinalAmount?: number) => {
@@ -293,10 +319,8 @@ export default function POSPage() {
             </h3>
           </div>
           <div className="relative group overflow-hidden rounded-3xl">
-            {/* El escáner se mantiene encendido */}
             <ScannerComponent onScan={handleScan} />
             
-            {/* Feedback visual persistente sobre la cámara */}
             <div className={cn(
               "absolute inset-0 z-50 pointer-events-none transition-all duration-500 flex items-center justify-center bg-green-500/20 border-[8px] border-green-500 rounded-3xl",
               scanSuccess ? "opacity-100 scale-100" : "opacity-0 scale-110"
