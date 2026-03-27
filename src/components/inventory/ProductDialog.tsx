@@ -82,8 +82,8 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
       name: formData.name,
       price: Math.round(parseFloat(formData.price)) || 0,
       stock: parseInt(formData.stock) || 0,
-      idealStock: formData.idealStock ? parseInt(formData.idealStock) : null,
-      warningStock: formData.warningStock ? parseInt(formData.warningStock) : null,
+      idealStock: formData.idealStock !== "" ? parseInt(formData.idealStock) : null,
+      warningStock: formData.warningStock !== "" ? parseInt(formData.warningStock) : null,
       category: finalCategory,
       distributor: formData.distributor.trim()
     };
@@ -144,7 +144,6 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
               </Label>
               <Input id="category" value={formData.category} className="h-12 rounded-xl bg-slate-50 border-none font-bold" onChange={e => setFormData({ ...formData, category: e.target.value })} placeholder="Ej: Bebidas" />
               
-              {/* Categorías sugeridas movidas aquí, debajo del input de Categoría */}
               {categories.length > 0 && (
                 <div className="grid gap-2 mt-1">
                   <Label className="font-bold text-[9px] uppercase text-slate-400">Sugerencias</Label>
@@ -212,7 +211,7 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
                 </div>
                </div>
                <p className="text-[8px] text-center text-slate-400 font-bold italic">
-                 {formData.warningStock ? "Usando 'Aviso': Peligro si el stock baja de este número." : "Usando 'Ideal': Peligro si el stock baja del 25% del ideal."}
+                 {formData.warningStock === "0" || formData.idealStock === "0" ? "Desactivado: El stock 0 marcará como OK." : (formData.warningStock ? "Peligro si el stock baja de este número." : "Peligro si el stock baja del 25% del ideal.")}
                </p>
             </div>
           </div>

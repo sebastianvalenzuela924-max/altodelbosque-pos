@@ -40,7 +40,10 @@ export default function ReportsPage() {
   const { data: allProducts, isLoading: isLoadingProducts } = useCollection(productsQuery);
 
   const getProductStatus = (stock: number, ideal: number, warning?: number) => {
-    if (warning !== undefined && warning > 0) {
+    // Si el umbral de aviso es 0 o el ideal es 0, desactivamos alertas de stock para este producto
+    if (warning === 0 || ideal === 0) return "ok";
+
+    if (warning !== undefined && warning !== null && warning > 0) {
       return stock < warning ? "danger" : "ok";
     }
     const idealVal = ideal || 10;
@@ -378,7 +381,7 @@ export default function ReportsPage() {
                                   <p className="font-bold text-sm text-slate-700 truncate">{p.name}</p>
                                   <div className="flex items-center gap-2 mt-0.5">
                                     <span className="text-[10px] text-slate-400 font-bold uppercase">
-                                      Stock: <span className={cn(status === 'danger' ? "text-destructive font-black" : "text-slate-500")}>{p.stock}</span> / {p.warningStock ? `Aviso: < ${p.warningStock}` : `Ideal: ${p.idealStock}`}
+                                      Stock: <span className={cn(status === 'danger' ? "text-destructive font-black" : "text-slate-500")}>{p.stock}</span> / {p.warningStock === 0 || p.idealStock === 0 ? "Sin alerta" : (p.warningStock ? `Aviso: < ${p.warningStock}` : `Ideal: ${p.idealStock}`)}
                                     </span>
                                     <span className="text-slate-300">•</span>
                                     <span className="text-[10px] text-primary font-black flex items-center gap-1">

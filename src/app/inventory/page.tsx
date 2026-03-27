@@ -86,9 +86,13 @@ function InventoryContent() {
   }, [products]);
 
   const getProductStatus = (stock: number, ideal: number, warning?: number) => {
-    if (warning !== undefined && warning > 0) {
+    // Si el umbral de aviso es 0 o el ideal es 0, desactivamos alertas de stock para este producto
+    if (warning === 0 || ideal === 0) return "ok";
+    
+    if (warning !== undefined && warning !== null && warning > 0) {
       return stock < warning ? "peligro" : "ok";
     }
+    
     const idealVal = ideal || 10;
     if (stock < idealVal * 0.25) return "peligro";
     if (stock < idealVal * 0.5) return "precaución";
@@ -373,7 +377,7 @@ function InventoryContent() {
                         <div className="flex flex-col">
                           <span className="font-black text-lg">{p.stock}</span>
                           <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
-                            {p.warningStock ? `Aviso: < ${p.warningStock}` : `Ideal: ${p.idealStock || 10}`}
+                            {p.warningStock === 0 || p.idealStock === 0 ? "Sin alerta de stock" : (p.warningStock ? `Aviso: < ${p.warningStock}` : `Ideal: ${p.idealStock || 10}`)}
                           </span>
                         </div>
                       </TableCell>
