@@ -164,13 +164,8 @@ export default function POSPage() {
 
     if (product) {
       handleAddItem(product);
-    } else {
-      toast({ 
-        variant: "destructive",
-        title: "Producto no encontrado", 
-        description: `El código ${cleanBarcode} no existe.`
-      });
     }
+    // No se muestra mensaje si el producto no es encontrado para evitar interrupciones.
   };
 
   const handleFinalize = (manualFinalAmount?: number) => {
