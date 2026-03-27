@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
@@ -194,7 +195,7 @@ export default function POSPage() {
     }
   };
 
-  const handleFinalize = (manualFinalAmount?: number) => {
+  const handleFinalize = (manualFinalAmount?: number, paymentMethod: 'cash' | 'card' = 'card') => {
     let currentManualItems = [...manualProducts];
     let currentCartTotal = total;
 
@@ -218,6 +219,7 @@ export default function POSPage() {
       id: saleId,
       totalAmount: Math.round(finalTotal),
       saleDateTime: serverTimestamp(),
+      paymentMethod,
       productSaleItemIds: items.map(i => i.id),
       manualSaleItemIds: currentManualItems.map((_, idx) => `manual-${idx}`),
       itemsSummary: [
@@ -275,7 +277,7 @@ export default function POSPage() {
     setManualProducts([]);
     setSearchQuery("");
     
-    toast({ title: "Venta Finalizada" });
+    toast({ title: `Venta Finalizada (${paymentMethod === 'cash' ? 'Efectivo' : 'Tarjeta'})` });
     
     setTimeout(() => {
       setIsProcessing(false);
@@ -325,7 +327,7 @@ export default function POSPage() {
               "absolute inset-0 z-50 pointer-events-none transition-all duration-500 flex items-center justify-center bg-green-500/20 border-[8px] border-green-500 rounded-3xl",
               scanSuccess ? "opacity-100 scale-100" : "opacity-0 scale-110"
             )}>
-              <div className="bg-green-500 text-white p-6 rounded-full shadow-2xl animate-in zoom-in-50 duration-300">
+              <div className="bg-green-50 text-white p-6 rounded-full shadow-2xl animate-in zoom-in-50 duration-300">
                 <Check className="w-16 h-16 stroke-[4]" />
               </div>
             </div>

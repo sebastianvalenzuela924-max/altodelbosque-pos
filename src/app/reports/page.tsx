@@ -1,9 +1,10 @@
+
 "use client";
 
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import { collection, query, orderBy } from "firebase/firestore";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { DollarSign, Package, TrendingUp, Calendar, ShoppingBag, Loader2, ListFilter, Trophy, CheckCircle2, Filter, ShieldAlert, ShieldCheck, AlertTriangle, Tag, ArrowRight, Wallet } from "lucide-react";
+import { DollarSign, Package, TrendingUp, Calendar, ShoppingBag, Loader2, ListFilter, Trophy, CheckCircle2, Filter, ShieldAlert, ShieldCheck, AlertTriangle, Tag, ArrowRight, Wallet, Banknote, CreditCard } from "lucide-react";
 import { useMemo, useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -74,6 +75,10 @@ export default function ReportsPage() {
       return true;
     });
   }, [allSales, dateFilter, customDate, mounted]);
+
+  const totalRevenue = filteredSales.reduce((sum, s) => sum + (s.totalAmount || 0), 0);
+  const totalCash = filteredSales.filter(s => s.paymentMethod === 'cash').reduce((sum, s) => sum + (s.totalAmount || 0), 0);
+  const totalCard = filteredSales.filter(s => s.paymentMethod !== 'cash').reduce((sum, s) => sum + (s.totalAmount || 0), 0);
 
   const categoryStats = useMemo(() => {
     if (!allProducts || !mounted) return [];
@@ -158,7 +163,6 @@ export default function ReportsPage() {
     );
   }
 
-  const totalRevenue = filteredSales.reduce((sum, s) => sum + (s.totalAmount || 0), 0);
   const totalSalesCount = filteredSales.length;
   const criticalProductsCount = allProducts?.filter(p => getProductStatus(p.stock, p.idealStock, p.warningStock) === "danger").length || 0;
   const inventoryHealth = allProducts?.length ? Math.round((allProducts.filter(p => getProductStatus(p.stock, p.idealStock, p.warningStock) === "ok").length / allProducts.length) * 100) : 100;
@@ -205,15 +209,39 @@ export default function ReportsPage() {
         </div>
       </header>
 
-      <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+      <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="border-none shadow-md bg-primary text-white rounded-3xl overflow-hidden relative group">
           <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
             <DollarSign className="w-16 h-16" />
           </div>
           <CardHeader className="pb-2">
-            <CardDescription className="text-white/60 font-black text-[10px] uppercase tracking-widest">Ingresos Periodo</CardDescription>
+            <CardDescription className="text-white/60 font-black text-[10px] uppercase tracking-widest">Ingresos Totales</CardDescription>
             <CardTitle className="text-2xl font-black font-mono tracking-tighter">
               ${Math.round(totalRevenue).toLocaleString('es-CL')}
+            </CardTitle>
+          </CardHeader>
+        </Card>
+
+        <Card className="border-none shadow-md bg-green-600 text-white rounded-3xl overflow-hidden relative group">
+          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
+            <Banknote className="w-16 h-16" />
+          </div>
+          <CardHeader className="pb-2">
+            <CardDescription className="text-white/60 font-black text-[10px] uppercase tracking-widest">Cobrado en Efectivo</CardDescription>
+            <CardTitle className="text-2xl font-black font-mono tracking-tighter">
+              ${Math.round(totalCash).toLocaleString('es-CL')}
+            </CardTitle>
+          </CardHeader>
+        </Card>
+
+        <Card className="border-none shadow-md bg-blue-600 text-white rounded-3xl overflow-hidden relative group">
+          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
+            <CreditCard className="w-16 h-16" />
+          </div>
+          <CardHeader className="pb-2">
+            <CardDescription className="text-white/60 font-black text-[10px] uppercase tracking-widest">Cobrado con Tarjeta</CardDescription>
+            <CardTitle className="text-2xl font-black font-mono tracking-tighter">
+              ${Math.round(totalCard).toLocaleString('es-CL')}
             </CardTitle>
           </CardHeader>
         </Card>
@@ -229,7 +257,9 @@ export default function ReportsPage() {
             </CardTitle>
           </CardHeader>
         </Card>
+      </section>
 
+      <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="border-none shadow-md bg-white rounded-3xl overflow-hidden relative group">
           <div className="absolute top-0 right-0 p-4 text-slate-100 group-hover:scale-110 transition-transform">
             <ShoppingBag className="w-16 h-16" />

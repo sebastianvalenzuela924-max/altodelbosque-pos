@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -8,7 +9,7 @@ import { cn } from "@/lib/utils";
 interface CalculatorComponentProps {
   baseValue: number;
   isProcessing?: boolean;
-  onFinalize: (amount: number) => void;
+  onFinalize: (amount: number, method: 'cash' | 'card') => void;
   onClearCart: () => void;
 }
 
@@ -123,7 +124,7 @@ export function CalculatorComponent({
   };
 
   const handleFinalizeInternal = () => {
-    onFinalize(currentTotal);
+    onFinalize(currentTotal, isCashMode ? 'cash' : 'card');
     // Limpieza tras cobrar
     setManualOps("");
     setCurrentInput("");

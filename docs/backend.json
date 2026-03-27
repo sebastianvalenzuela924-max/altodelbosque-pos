@@ -63,6 +63,11 @@
         "totalAmount": {
           "type": "number"
         },
+        "paymentMethod": {
+          "type": "string",
+          "enum": ["cash", "card"],
+          "description": "The method used for the payment."
+        },
         "productSaleItemIds": {
           "type": "array",
           "items": { "type": "string" }
