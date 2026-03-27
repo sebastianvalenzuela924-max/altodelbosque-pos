@@ -143,6 +143,28 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
                 <Tag className="w-3 h-3" /> Categoría
               </Label>
               <Input id="category" value={formData.category} className="h-12 rounded-xl bg-slate-50 border-none font-bold" onChange={e => setFormData({ ...formData, category: e.target.value })} placeholder="Ej: Bebidas" />
+              
+              {/* Categorías sugeridas movidas aquí, debajo del input de Categoría */}
+              {categories.length > 0 && (
+                <div className="grid gap-2 mt-1">
+                  <Label className="font-bold text-[9px] uppercase text-slate-400">Sugerencias</Label>
+                  <ScrollArea className="w-full whitespace-nowrap pb-2">
+                    <div className="flex gap-1.5">
+                      {categories.map((cat) => (
+                        <Badge 
+                          key={cat} 
+                          variant={formData.category.toLowerCase() === cat.toLowerCase() ? "default" : "secondary"} 
+                          className="cursor-pointer rounded-lg px-2.5 py-0.5 font-bold text-[8px] uppercase" 
+                          onClick={() => setFormData({ ...formData, category: cat })}
+                        >
+                          {cat}
+                        </Badge>
+                      ))}
+                    </div>
+                    <ScrollBar orientation="horizontal" className="h-1" />
+                  </ScrollArea>
+                </div>
+              )}
             </div>
             <div className="grid gap-2">
               <Label htmlFor="distributor" className="font-bold text-slate-500 text-xs uppercase tracking-widest flex items-center gap-2">
@@ -151,22 +173,6 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
               <Input id="distributor" value={formData.distributor} className="h-12 rounded-xl bg-slate-50 border-none font-bold" onChange={e => setFormData({ ...formData, distributor: e.target.value })} placeholder="Ej: Coca Cola Embonor" />
             </div>
           </div>
-
-          {categories.length > 0 && (
-            <div className="grid gap-2">
-              <Label className="font-bold text-[10px] uppercase text-slate-400">Categorías Sugeridas</Label>
-              <ScrollArea className="w-full whitespace-nowrap pb-2">
-                <div className="flex gap-2">
-                  {categories.map((cat) => (
-                    <Badge key={cat} variant={formData.category.toLowerCase() === cat.toLowerCase() ? "default" : "secondary"} className="cursor-pointer rounded-lg px-3 py-1 font-bold text-[10px] uppercase" onClick={() => setFormData({ ...formData, category: cat })}>
-                      {cat}
-                    </Badge>
-                  ))}
-                </div>
-                <ScrollBar orientation="horizontal" className="h-1" />
-              </ScrollArea>
-            </div>
-          )}
 
           <div className="grid gap-4">
             <div className="grid gap-2">
