@@ -258,8 +258,13 @@ export default function POSPage() {
       });
 
       const productRef = doc(firestore, "products", item.id);
+      
+      // LÓGICA ESPECIAL: Si el producto NO tiene alertas activas, SUMAMOS en vez de RESTAR.
+      const product = productMap.get(String(item.id).trim());
+      const noAlerts = product?.warningStock === 0 || product?.idealStock === 0;
+      
       updateDocumentNonBlocking(productRef, {
-        stock: increment(-item.quantity)
+        stock: increment(noAlerts ? item.quantity : -item.quantity)
       });
     });
 
