@@ -52,8 +52,21 @@ export default function HistoryPage() {
     return query(collection(firestore, "inventoryLogs"), orderBy("timestamp", "desc"));
   }, [firestore]);
 
+  const productsQuery = useMemoFirebase(() => {
+    return query(collection(firestore, "products"));
+  }, [firestore]);
+
   const { data: allSales, isLoading: isSalesLoading } = useCollection(salesQuery);
   const { data: allLogs, isLoading: isLogsLoading } = useCollection(logsQuery);
+  const { data: allProducts } = useCollection(productsQuery);
+
+  const productMap = useMemo(() => {
+    const map = new Map();
+    if (allProducts) {
+      allProducts.forEach(p => map.set(String(p.id).trim(), p));
+    }
+    return map;
+  }, [allProducts]);
 
   const applyDateFilter = (items: any[], dateField: string) => {
     if (!items || !isMounted) return [];
@@ -170,13 +183,26 @@ export default function HistoryPage() {
     }
 
     targets.forEach(t => {
-      // Si estamos borrando logs de stock en masa, también revertimos el stock
       if (deleteContext === 'inventoryLogs' && t.productId && t.quantity) {
-        const productRef = doc(firestore, "products", t.productId);
+        const productRef = doc(firestore, "products", String(t.productId).trim());
         updateDocumentNonBlocking(productRef, {
           stock: increment(-t.quantity)
         });
       }
+
+      if (deleteContext === 'sales' && t.itemsSummary) {
+        t.itemsSummary.forEach((item: any) => {
+          if (item.type === 'product' && item.id) {
+            const productRef = doc(firestore, "products", String(item.id).trim());
+            const product = productMap.get(String(item.id).trim());
+            const noAlerts = product?.warningStock === 0 || product?.idealStock === 0;
+            updateDocumentNonBlocking(productRef, {
+              stock: increment(noAlerts ? -item.quantity : item.quantity)
+            });
+          }
+        });
+      }
+
       deleteDocumentNonBlocking(doc(firestore, deleteContext, t.id));
     });
 
@@ -591,11 +617,23 @@ export default function HistoryPage() {
               variant="destructive" 
               className="rounded-xl h-12 flex-1 font-black uppercase"
               onClick={() => {
-                // Si estamos borrando un log de ingreso de stock individualmente, revertimos el stock en el inventario
                 if (deleteContext === 'inventoryLogs' && itemToDelete.productId && itemToDelete.quantity) {
-                  const productRef = doc(firestore, "products", itemToDelete.productId);
+                  const productRef = doc(firestore, "products", String(itemToDelete.productId).trim());
                   updateDocumentNonBlocking(productRef, {
                     stock: increment(-itemToDelete.quantity)
+                  });
+                }
+
+                if (deleteContext === 'sales' && itemToDelete.itemsSummary) {
+                  itemToDelete.itemsSummary.forEach((item: any) => {
+                    if (item.type === 'product' && item.id) {
+                      const productRef = doc(firestore, "products", String(item.id).trim());
+                      const product = productMap.get(String(item.id).trim());
+                      const noAlerts = product?.warningStock === 0 || product?.idealStock === 0;
+                      updateDocumentNonBlocking(productRef, {
+                        stock: increment(noAlerts ? -item.quantity : item.quantity)
+                      });
+                    }
                   });
                 }
 
