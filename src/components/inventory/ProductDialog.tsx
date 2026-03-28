@@ -110,6 +110,7 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent 
         className="max-w-[95vw] sm:max-w-lg border-none shadow-2xl rounded-3xl p-0 overflow-hidden max-h-[90vh] flex flex-col gap-0"
+        onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <DialogHeader className="p-6 pb-2 shrink-0 bg-white border-b z-10">
           <DialogTitle className="flex items-center gap-2 text-2xl font-black text-primary">
@@ -145,7 +146,7 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
           
           <div className="grid gap-2">
             <Label htmlFor="name" className="font-bold text-slate-500 text-xs uppercase tracking-widest">Nombre del Producto</Label>
-            <Input id="name" value={formData.name} className="h-12 rounded-xl bg-slate-50 border-none font-bold text-lg" onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="Ej: Empanada de Pino" autoFocus />
+            <Input id="name" value={formData.name} className="h-12 rounded-xl bg-slate-50 border-none font-bold text-lg" onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="Ej: Empanada de Pino" />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
