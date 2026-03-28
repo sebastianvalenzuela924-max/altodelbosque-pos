@@ -434,12 +434,12 @@ export default function POSPage() {
                 )}
                 
                 {items.map((item) => (
-                  <div key={item.id} className="p-3 sm:p-4 flex items-center gap-2 sm:gap-4 bg-white hover:bg-slate-50 transition-colors animate-in fade-in slide-in-from-left-2 duration-300">
+                  <div key={item.id} className="p-2 sm:p-4 flex items-center gap-2 sm:gap-4 bg-white hover:bg-slate-50 transition-colors animate-in fade-in slide-in-from-left-2 duration-300">
                     <div className="flex-1 min-w-0">
-                      <p className="font-bold text-sm text-slate-800 truncate">{item.name}</p>
-                      <p className="text-primary font-black text-lg mt-1 font-mono">${Math.round(item.price * item.quantity).toLocaleString('es-CL')}</p>
+                      <p className="font-bold text-xs sm:text-sm text-slate-800 truncate">{item.name}</p>
+                      <p className="text-primary font-black text-base sm:text-lg mt-1 font-mono">${Math.round(item.price * item.quantity).toLocaleString('es-CL')}</p>
                     </div>
-                    <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+                    <div className="flex items-center gap-1 sm:gap-4 shrink-0">
                       <div className="flex items-center bg-slate-100 rounded-full p-1 scale-90 sm:scale-100">
                         <Button variant="ghost" size="icon" className="rounded-full w-7 h-7 sm:w-8 sm:h-8 hover:bg-white text-slate-600" onClick={() => updateQuantity(item.id, -1)}>
                           <MinusCircle className="w-5 h-5" />
@@ -449,7 +449,7 @@ export default function POSPage() {
                           <PlusCircle className="w-5 h-5" />
                         </Button>
                       </div>
-                      <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 rounded-full h-8 w-8" onClick={() => removeItem(item.id)}>
+                      <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 rounded-full h-8 w-8 shrink-0" onClick={() => removeItem(item.id)}>
                         <Trash2 className="w-5 h-5" />
                       </Button>
                     </div>
@@ -457,16 +457,16 @@ export default function POSPage() {
                 ))}
 
                 {manualProducts.map((item, idx) => (
-                  <div key={`manual-${idx}`} className="p-3 sm:p-4 flex items-center gap-2 sm:gap-4 bg-accent/5 border-l-4 border-accent animate-in fade-in slide-in-from-left-2 duration-300">
+                  <div key={`manual-${idx}`} className="p-2 sm:p-4 flex items-center gap-2 sm:gap-4 bg-accent/5 border-l-4 border-accent animate-in fade-in slide-in-from-left-2 duration-300">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="bg-accent/10 text-accent text-[8px] font-black px-1.5 py-0.5 rounded uppercase">Manual</span>
-                        <p className="font-bold text-sm text-slate-800 truncate">{item.description}</p>
+                        <p className="font-bold text-xs sm:text-sm text-slate-800 truncate">{item.description}</p>
                       </div>
-                      <p className="text-accent font-black text-lg mt-1 font-mono">${Math.round(item.amount).toLocaleString('es-CL')}</p>
+                      <p className="text-accent font-black text-base sm:text-lg mt-1 font-mono">${Math.round(item.amount).toLocaleString('es-CL')}</p>
                     </div>
-                    <div className="flex items-center gap-2 sm:gap-4 shrink-0">
-                      <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 rounded-full h-8 w-8" onClick={() => removeManual(idx)}>
+                    <div className="flex items-center gap-1 sm:gap-4 shrink-0">
+                      <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 rounded-full h-8 w-8 shrink-0" onClick={() => removeManual(idx)}>
                         <Trash2 className="w-5 h-5" />
                       </Button>
                     </div>
