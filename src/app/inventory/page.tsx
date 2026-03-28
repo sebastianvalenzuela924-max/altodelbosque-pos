@@ -479,7 +479,10 @@ function InventoryContent() {
       </Card>
 
       <Dialog open={!!quickStockProduct} onOpenChange={(open) => !open && setQuickStockProduct(null)}>
-        <DialogContent className="rounded-3xl border-none shadow-2xl max-w-[90vw] sm:max-w-sm p-6">
+        <DialogContent 
+          className="rounded-3xl border-none shadow-2xl max-w-[90vw] sm:max-w-sm p-6"
+          onOpenAutoFocus={(e) => e.preventDefault()}
+        >
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-xl font-black text-primary uppercase">Carga Rápida</DialogTitle>
           </DialogHeader>
