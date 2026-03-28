@@ -56,7 +56,7 @@ export default function NotesPage() {
         <CardContent className="p-6">
           <div className="flex gap-2">
             <Input 
-              placeholder="Escribe un recado... (ej: falta pedir Coca Cola 1.5L)" 
+              placeholder="Escribe un recado..." 
               className="h-14 rounded-2xl bg-slate-50 border-none font-bold text-lg focus-visible:ring-primary shadow-inner"
               value={newNote}
               onChange={(e) => setNewNote(e.target.value)}
