@@ -241,8 +241,8 @@ export default function HistoryPage() {
                           </span>
                         </div>
                         
-                        <div className="flex-1 flex items-center gap-3 min-w-0">
-                          <div className="flex flex-col gap-1">
+                        <div className="flex-1 flex items-center gap-3 min-w-0 overflow-hidden">
+                          <div className="flex flex-col gap-1 shrink-0">
                              <Badge variant="outline" className="text-[9px] font-black uppercase bg-slate-50 border-slate-100 px-2 py-0.5 shrink-0 w-fit">
                               {totalItems} Art.
                             </Badge>
@@ -257,12 +257,13 @@ export default function HistoryPage() {
                               {isCash ? 'Efectivo' : 'Tarjeta'}
                             </Badge>
                           </div>
-                          <AccordionTrigger className="hover:no-underline py-0 justify-start gap-2 text-primary font-bold text-[10px] uppercase tracking-tighter truncate">
+                          {/* FIX: Se añade [&>svg:last-child]:hidden para evitar que la flecha por defecto se superponga al precio en móvil */}
+                          <AccordionTrigger className="hover:no-underline py-0 justify-start gap-2 text-primary font-bold text-[10px] uppercase tracking-tighter truncate [&>svg:last-child]:hidden">
                             <ChevronRight className="w-3 h-3" /> Detalle
                           </AccordionTrigger>
                         </div>
 
-                        <div className="text-right min-w-[90px] flex items-center gap-3">
+                        <div className="text-right min-w-[90px] flex items-center gap-3 shrink-0">
                           <span className={cn(
                             "text-lg font-black font-mono tracking-tighter leading-none",
                             isCash ? "text-green-600" : "text-primary"

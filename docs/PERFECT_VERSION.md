@@ -1,3 +1,4 @@
+
 # Punto de Control: Versión Perfecta (Actualizado)
 
 Este archivo marca el estado definitivo y optimizado del sistema POS AltodelBosque. Todas las funcionalidades críticas han sido probadas y validadas.
@@ -14,20 +15,23 @@ Este archivo marca el estado definitivo y optimizado del sistema POS AltodelBosq
    - **Nueva Columna "Distribuidora"**: Integrada en la tabla, filtros de búsqueda y formularios.
    - **IA de Registro**: El flujo de registro rápido sugiere automáticamente la distribuidora y el stock ideal.
    - **Estado Flexible**: Los productos con stock 0 y sin alertas se marcan como "OK" (Verde).
+   - **Contador Total**: Visualización del número total de productos registrados en la cabecera.
 
 3. **Reportes y Finanzas**:
    - **Desglose de Ingresos**: Tarjetas visuales que separan lo recaudado en Efectivo de lo recaudado en Tarjeta.
    - **UI Mejorada**: Los productos en las secciones de reportes tienen marcos definidos, sombras y mejor separación visual.
    - **Valor del Inventario**: Cálculo automático del valor total de la mercadería en stock.
 
-4. **Historial de Transacciones**:
-   - **Diseño Cromático**: Identificación visual rápida por colores según el método de pago.
+4. **Historial y Control de Stock**:
+   - **Registro de Ingresos**: Pestaña dedicada para ver cuándo y cuánto stock se ha añadido manualmente.
+   - **Diseño Cromático**: Identificación visual rápida por colores según el método de pago o tipo de registro.
+   - **Corrección UI Móvil**: Eliminación de superposiciones de iconos en el acordeón para asegurar legibilidad total de precios en pantallas pequeñas.
    - **Exportación Total**: El archivo Excel incluye Distribuidoras, Métodos de Pago y Precios Netos (Sin IVA).
-   - **Sistema Anti-Bloqueos**: Arquitectura de diálogo único para borrado masivo que evita que la interfaz se congele.
 
 5. **Infraestructura**:
    - Conexión robusta con Firebase Firestore y Auth.
    - Manejo de errores centralizado con `FirebaseErrorListener`.
+   - Arquitectura de diálogos unificados para evitar bloqueos de interfaz.
 
-**Fecha del Último Punto de Control**: 2024-05-24
+**Fecha del Último Punto de Control**: 2024-05-24 (Actualización UI)
 **Estado**: Versión de Oro / Producción
