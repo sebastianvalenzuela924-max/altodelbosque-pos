@@ -15,7 +15,7 @@ import { doc, collection, serverTimestamp, increment, query } from "firebase/fir
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
 
-// Función para emitir un "beep" de confirmación usando Web Audio API
+// Función para emitir un "beep" de confirmación fuerte usando Web Audio API
 const playSuccessSound = () => {
   if (typeof window === 'undefined') return;
   try {
@@ -25,17 +25,17 @@ const playSuccessSound = () => {
     const gainNode = audioCtx.createGain();
 
     oscillator.type = 'sine';
-    oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // Frecuencia de confirmación (La5)
-    gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime); // Volumen suave
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+    oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // Frecuencia clara (La5)
+    gainNode.gain.setValueAtTime(0.4, audioCtx.currentTime); // Volumen aumentado para precisión
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15); // Caída un poco más larga
 
     oscillator.connect(gainNode);
     gainNode.connect(audioCtx.destination);
 
     oscillator.start();
-    oscillator.stop(audioCtx.currentTime + 0.1);
+    oscillator.stop(audioCtx.currentTime + 0.15);
   } catch (e) {
-    // Silencioso si falla (por ejemplo, restricciones de auto-play)
+    // Silencioso si falla
   }
 };
 
@@ -177,10 +177,10 @@ export default function POSPage() {
       }];
     });
     
-    // Feedback sonoro
+    // Feedback sonoro fuerte
     playSuccessSound();
 
-    // Feedback visual de escaneo exitoso
+    // Feedback visual
     setScanSuccess(true);
     setTimeout(() => setScanSuccess(false), 800);
   };
@@ -189,17 +189,22 @@ export default function POSPage() {
     const cleanBarcode = String(barcode).trim();
     if (!cleanBarcode || isLoadingInventory) return;
 
-    // LÓGICA DE LENTITUD Y DUPLICADOS:
-    // Evita registrar el mismo producto más de una vez cada 3 segundos.
     const now = Date.now();
-    if (lastScanRef.current && lastScanRef.current.code === cleanBarcode && (now - lastScanRef.current.time < 3000)) {
+    
+    // 1. BLOQUEO GLOBAL: Evita que el escáner registre CUALQUIER cosa por 1.2 segundos tras un éxito.
+    // Esto previene jitter y lecturas múltiples por movimiento de cámara.
+    if (lastScanRef.current && (now - lastScanRef.current.time < 1200)) {
+      return;
+    }
+
+    // 2. BLOQUEO POR PRODUCTO: Si es el mismo código, espera 5 segundos (PRECISIÓN).
+    if (lastScanRef.current && lastScanRef.current.code === cleanBarcode && (now - lastScanRef.current.time < 5000)) {
       return;
     }
 
     lastScanRef.current = { code: cleanBarcode, time: now };
     
     const product = productMap.get(cleanBarcode);
-
     if (product) {
       handleAddItem(product);
     }
@@ -268,8 +273,6 @@ export default function POSPage() {
       });
 
       const productRef = doc(firestore, "products", item.id);
-      
-      // LÓGICA ESPECIAL: Si el producto NO tiene alertas activas, SUMAMOS en vez de RESTAR.
       const product = productMap.get(String(item.id).trim());
       const noAlerts = product?.warningStock === 0 || product?.idealStock === 0;
       
@@ -331,7 +334,7 @@ export default function POSPage() {
         <section className="space-y-4">
           <div className="flex items-center justify-between px-1">
             <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
-              <Scan className="w-4 h-4" /> Escáner
+              <Scan className="w-4 h-4" /> Escáner de Precisión
             </h3>
           </div>
           <div className="relative group overflow-hidden rounded-3xl">
@@ -348,7 +351,6 @@ export default function POSPage() {
           </div>
         </section>
 
-        {/* Accesos Rápidos */}
         <section className="space-y-3">
            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 px-1">
             <PlusCircle className="w-3 h-3" /> Acceso Rápido
