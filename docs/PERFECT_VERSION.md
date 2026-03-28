@@ -25,7 +25,7 @@ Este archivo marca el estado definitivo y optimizado del sistema POS AltodelBosq
 4. **Historial y Control de Stock**:
    - **Registro de Ingresos**: Pestaña dedicada para ver cuándo y cuánto stock se ha añadido manualmente.
    - **Diseño Cromático**: Identificación visual rápida por colores según el método de pago o tipo de registro.
-   - **Corrección UI Móvil**: Eliminación de superposiciones de iconos en el acordeón para asegurar legibilidad total de precios en pantallas pequeñas.
+   - **Corrección UI Móvil**: Eliminación de superposiciones de iconos en el acordeón para asegurar legibilidad total de precios en pantallas pequeñas. Se ha ajustado el botón "Detalle" para que no se corte en móviles.
    - **Exportación Total**: El archivo Excel incluye Distribuidoras, Métodos de Pago y Precios Netos (Sin IVA).
 
 5. **Infraestructura**:
@@ -33,5 +33,5 @@ Este archivo marca el estado definitivo y optimizado del sistema POS AltodelBosq
    - Manejo de errores centralizado con `FirebaseErrorListener`.
    - Arquitectura de diálogos unificados para evitar bloqueos de interfaz.
 
-**Fecha del Último Punto de Control**: 2024-05-24 (Actualización UI)
+**Fecha del Último Punto de Control**: 2024-05-24 (Ajuste UI Historial)
 **Estado**: Versión de Oro / Producción
