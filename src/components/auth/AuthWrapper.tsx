@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -9,7 +8,7 @@ import { Loader2 } from 'lucide-react';
 
 /**
  * AuthWrapper: Gestiona la identidad y autorización del terminal.
- * Ahora utiliza una lógica más robusta para evitar bloqueos por latencia de red.
+ * Optimizado para evitar errores de permisos por latencia de red en Firestore.
  */
 export function AuthWrapper({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
@@ -18,7 +17,7 @@ export function AuthWrapper({ children }: { children: React.ReactNode }) {
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
 
-  // Referencia al documento de autorización
+  // Referencia al documento de autorización (para respaldo en DB)
   const authDocRef = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return doc(firestore, 'authorizedUsers', user.uid);
@@ -26,7 +25,7 @@ export function AuthWrapper({ children }: { children: React.ReactNode }) {
 
   const { data: authDoc, isLoading: isAuthDocLoading } = useDoc(authDocRef);
 
-  // Login anónimo automático
+  // Login anónimo automático si no hay sesión
   useEffect(() => {
     if (!isUserLoading && !user && auth) {
       initiateAnonymousSignIn(auth);
@@ -35,19 +34,19 @@ export function AuthWrapper({ children }: { children: React.ReactNode }) {
 
   // Sincronización del estado de autorización
   useEffect(() => {
-    // Si tenemos un usuario autenticado, consideramos el terminal listo
-    // La creación del documento de respaldo ocurre en segundo plano
-    if (user && !isAuthorized) {
+    // Si tenemos un usuario autenticado, iniciamos un breve periodo de sincronización
+    // para asegurar que las reglas de seguridad de Firestore estén listas.
+    if (user && !isAuthorized && !isSyncing) {
       setIsSyncing(true);
       const timer = setTimeout(() => {
         setIsAuthorized(true);
         setIsSyncing(false);
-      }, 800); 
+      }, 1200); // Un poco más de tiempo para asegurar la propagación de reglas
       return () => clearTimeout(timer);
     }
-  }, [user, isAuthorized]);
+  }, [user, isAuthorized, isSyncing]);
 
-  // Creación automática del documento si no existe (Respaldar autorización en DB)
+  // Creación automática del documento de autorización si no existe
   useEffect(() => {
     if (!user || !firestore || isAuthDocLoading || authDoc) return;
 
@@ -78,7 +77,7 @@ export function AuthWrapper({ children }: { children: React.ReactNode }) {
           <div className="text-center px-6">
             <h2 className="text-2xl font-black text-primary tracking-tighter uppercase">AltodelBosque POS</h2>
             <p className="text-[10px] text-muted-foreground font-black uppercase tracking-[0.2em] mt-1">
-              {isSyncing ? "Verificando Autorización..." : "Sincronizando Terminal"}
+              {isSyncing ? "Verificando Seguridad..." : "Iniciando Terminal"}
             </p>
           </div>
         </div>

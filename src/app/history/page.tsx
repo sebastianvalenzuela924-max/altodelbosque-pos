@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useCollection, useFirestore, useMemoFirebase, deleteDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase";
@@ -355,7 +354,7 @@ export default function HistoryPage() {
                           <Button 
                             variant="ghost" 
                             size="icon" 
-                            className="h-9 w-9 text-destructive bg-destructive/5 sm:bg-transparent rounded-full" 
+                            className="h-9 w-9 text-destructive bg-destructive/10 hover:bg-destructive hover:text-white rounded-full transition-all" 
                             onClick={(e) => {
                               e.stopPropagation();
                               setDeleteContext('sales');
@@ -439,7 +438,7 @@ export default function HistoryPage() {
             filteredLogs.map((log) => {
               const date = log.timestamp?.toDate?.() || (log.timestamp ? new Date(log.timestamp) : new Date());
               return (
-                <Card key={log.id} className="p-3 md:p-4 border-none shadow-sm rounded-2xl bg-white flex flex-col sm:flex-row sm:items-center gap-3 group hover:shadow-md transition-all">
+                <Card key={log.id} className="p-3 md:p-4 border-none shadow-sm rounded-2xl bg-white flex flex-col sm:flex-row sm:items-center gap-3 transition-all">
                   <div className="flex items-center gap-3 md:gap-6 flex-1">
                     <div className="min-w-[70px] flex flex-col">
                       <span className="text-xs font-black text-slate-800">
@@ -477,7 +476,7 @@ export default function HistoryPage() {
                       <Button 
                         variant="ghost" 
                         size="icon" 
-                        className="h-10 w-10 text-primary rounded-full bg-primary/5 hover:bg-primary/10 shadow-sm" 
+                        className="h-10 w-10 text-primary rounded-full bg-primary/10 hover:bg-primary hover:text-white transition-all shadow-sm" 
                         onClick={() => {
                           setEditingLog(log);
                           setEditInvoiceNumber(log.invoiceNumber || "");
@@ -488,7 +487,7 @@ export default function HistoryPage() {
                       <Button 
                         variant="ghost" 
                         size="icon" 
-                        className="h-10 w-10 text-destructive bg-destructive/5 rounded-full shadow-sm" 
+                        className="h-10 w-10 text-destructive bg-destructive/10 hover:bg-destructive hover:text-white rounded-full transition-all shadow-sm" 
                         onClick={() => {
                           setDeleteContext('inventoryLogs');
                           setItemToDelete(log);
@@ -505,7 +504,7 @@ export default function HistoryPage() {
         </TabsContent>
       </Tabs>
 
-      {/* DIÁLOGO ÚNICO DE LIMPIEZA PASO A PASO */}
+      {/* DIÁLOGOS Y COMPONENTES RESTANTES SIN CAMBIOS... */}
       <Dialog open={cleanStep !== 'idle'} onOpenChange={(open) => !open && setCleanStep('idle')}>
         <DialogContent className="rounded-3xl p-6 border-none shadow-2xl max-w-[90vw] sm:max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
           {cleanStep === 'options' ? (

@@ -1,19 +1,17 @@
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
      * ALTODELBOSQUE POS SECURITY RULES
-     * Version: 1.4 - Autorización optimizada para evitar latencia de propagación
+     * Version: 1.5 - Despliegue forzado para sincronización global
+     * Nota: La autorización depende del estado de sesión para evitar latencia de propagación de documentos.
      */
 
     function isSignedIn() {
       return request.auth != null;
     }
 
-    // Simplificamos la autorización para depender del inicio de sesión
-    // Esto resuelve el error de "Missing or insufficient permissions" causado por la latencia de exists()
     function isAuthorized() {
       return isSignedIn();
     }
@@ -22,53 +20,32 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    function isExistingOwner(userId) {
-      return isOwner(userId) && resource != null;
-    }
-
     match /authorizedUsers/{userId} {
-      allow get: if isOwner(userId);
+      allow get, create, update, delete: if isOwner(userId);
       allow list: if false;
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId);
-      allow delete: if isExistingOwner(userId);
     }
 
     match /products/{productId} {
-      allow get, list: if isAuthorized();
-      allow create: if isAuthorized();
-      allow update: if isAuthorized();
-      allow delete: if isAuthorized();
+      allow get, list, create, update, delete: if isAuthorized();
     }
 
     match /notes/{noteId} {
-      allow get, list: if isAuthorized();
-      allow create: if isAuthorized();
-      allow update: if isAuthorized();
-      allow delete: if isAuthorized();
+      allow get, list, create, update, delete: if isAuthorized();
     }
 
     match /inventoryLogs/{logId} {
-      allow get, list: if isAuthorized();
-      allow create: if isAuthorized();
-      allow update, delete: if isAuthorized();
+      allow get, list, create, update, delete: if isAuthorized();
     }
 
     match /sales/{saleId} {
-      allow get, list: if isAuthorized();
-      allow create: if isAuthorized();
-      allow update, delete: if isAuthorized();
+      allow get, list, create, update, delete: if isAuthorized();
 
       match /productSaleItems/{itemId} {
-        allow get, list: if isAuthorized();
-        allow create: if isAuthorized();
-        allow update, delete: if isAuthorized();
+        allow get, list, create, update, delete: if isAuthorized();
       }
 
       match /manualSaleItems/{itemId} {
-        allow get, list: if isAuthorized();
-        allow create: if isAuthorized();
-        allow update, delete: if isAuthorized();
+        allow get, list, create, update, delete: if isAuthorized();
       }
     }
   }
