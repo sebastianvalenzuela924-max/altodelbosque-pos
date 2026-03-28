@@ -42,7 +42,9 @@ function InventoryContent() {
   const [quickStockProduct, setQuickStockProduct] = useState<any | null>(null);
   const [quickAddValue, setQuickAddValue] = useState("");
   const [quickInvoiceNumber, setQuickInvoiceNumber] = useState("");
+  
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
+  const isLongPress = useRef(false);
   
   const { toast } = useToast();
 
@@ -153,7 +155,9 @@ function InventoryContent() {
   }, [products, searchTerm, sortBy, categoryFilter, distributorFilter, statusFilter]);
 
   const handlePointerDown = (product: any) => {
+    isLongPress.current = false;
     longPressTimer.current = setTimeout(() => {
+      isLongPress.current = true;
       setQuickStockProduct(product);
       setQuickAddValue("");
       setQuickInvoiceNumber("");
@@ -163,6 +167,13 @@ function InventoryContent() {
   const handlePointerUp = () => {
     if (longPressTimer.current) {
       clearTimeout(longPressTimer.current);
+    }
+  };
+
+  const handleRowClick = (product: any) => {
+    if (!isLongPress.current) {
+      setSelectedProduct(product);
+      setIsDialogOpen(true);
     }
   };
 
@@ -250,7 +261,7 @@ function InventoryContent() {
           </div>
           <p className="text-muted-foreground text-sm font-bold flex items-center gap-2 mt-1">
             <MousePointer2 className="w-4 h-4 text-accent" />
-            Mantén presionado un producto para carga rápida.
+            Haz clic para editar. Mantén presionado para carga rápida.
           </p>
         </div>
         <div className="flex flex-wrap gap-2 w-full md:w-auto">
@@ -362,7 +373,7 @@ function InventoryContent() {
                   <TableHead className="px-6 font-black uppercase text-[10px] tracking-widest min-w-[140px]">Precio Neto (Sin IVA)</TableHead>
                   <TableHead className="px-6 font-black uppercase text-[10px] tracking-widest min-w-[140px]">Distribuidora</TableHead>
                   <TableHead className="px-6 font-black uppercase text-[10px] tracking-widest min-w-[120px]">Estado</TableHead>
-                  <TableHead className="px-6 text-right font-black uppercase text-[10px] tracking-widest min-w-[100px]">Acciones</TableHead>
+                  <TableHead className="px-6 text-right font-black uppercase text-[10px] tracking-widest min-w-[80px]">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -383,16 +394,24 @@ function InventoryContent() {
                       onPointerDown={() => handlePointerDown(p)}
                       onPointerUp={handlePointerUp}
                       onPointerLeave={handlePointerUp}
+                      onClick={() => handleRowClick(p)}
                       className={cn(
-                        "transition-colors border-b select-none touch-none", 
+                        "transition-colors border-b select-none touch-none cursor-pointer", 
                         status === "peligro" ? "bg-red-100 hover:bg-red-200" : 
                         status === "precaución" ? "bg-amber-100 hover:bg-amber-200" : 
                         status === "ok" ? "bg-green-100 hover:bg-green-200" : "hover:bg-slate-50"
                       )}
                     >
                       <TableCell className="px-6">
-                        <p className="font-bold text-sm">{p.name}</p>
-                        <p className="text-[10px] font-mono text-slate-400">#{p.id}</p>
+                        <div className="flex items-center gap-2 group/name">
+                          <div className="flex flex-col">
+                            <p className="font-bold text-sm">{p.name}</p>
+                            <p className="text-[10px] font-mono text-slate-400">#{p.id}</p>
+                          </div>
+                          <div className="bg-primary/10 p-1.5 rounded-full text-primary opacity-0 group-hover/name:opacity-100 transition-opacity">
+                            <Edit3 className="w-3 h-3" />
+                          </div>
+                        </div>
                       </TableCell>
                       <TableCell className="px-6">
                         <div className="flex flex-col">
@@ -436,11 +455,16 @@ function InventoryContent() {
                         )}
                       </TableCell>
                       <TableCell className="px-6 text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button variant="ghost" size="icon" className="text-primary hover:bg-primary/20 rounded-full" onClick={() => { setSelectedProduct(p); setIsDialogOpen(true); }}>
-                            <Edit3 className="w-4 h-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 rounded-full" onClick={() => setProductToDelete(p)}>
+                        <div className="flex justify-end">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="text-destructive hover:bg-destructive/10 rounded-full" 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setProductToDelete(p);
+                            }}
+                          >
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
