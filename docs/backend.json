@@ -83,6 +83,21 @@
         "totalAmount"
       ]
     },
+    "InventoryLog": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "InventoryLog",
+      "type": "object",
+      "description": "Represents an entry of new stock into the inventory.",
+      "properties": {
+        "id": { "type": "string" },
+        "productId": { "type": "string" },
+        "productName": { "type": "string" },
+        "quantity": { "type": "number" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "type": { "type": "string", "enum": ["restock", "adjustment"] }
+      },
+      "required": ["id", "productId", "productName", "quantity", "timestamp"]
+    },
     "Note": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Note",
@@ -123,6 +138,13 @@
         "definition": {
           "entityName": "Sale",
           "description": "Completed sales transactions."
+        }
+      },
+      {
+        "path": "/inventoryLogs/{logId}",
+        "definition": {
+          "entityName": "InventoryLog",
+          "description": "Logs for stock additions and adjustments."
         }
       },
       {

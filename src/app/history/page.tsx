@@ -4,7 +4,7 @@
 import { useCollection, useFirestore, useMemoFirebase, deleteDocumentNonBlocking } from "@/firebase";
 import { collection, query, orderBy, doc } from "firebase/firestore";
 import { Card } from "@/components/ui/card";
-import { FileSpreadsheet, Calendar, History, ShoppingBag, Loader2, ChevronRight, Trash2, Eraser, AlertCircle, X, ChevronLeft, Check, Banknote, CreditCard } from "lucide-react";
+import { FileSpreadsheet, Calendar, History, ShoppingBag, Loader2, ChevronRight, Trash2, Eraser, AlertCircle, X, ChevronLeft, Check, Banknote, CreditCard, PackagePlus, ArrowDownToLine } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { exportToExcel } from "@/lib/export";
@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type DateFilter = "today" | "yesterday" | "month" | "all" | "custom";
 type BulkDeleteType = 'day' | 'month' | 'all';
@@ -30,7 +31,8 @@ export default function HistoryPage() {
   // Estados de limpieza unificados en un solo flujo
   const [cleanStep, setCleanStep] = useState<CleanStep>('idle');
   const [bulkType, setBulkType] = useState<BulkDeleteType | null>(null);
-  const [saleToDelete, setSaleToDelete] = useState<any | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<any | null>(null);
+  const [deleteContext, setDeleteContext] = useState<'sales' | 'inventoryLogs'>('sales');
 
   useEffect(() => {
     setIsMounted(true);
@@ -40,76 +42,86 @@ export default function HistoryPage() {
     return query(collection(firestore, "sales"), orderBy("saleDateTime", "desc"));
   }, [firestore]);
 
-  const { data: allSales, isLoading } = useCollection(salesQuery);
+  const logsQuery = useMemoFirebase(() => {
+    return query(collection(firestore, "inventoryLogs"), orderBy("timestamp", "desc"));
+  }, [firestore]);
 
-  const filteredSales = useMemo(() => {
-    if (!allSales || !isMounted) return [];
+  const { data: allSales, isLoading: isSalesLoading } = useCollection(salesQuery);
+  const { data: allLogs, isLoading: isLogsLoading } = useCollection(logsQuery);
+
+  const applyDateFilter = (items: any[], dateField: string) => {
+    if (!items || !isMounted) return [];
     const now = new Date();
     
-    return allSales.filter(sale => {
-      const saleDate = sale.saleDateTime?.toDate?.() || (sale.saleDateTime ? new Date(sale.saleDateTime) : new Date());
+    return items.filter(item => {
+      const itemDate = item[dateField]?.toDate?.() || (item[dateField] ? new Date(item[dateField]) : new Date());
       
       if (dateFilter === "today") {
-        return saleDate.toDateString() === now.toDateString();
+        return itemDate.toDateString() === now.toDateString();
       }
       if (dateFilter === "yesterday") {
         const yesterday = new Date(now);
         yesterday.setDate(now.getDate() - 1);
-        return saleDate.toDateString() === yesterday.toDateString();
+        return itemDate.toDateString() === yesterday.toDateString();
       }
       if (dateFilter === "custom" && customDate) {
         const [y, m, d] = customDate.split('-').map(Number);
         const targetDate = new Date(y, m - 1, d);
-        return saleDate.toDateString() === targetDate.toDateString();
+        return itemDate.toDateString() === targetDate.toDateString();
       }
       if (dateFilter === "month") {
-        return saleDate.getMonth() === now.getMonth() && saleDate.getFullYear() === now.getFullYear();
+        return itemDate.getMonth() === now.getMonth() && itemDate.getFullYear() === now.getFullYear();
       }
       return true;
     });
-  }, [allSales, dateFilter, customDate, isMounted]);
+  };
+
+  const filteredSales = useMemo(() => applyDateFilter(allSales || [], "saleDateTime"), [allSales, dateFilter, customDate, isMounted]);
+  const filteredLogs = useMemo(() => applyDateFilter(allLogs || [], "timestamp"), [allLogs, dateFilter, customDate, isMounted]);
 
   const handleExport = () => {
-    if (!filteredSales || filteredSales.length === 0) return;
-    const flattened = filteredSales.flatMap(s => {
-      const date = s.saleDateTime?.toDate?.() || (s.saleDateTime ? new Date(s.saleDateTime) : new Date());
-      if (s.itemsSummary && s.itemsSummary.length > 0) {
-        return s.itemsSummary.map((item: any) => ({
+    if (filteredSales.length > 0) {
+      const flattened = filteredSales.flatMap(s => {
+        const date = s.saleDateTime?.toDate?.() || (s.saleDateTime ? new Date(s.saleDateTime) : new Date());
+        return s.itemsSummary?.map((item: any) => ({
           ID_Venta: s.id,
           Fecha: date.toLocaleDateString(),
           Hora: date.toLocaleTimeString(),
           Metodo_Pago: s.paymentMethod === 'cash' ? 'Efectivo' : 'Tarjeta',
           Producto: item.name,
           Cantidad: item.quantity,
-          Precio_Unitario: Math.round(item.price),
-          Subtotal: Math.round(item.price * item.quantity),
-          Tipo: item.type === 'manual' ? 'Cobro Manual' : 'Inventario',
+          Precio: Math.round(item.price),
           Total_Venta: Math.round(s.totalAmount)
-        }));
-      }
-      return [{
-        ID_Venta: s.id,
-        Fecha: date.toLocaleDateString(),
-        Hora: date.toLocaleTimeString(),
-        Metodo_Pago: s.paymentMethod === 'cash' ? 'Efectivo' : 'Tarjeta',
-        Producto: "Venta sin desglose",
-        Cantidad: 1,
-        Precio_Unitario: Math.round(s.totalAmount),
-        Subtotal: Math.round(s.totalAmount),
-        Tipo: "Desconocido",
-        Total_Venta: Math.round(s.totalAmount)
-      }];
-    });
-    exportToExcel(`Historial_${dateFilter}`, flattened, "Ventas");
+        })) || [];
+      });
+      exportToExcel(`Ventas_${dateFilter}`, flattened, "Ventas");
+    }
+
+    if (filteredLogs.length > 0) {
+      const flattenedLogs = filteredLogs.map(l => {
+        const date = l.timestamp?.toDate?.() || (l.timestamp ? new Date(l.timestamp) : new Date());
+        return {
+          ID_Log: l.id,
+          Fecha: date.toLocaleDateString(),
+          Hora: date.toLocaleTimeString(),
+          Producto: l.productName,
+          Cantidad_Ingresada: l.quantity,
+          Codigo_Producto: l.productId
+        };
+      });
+      exportToExcel(`IngresosStock_${dateFilter}`, flattenedLogs, "Ingresos");
+    }
+
     toast({ title: "Exportación exitosa" });
   };
 
   const handleExecuteBulkDelete = () => {
-    if (!bulkType || !allSales) return;
+    if (!bulkType) return;
     
     const now = new Date();
-    const targets = allSales.filter(s => {
-      const d = s.saleDateTime?.toDate?.() || (s.saleDateTime ? new Date(s.saleDateTime) : null);
+    const targets = (deleteContext === 'sales' ? allSales : allLogs)?.filter(s => {
+      const dField = deleteContext === 'sales' ? 'saleDateTime' : 'timestamp';
+      const d = s[dField]?.toDate?.() || (s[dField] ? new Date(s[dField]) : null);
       if (!d) return false;
 
       if (bulkType === 'day') return d.toDateString() === now.toDateString();
@@ -118,14 +130,14 @@ export default function HistoryPage() {
       return false;
     });
 
-    if (targets.length === 0) {
-      toast({ title: "Nada que borrar", description: "No hay ventas en este periodo." });
+    if (!targets || targets.length === 0) {
+      toast({ title: "Nada que borrar", description: "No hay registros en este periodo." });
       setCleanStep('idle');
       return;
     }
 
     targets.forEach(t => {
-      deleteDocumentNonBlocking(doc(firestore, "sales", t.id));
+      deleteDocumentNonBlocking(doc(firestore, deleteContext, t.id));
     });
 
     toast({ 
@@ -145,7 +157,7 @@ export default function HistoryPage() {
             <History className="w-6 h-6" />
             Historial
           </h1>
-          <p className="text-muted-foreground text-xs font-bold">Registro de transacciones diarias.</p>
+          <p className="text-muted-foreground text-xs font-bold">Registro de transacciones e ingresos de mercadería.</p>
         </div>
         
         <div className="flex flex-wrap gap-2 w-full md:w-auto">
@@ -173,14 +185,13 @@ export default function HistoryPage() {
           )}
 
           <div className="flex gap-2 ml-auto">
-            <Button variant="outline" onClick={handleExport} disabled={!filteredSales.length} className="h-11 w-11 p-0 rounded-2xl border-slate-200">
+            <Button variant="outline" onClick={handleExport} disabled={!filteredSales.length && !filteredLogs.length} className="h-11 w-11 p-0 rounded-2xl border-slate-200">
               <FileSpreadsheet className="w-4 h-4 text-green-600" />
             </Button>
             
             <Button 
               variant="outline" 
               onClick={() => setCleanStep('options')}
-              disabled={!allSales?.length} 
               className="h-11 w-11 p-0 rounded-2xl border-destructive/20 text-destructive hover:bg-destructive/5"
             >
               <Eraser className="w-4 h-4" />
@@ -189,108 +200,178 @@ export default function HistoryPage() {
         </div>
       </header>
 
-      <div className="grid gap-2">
-        {isLoading ? (
-          <div className="flex flex-col items-center justify-center py-20 opacity-30">
-            <Loader2 className="w-8 h-8 animate-spin mb-2 text-primary" />
-            <p className="text-[10px] font-black uppercase tracking-widest">Cargando...</p>
-          </div>
-        ) : filteredSales.length === 0 ? (
-          <div className="text-center py-20 bg-white rounded-3xl border-2 border-dashed border-slate-100">
-            <ShoppingBag className="w-12 h-12 mx-auto mb-3 text-slate-100" />
-            <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest">Sin registros</h3>
-          </div>
-        ) : (
-          filteredSales.map((sale) => {
-            const date = sale.saleDateTime?.toDate?.() || (sale.saleDateTime ? new Date(sale.saleDateTime) : new Date());
-            const totalItems = (sale.productSaleItemIds?.length || 0) + (sale.manualSaleItemIds?.length || 0);
-            const isCash = sale.paymentMethod === 'cash';
-            
-            return (
-              <Card key={sale.id} className="overflow-hidden border-none shadow-sm hover:shadow-md transition-all duration-200 rounded-2xl group bg-white">
-                <Accordion type="single" collapsible className="w-full">
-                  <AccordionItem value="items" className="border-none">
-                    <div className="flex items-center p-3 md:p-4 gap-3 md:gap-6">
-                      <div className="min-w-[70px] flex flex-col">
-                        <span className="text-xs font-black text-slate-800">
-                          {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                        <span className="text-[9px] font-mono text-slate-400 uppercase">
-                          #{sale.id?.slice(-5)}
-                        </span>
+      <Tabs defaultValue="ventas" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 bg-white rounded-2xl p-1 border shadow-sm h-14">
+          <TabsTrigger value="ventas" className="rounded-xl font-bold uppercase text-[10px] tracking-widest data-[state=active]:bg-primary data-[state=active]:text-white">
+            <ShoppingBag className="w-4 h-4 mr-2" /> Ventas Realizadas
+          </TabsTrigger>
+          <TabsTrigger value="stock" className="rounded-xl font-bold uppercase text-[10px] tracking-widest data-[state=active]:bg-accent data-[state=active]:text-white">
+            <PackagePlus className="w-4 h-4 mr-2" /> Ingresos de Stock
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="ventas" className="mt-6 space-y-2">
+          {isSalesLoading ? (
+             <div className="flex flex-col items-center justify-center py-20 opacity-30">
+               <Loader2 className="w-8 h-8 animate-spin mb-2 text-primary" />
+               <p className="text-[10px] font-black uppercase tracking-widest">Cargando ventas...</p>
+             </div>
+          ) : filteredSales.length === 0 ? (
+            <div className="text-center py-20 bg-white rounded-3xl border-2 border-dashed border-slate-100">
+              <ShoppingBag className="w-12 h-12 mx-auto mb-3 text-slate-100" />
+              <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest">Sin ventas</h3>
+            </div>
+          ) : (
+            filteredSales.map((sale) => {
+              const date = sale.saleDateTime?.toDate?.() || (sale.saleDateTime ? new Date(sale.saleDateTime) : new Date());
+              const totalItems = (sale.productSaleItemIds?.length || 0) + (sale.manualSaleItemIds?.length || 0);
+              const isCash = sale.paymentMethod === 'cash';
+              
+              return (
+                <Card key={sale.id} className="overflow-hidden border-none shadow-sm hover:shadow-md transition-all duration-200 rounded-2xl group bg-white">
+                  <Accordion type="single" collapsible className="w-full">
+                    <AccordionItem value="items" className="border-none">
+                      <div className="flex items-center p-3 md:p-4 gap-3 md:gap-6">
+                        <div className="min-w-[70px] flex flex-col">
+                          <span className="text-xs font-black text-slate-800">
+                            {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                          <span className="text-[9px] font-mono text-slate-400 uppercase">
+                            #{sale.id?.slice(-5)}
+                          </span>
+                        </div>
+                        
+                        <div className="flex-1 flex items-center gap-3 min-w-0">
+                          <div className="flex flex-col gap-1">
+                             <Badge variant="outline" className="text-[9px] font-black uppercase bg-slate-50 border-slate-100 px-2 py-0.5 shrink-0 w-fit">
+                              {totalItems} Art.
+                            </Badge>
+                            <Badge 
+                              variant="outline" 
+                              className={cn(
+                                "text-[8px] font-black uppercase px-2 py-0.5 shrink-0 w-fit border-none",
+                                isCash ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"
+                              )}
+                            >
+                              {isCash ? <Banknote className="w-3 h-3 mr-1 inline" /> : <CreditCard className="w-3 h-3 mr-1 inline" />}
+                              {isCash ? 'Efectivo' : 'Tarjeta'}
+                            </Badge>
+                          </div>
+                          <AccordionTrigger className="hover:no-underline py-0 justify-start gap-2 text-primary font-bold text-[10px] uppercase tracking-tighter truncate">
+                            <ChevronRight className="w-3 h-3" /> Detalle
+                          </AccordionTrigger>
+                        </div>
+
+                        <div className="text-right min-w-[90px] flex items-center gap-3">
+                          <span className={cn(
+                            "text-lg font-black font-mono tracking-tighter leading-none",
+                            isCash ? "text-green-600" : "text-primary"
+                          )}>
+                            ${Math.round(sale.totalAmount).toLocaleString('es-CL')}
+                          </span>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100 transition-opacity rounded-full" 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteContext('sales');
+                              setItemToDelete(sale);
+                            }}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
                       </div>
                       
-                      <div className="flex-1 flex items-center gap-3 min-w-0">
-                        <div className="flex flex-col gap-1">
-                           <Badge variant="outline" className="text-[9px] font-black uppercase bg-slate-50 border-slate-100 px-2 py-0.5 shrink-0 w-fit">
-                            {totalItems} Art.
-                          </Badge>
-                          <Badge 
-                            variant="outline" 
-                            className={cn(
-                              "text-[8px] font-black uppercase px-2 py-0.5 shrink-0 w-fit border-none",
-                              isCash ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"
-                            )}
-                          >
-                            {isCash ? <Banknote className="w-3 h-3 mr-1 inline" /> : <CreditCard className="w-3 h-3 mr-1 inline" />}
-                            {isCash ? 'Efectivo' : 'Tarjeta'}
-                          </Badge>
+                      <AccordionContent className="bg-slate-50/50 px-4 pb-4 pt-2 border-t border-slate-100">
+                        <div className="space-y-1.5 mt-2">
+                          {sale.itemsSummary?.map((item: any, idx: number) => (
+                            <div key={idx} className="flex justify-between items-center p-2 bg-white rounded-xl border border-slate-100 text-xs">
+                              <div className="flex flex-col">
+                                <span className="font-bold text-slate-700">{item.name}</span>
+                                <span className="text-[8px] text-slate-400 font-bold uppercase tracking-widest">
+                                  {item.type === 'manual' ? 'Cobro Manual' : `Cód: ${item.id}`}
+                                </span>
+                              </div>
+                              <div className="text-right">
+                                <span className="font-black text-slate-500 mr-2 text-[10px]">{item.quantity} x ${Math.round(item.price).toLocaleString('es-CL')}</span>
+                                <span className={cn("font-black", isCash ? "text-green-600" : "text-primary")}>
+                                  ${Math.round(item.price * item.quantity).toLocaleString('es-CL')}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
                         </div>
-                        <AccordionTrigger className="hover:no-underline py-0 justify-start gap-2 text-primary font-bold text-[10px] uppercase tracking-tighter truncate">
-                          <ChevronRight className="w-3 h-3" /> Detalle
-                        </AccordionTrigger>
-                      </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
+                </Card>
+              );
+            })
+          )}
+        </TabsContent>
 
-                      <div className="text-right min-w-[90px] flex items-center gap-3">
-                        <span className={cn(
-                          "text-lg font-black font-mono tracking-tighter leading-none",
-                          isCash ? "text-green-600" : "text-primary"
-                        )}>
-                          ${Math.round(sale.totalAmount).toLocaleString('es-CL')}
-                        </span>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100 transition-opacity rounded-full" 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSaleToDelete(sale);
-                          }}
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
-                      </div>
+        <TabsContent value="stock" className="mt-6 space-y-2">
+          {isLogsLoading ? (
+            <div className="flex flex-col items-center justify-center py-20 opacity-30">
+               <Loader2 className="w-8 h-8 animate-spin mb-2 text-accent" />
+               <p className="text-[10px] font-black uppercase tracking-widest">Cargando ingresos...</p>
+             </div>
+          ) : filteredLogs.length === 0 ? (
+            <div className="text-center py-20 bg-white rounded-3xl border-2 border-dashed border-slate-100">
+              <PackagePlus className="w-12 h-12 mx-auto mb-3 text-slate-100" />
+              <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest">Sin ingresos de stock</h3>
+            </div>
+          ) : (
+            filteredLogs.map((log) => {
+              const date = log.timestamp?.toDate?.() || (log.timestamp ? new Date(log.timestamp) : new Date());
+              return (
+                <Card key={log.id} className="p-3 md:p-4 border-none shadow-sm rounded-2xl bg-white flex items-center gap-3 md:gap-6 group hover:shadow-md transition-all">
+                  <div className="min-w-[70px] flex flex-col">
+                    <span className="text-xs font-black text-slate-800">
+                      {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                    <span className="text-[9px] font-mono text-slate-400 uppercase">
+                      {date.toLocaleDateString()}
+                    </span>
+                  </div>
+
+                  <div className="flex-1 min-w-0 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center text-accent shrink-0">
+                      <ArrowDownToLine className="w-5 h-5" />
                     </div>
-                    
-                    <AccordionContent className="bg-slate-50/50 px-4 pb-4 pt-2 border-t border-slate-100">
-                      <div className="space-y-1.5 mt-2">
-                        {sale.itemsSummary?.map((item: any, idx: number) => (
-                          <div key={idx} className="flex justify-between items-center p-2 bg-white rounded-xl border border-slate-100 text-xs">
-                            <div className="flex flex-col">
-                              <span className="font-bold text-slate-700">{item.name}</span>
-                              <span className="text-[8px] text-slate-400 font-bold uppercase tracking-widest">
-                                {item.type === 'manual' ? 'Cobro Manual' : `Cód: ${item.id}`}
-                              </span>
-                            </div>
-                            <div className="text-right">
-                              <span className="font-black text-slate-500 mr-2 text-[10px]">{item.quantity} x ${Math.round(item.price).toLocaleString('es-CL')}</span>
-                              <span className={cn("font-black", isCash ? "text-green-600" : "text-primary")}>
-                                ${Math.round(item.price * item.quantity).toLocaleString('es-CL')}
-                              </span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
-                </Accordion>
-              </Card>
-            );
-          })
-        )}
-      </div>
+                    <div className="truncate">
+                      <p className="font-bold text-sm text-slate-800 truncate">{log.productName}</p>
+                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Cód: {log.productId}</p>
+                    </div>
+                  </div>
 
-      {/* DIÁLOGO ÚNICO DE LIMPIEZA PASO A PASO - EVITA BLOQUEOS DE INTERFAZ */}
+                  <div className="text-right flex items-center gap-4">
+                    <div className="flex flex-col items-end">
+                      <span className="text-xl font-black text-accent">+{log.quantity}</span>
+                      <span className="text-[8px] font-black text-slate-400 uppercase">Unidades</span>
+                    </div>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100 transition-opacity rounded-full" 
+                      onClick={() => {
+                        setDeleteContext('inventoryLogs');
+                        setItemToDelete(log);
+                      }}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                </Card>
+              );
+            })
+          )}
+        </TabsContent>
+      </Tabs>
+
+      {/* DIÁLOGO ÚNICO DE LIMPIEZA PASO A PASO */}
       <Dialog open={cleanStep !== 'idle'} onOpenChange={(open) => !open && setCleanStep('idle')}>
         <DialogContent className="rounded-3xl p-6 border-none shadow-2xl max-w-[90vw] sm:max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
           {cleanStep === 'options' ? (
@@ -303,6 +384,20 @@ export default function HistoryPage() {
                   Selecciona qué registros deseas borrar permanentemente.
                 </DialogDescription>
               </DialogHeader>
+              
+              <div className="bg-slate-50 p-1 rounded-xl grid grid-cols-2 gap-1 mb-4">
+                <Button 
+                  variant={deleteContext === 'sales' ? 'default' : 'ghost'} 
+                  className="h-8 rounded-lg text-[9px] font-black uppercase"
+                  onClick={() => setDeleteContext('sales')}
+                >Ventas</Button>
+                <Button 
+                  variant={deleteContext === 'inventoryLogs' ? 'default' : 'ghost'} 
+                  className="h-8 rounded-lg text-[9px] font-black uppercase"
+                  onClick={() => setDeleteContext('inventoryLogs')}
+                >Stock</Button>
+              </div>
+
               <div className="grid gap-2">
                 <Button 
                   variant="outline" 
@@ -343,7 +438,7 @@ export default function HistoryPage() {
                 <p className="text-xs font-bold text-slate-500 leading-relaxed px-4">
                   Se eliminarán permanentemente los registros de: <br/>
                   <span className="text-slate-800 font-black text-sm uppercase">
-                    {bulkType === 'day' ? 'Hoy' : bulkType === 'month' ? 'Este Mes' : 'Todo el Historial'}
+                    {bulkType === 'day' ? 'Hoy' : bulkType === 'month' ? 'Este Mes' : 'Todo el Historial'} ({deleteContext === 'sales' ? 'Ventas' : 'Stock'})
                   </span>
                   <br/><br/>
                   <span className="bg-destructive/5 text-destructive px-3 py-1 rounded-lg">Esta acción es irreversible</span>
@@ -370,27 +465,27 @@ export default function HistoryPage() {
         </DialogContent>
       </Dialog>
 
-      {/* BORRADO INDIVIDUAL - DIÁLOGO SIMPLE */}
-      <Dialog open={!!saleToDelete} onOpenChange={(open) => !open && setSaleToDelete(null)}>
+      {/* BORRADO INDIVIDUAL */}
+      <Dialog open={!!itemToDelete} onOpenChange={(open) => !open && setItemToDelete(null)}>
         <DialogContent className="rounded-3xl p-8 border-none shadow-2xl max-w-[90vw] sm:max-w-md">
           <DialogHeader className="text-center">
             <div className="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center mx-auto mb-4">
                <Trash2 className="w-6 h-6 text-destructive" />
             </div>
-            <DialogTitle className="text-xl font-black text-destructive uppercase">Eliminar Venta</DialogTitle>
+            <DialogTitle className="text-xl font-black text-destructive uppercase">Eliminar Registro</DialogTitle>
             <DialogDescription className="text-slate-500 text-xs font-bold py-2">
-              Se borrará el registro <span className="text-slate-800 font-mono">#{saleToDelete?.id?.slice(-8)}</span> definitivamente.
+              Se borrará este registro de {deleteContext === 'sales' ? 'venta' : 'ingreso de stock'} definitivamente.
             </DialogDescription>
           </DialogHeader>
           <div className="flex gap-2 mt-4">
-            <Button variant="ghost" className="rounded-xl h-12 flex-1 font-bold" onClick={() => setSaleToDelete(null)}>Cancelar</Button>
+            <Button variant="ghost" className="rounded-xl h-12 flex-1 font-bold" onClick={() => setItemToDelete(null)}>Cancelar</Button>
             <Button 
               variant="destructive" 
               className="rounded-xl h-12 flex-1 font-black uppercase"
               onClick={() => {
-                deleteDocumentNonBlocking(doc(firestore, "sales", saleToDelete.id));
-                toast({ title: "Venta eliminada" });
-                setSaleToDelete(null);
+                deleteDocumentNonBlocking(doc(firestore, deleteContext, itemToDelete.id));
+                toast({ title: "Registro eliminado" });
+                setItemToDelete(null);
               }}
             >
               ELIMINAR

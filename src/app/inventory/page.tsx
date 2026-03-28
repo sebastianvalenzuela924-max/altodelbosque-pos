@@ -2,8 +2,8 @@
 "use client";
 
 import { useState, useMemo, useRef, useEffect, Suspense } from "react";
-import { useCollection, useFirestore, useMemoFirebase, deleteDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase";
-import { collection, doc, query, orderBy, increment } from "firebase/firestore";
+import { useCollection, useFirestore, useMemoFirebase, deleteDocumentNonBlocking, updateDocumentNonBlocking, addDocumentNonBlocking } from "@/firebase";
+import { collection, doc, query, orderBy, increment, serverTimestamp } from "firebase/firestore";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -172,6 +172,17 @@ function InventoryContent() {
     const docRef = doc(firestore, "products", quickStockProduct.id);
     updateDocumentNonBlocking(docRef, {
       stock: increment(val)
+    });
+
+    // Registrar en inventoryLogs para que aparezca en el historial
+    const logRef = collection(firestore, "inventoryLogs");
+    addDocumentNonBlocking(logRef, {
+      id: crypto.randomUUID(),
+      productId: quickStockProduct.id,
+      productName: quickStockProduct.name,
+      quantity: val,
+      timestamp: serverTimestamp(),
+      type: 'restock'
     });
 
     toast({ 

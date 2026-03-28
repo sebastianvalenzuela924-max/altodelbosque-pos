@@ -1,3 +1,4 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -44,11 +45,16 @@ service cloud.firestore {
       allow delete: if isAuthorized();
     }
 
+    match /inventoryLogs/{logId} {
+      allow get, list: if isAuthorized();
+      allow create: if isAuthorized();
+      allow update, delete: if isAuthorized();
+    }
+
     match /sales/{saleId} {
       allow get, list: if isAuthorized();
       allow create: if isAuthorized();
-      allow update: if isAuthorized();
-      allow delete: if isAuthorized();
+      allow update, delete: if isAuthorized();
 
       match /productSaleItems/{itemId} {
         allow get, list: if isAuthorized();
