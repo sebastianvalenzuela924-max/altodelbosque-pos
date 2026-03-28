@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useRef, useEffect, Suspense } from "react";
@@ -176,7 +175,6 @@ function InventoryContent() {
       stock: increment(val)
     });
 
-    // Registrar en inventoryLogs para que aparezca en el historial
     const logRef = collection(firestore, "inventoryLogs");
     addDocumentNonBlocking(logRef, {
       id: crypto.randomUUID(),
@@ -243,7 +241,10 @@ function InventoryContent() {
             </h1>
             {!isLoading && products && (
               <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 font-black text-xs px-3 py-1 rounded-xl">
-                {products.length} {products.length === 1 ? 'Producto' : 'Productos'}
+                {processedProducts.length} {processedProducts.length === 1 ? 'Producto' : 'Productos'}
+                {processedProducts.length !== products.length && (
+                  <span className="ml-1 opacity-70 font-bold">(de {products.length})</span>
+                )}
               </Badge>
             )}
           </div>
