@@ -8,8 +8,7 @@ import { Loader2 } from 'lucide-react';
 
 /**
  * AuthWrapper: Gestiona la identidad y autorización del terminal.
- * Ahora se carga mediante AuthGate con ssr: false, por lo que este código
- * SOLO se ejecuta en el navegador.
+ * Espera a que el documento de autorización sea visible en Firestore antes de renderizar.
  */
 export function AuthWrapper({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
@@ -32,25 +31,27 @@ export function AuthWrapper({ children }: { children: React.ReactNode }) {
     }
   }, [user, isUserLoading, auth]);
 
-  // Autorización automática silenciosa
+  // Sincronización del estado de autorización basada en el snapshot de Firestore
   useEffect(() => {
-    if (!user || !firestore || isAuthDocLoading) return;
-
     if (authDoc) {
       setIsAuthorized(true);
-    } else {
-      const docRef = doc(firestore, 'authorizedUsers', user.uid);
-      setDoc(docRef, { 
-        uid: user.uid,
-        activatedAt: serverTimestamp(),
-        autoActivated: true,
-        lastSession: serverTimestamp()
-      }, { merge: true })
-      .then(() => setIsAuthorized(true))
-      .catch(() => {
-        // Errores gestionados por el listener global de Firebase
-      });
     }
+  }, [authDoc]);
+
+  // Creación automática del documento si no existe
+  useEffect(() => {
+    if (!user || !firestore || isAuthDocLoading || authDoc) return;
+
+    const docRef = doc(firestore, 'authorizedUsers', user.uid);
+    setDoc(docRef, { 
+      uid: user.uid,
+      activatedAt: serverTimestamp(),
+      autoActivated: true,
+      lastSession: serverTimestamp()
+    }, { merge: true })
+    .catch(() => {
+      // Errores gestionados por el listener global de Firebase
+    });
   }, [user, firestore, authDoc, isAuthDocLoading]);
 
   // Pantalla de carga mientras se sincroniza el terminal
