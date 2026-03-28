@@ -84,12 +84,12 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
             }
 
             const config = {
-              fps: 20,
+              fps: 30, // Aumentado para mayor fluidez
               qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
-                // Asegurar tamaño mínimo de 50px para evitar errores de la librería
-                const width = Math.max(50, Math.min(viewfinderWidth * 0.8, 400));
-                const height = Math.max(50, Math.min(viewfinderHeight * 0.4, 200));
-                return { width, height };
+                // Modificado a un área más cuadrada para permitir escaneo vertical y horizontal
+                const minDim = Math.min(viewfinderWidth, viewfinderHeight);
+                const size = Math.floor(minDim * 0.7);
+                return { width: size, height: size };
               },
               aspectRatio: 1.0,
             };
@@ -99,8 +99,6 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
                 { facingMode: "environment" },
                 config,
                 (decodedText) => {
-                  // NO detuvimos el scanner aquí para evitar que la pantalla quede en negro
-                  // El control de duplicados y "lentitud" se delega al padre o se gestiona por tiempo
                   onScanRef.current(decodedText);
                 },
                 () => {} // Ignorar errores de frame no detectado
@@ -139,7 +137,6 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
     return () => {
       isMounted = false;
       if (checkInterval) clearInterval(checkInterval);
-      // No detenemos el scanner en el cleanup del effect si el componente sigue montado (dependencia isEnabled)
     };
   }, [isEnabled]);
 
@@ -165,9 +162,9 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
             <Scan className="w-10 h-10 text-primary" />
           </div>
           <div className="space-y-1">
-            <h3 className="text-white font-bold text-lg">Escáner Continuo</h3>
+            <h3 className="text-white font-bold text-lg">Escáner Omnidireccional</h3>
             <p className="text-slate-400 text-xs px-4">
-              Apunta al código de barras. La cámara se mantendrá activa entre escaneos.
+              Apunta al código en cualquier posición (horizontal o vertical).
             </p>
           </div>
           
@@ -196,15 +193,20 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
 
       {isEnabled && !isLoading && (
         <>
-          {/* Overlay de visor */}
+          {/* Overlay de visor cuadrado para lectura en cualquier sentido */}
           <div className="absolute inset-0 pointer-events-none z-20 flex items-center justify-center">
-             <div className="w-[80%] max-w-[400px] h-[40%] max-h-[200px] relative border-2 border-primary/50 rounded-lg bg-primary/5">
-                <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-primary"></div>
-                <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-primary"></div>
-                <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-primary"></div>
-                <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-primary"></div>
+             <div className="w-[70%] aspect-square max-w-[300px] relative border-2 border-primary/30 rounded-3xl bg-primary/5">
+                <div className="absolute top-0 left-0 w-10 h-10 border-t-4 border-l-4 border-primary rounded-tl-2xl"></div>
+                <div className="absolute top-0 right-0 w-10 h-10 border-t-4 border-r-4 border-primary rounded-tr-2xl"></div>
+                <div className="absolute bottom-0 left-0 w-10 h-10 border-b-4 border-l-4 border-primary rounded-bl-2xl"></div>
+                <div className="absolute bottom-0 right-0 w-10 h-10 border-b-4 border-r-4 border-primary rounded-br-2xl"></div>
+                
+                {/* Cruz central para precisión */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-0.5 bg-primary/30"></div>
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-0.5 h-4 bg-primary/30"></div>
+
                 {/* Línea de escaneo animada */}
-                <div className="absolute top-0 left-0 right-0 h-1 bg-primary/80 shadow-[0_0_15px_rgba(var(--primary),0.8)] animate-[scan_2s_ease-in-out_infinite]"></div>
+                <div className="absolute top-0 left-0 right-0 h-1 bg-primary/80 shadow-[0_0_15px_rgba(var(--primary),0.8)] animate-[scan_2.5s_ease-in-out_infinite]"></div>
              </div>
           </div>
           
@@ -223,14 +225,14 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
       {isLoading && isEnabled && (
         <div className="absolute inset-0 z-40 bg-black flex flex-col items-center justify-center gap-4">
             <Loader2 className="w-12 h-12 text-primary animate-spin" />
-            <p className="text-white text-[10px] font-black tracking-[0.3em] uppercase">Iniciando Cámara...</p>
+            <p className="text-white text-[10px] font-black tracking-[0.3em] uppercase">Configurando Visor...</p>
         </div>
       )}
 
       <style jsx global>{`
         @keyframes scan {
-          0%, 100% { top: 10%; }
-          50% { top: 90%; }
+          0%, 100% { top: 5%; opacity: 0.5; }
+          50% { top: 95%; opacity: 1; }
         }
         #qr-reader video {
           width: 100% !important;
