@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { FileSpreadsheet, Calendar, History, ShoppingBag, Loader2, ChevronRight, Trash2, Eraser, AlertCircle, X, ChevronLeft, Check, Banknote, CreditCard, PackagePlus, ArrowDownToLine, FileText, Edit3, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { exportToExcel } from "@/lib/export";
+import { exportSheetsToExcel } from "@/lib/export";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useState, useMemo } from "react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -96,8 +96,10 @@ export default function HistoryPage() {
   }, [allLogs, dateFilter, customDate, isMounted, logSearchTerm]);
 
   const handleExport = () => {
+    const sheets = [];
+
     if (filteredSales.length > 0) {
-      const flattened = filteredSales.flatMap(s => {
+      const flattenedSales = filteredSales.flatMap(s => {
         const date = s.saleDateTime?.toDate?.() || (s.saleDateTime ? new Date(s.saleDateTime) : new Date());
         return s.itemsSummary?.map((item: any) => ({
           ID_Venta: s.id,
@@ -107,29 +109,43 @@ export default function HistoryPage() {
           Producto: item.name,
           Cantidad: item.quantity,
           Precio: Math.round(item.price),
+          Subtotal: Math.round(item.price * item.quantity),
           Total_Venta: Math.round(s.totalAmount)
         })) || [];
       });
-      exportToExcel(`Ventas_${dateFilter}`, flattened, "Ventas");
+      sheets.push({ name: "Ventas", data: flattenedSales });
     }
 
     if (filteredLogs.length > 0) {
       const flattenedLogs = filteredLogs.map(l => {
         const date = l.timestamp?.toDate?.() || (l.timestamp ? new Date(l.timestamp) : new Date());
         return {
-          ID_Log: l.id,
+          ID_Ingreso: l.id,
           Fecha: date.toLocaleDateString(),
           Hora: date.toLocaleTimeString(),
           Producto: l.productName,
           Cantidad_Ingresada: l.quantity,
           Codigo_Producto: l.productId,
-          Factura: l.invoiceNumber || "N/A"
+          Factura: l.invoiceNumber || "N/A",
+          Tipo: l.type === 'restock' ? 'Reposición' : 'Ajuste'
         };
       });
-      exportToExcel(`IngresosStock_${dateFilter}`, flattenedLogs, "Ingresos");
+      sheets.push({ name: "Ingresos de Stock", data: flattenedLogs });
     }
 
-    toast({ title: "Exportación exitosa" });
+    if (sheets.length > 0) {
+      exportSheetsToExcel(`Historial_AltodelBosque_${dateFilter}`, sheets);
+      toast({ 
+        title: "Exportación exitosa", 
+        description: `Se han exportado ${filteredSales.length} ventas y ${filteredLogs.length} ingresos.` 
+      });
+    } else {
+      toast({ 
+        title: "Nada que exportar", 
+        description: "No hay registros en el periodo seleccionado.",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleExecuteBulkDelete = () => {
@@ -219,8 +235,14 @@ export default function HistoryPage() {
           )}
 
           <div className="flex gap-2 ml-auto">
-            <Button variant="outline" onClick={handleExport} disabled={!filteredSales.length && !filteredLogs.length} className="h-11 w-11 p-0 rounded-2xl border-slate-200">
+            <Button 
+              variant="outline" 
+              onClick={handleExport} 
+              disabled={!filteredSales.length && !filteredLogs.length} 
+              className="h-11 rounded-2xl border-slate-200 px-4 font-bold gap-2 text-xs"
+            >
               <FileSpreadsheet className="w-4 h-4 text-green-600" />
+              <span className="hidden sm:inline">Exportar Excel</span>
             </Button>
             
             <Button 
