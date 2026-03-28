@@ -9,7 +9,7 @@ import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Search, FileSpreadsheet, Edit3, Plus, Trash2, Package, Scan, Loader2, ShieldAlert, ShieldCheck, ShieldQuestion, MousePointer2, Filter, X, Tag, Truck, Box } from "lucide-react";
+import { Search, FileSpreadsheet, Edit3, Plus, Trash2, Package, Scan, Loader2, ShieldAlert, ShieldCheck, ShieldQuestion, MousePointer2, Filter, X, Tag, Truck, Box, FileText } from "lucide-react";
 import { exportToExcel } from "@/lib/export";
 import { useToast } from "@/hooks/use-toast";
 import { ProductDialog } from "@/components/inventory/ProductDialog";
@@ -42,6 +42,7 @@ function InventoryContent() {
   const [productToDelete, setProductToDelete] = useState<any | null>(null);
   const [quickStockProduct, setQuickStockProduct] = useState<any | null>(null);
   const [quickAddValue, setQuickAddValue] = useState("");
+  const [quickInvoiceNumber, setQuickInvoiceNumber] = useState("");
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
   
   const { toast } = useToast();
@@ -156,6 +157,7 @@ function InventoryContent() {
     longPressTimer.current = setTimeout(() => {
       setQuickStockProduct(product);
       setQuickAddValue("");
+      setQuickInvoiceNumber("");
     }, 600);
   };
 
@@ -181,6 +183,7 @@ function InventoryContent() {
       productId: quickStockProduct.id,
       productName: quickStockProduct.name,
       quantity: val,
+      invoiceNumber: quickInvoiceNumber.trim(),
       timestamp: serverTimestamp(),
       type: 'restock'
     });
@@ -455,16 +458,37 @@ function InventoryContent() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-xl font-black text-primary uppercase">Carga Rápida</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 text-center py-4">
-            <p className="font-bold text-slate-600">{quickStockProduct?.name}</p>
+          <div className="space-y-4 py-4">
+            <div className="text-center">
+              <p className="font-bold text-slate-600">{quickStockProduct?.name}</p>
+            </div>
+            
             <div className="grid gap-2">
               <Label className="font-black text-[10px] uppercase text-slate-400">¿Cuánto vas a sumar?</Label>
-              <Input type="number" className="h-16 rounded-2xl bg-primary/5 border-none text-center text-4xl font-black text-primary" placeholder="+0" value={quickAddValue} onChange={e => setQuickAddValue(e.target.value)} />
+              <Input 
+                type="number" 
+                className="h-16 rounded-2xl bg-primary/5 border-none text-center text-4xl font-black text-primary" 
+                placeholder="+0" 
+                value={quickAddValue} 
+                onChange={e => setQuickAddValue(e.target.value)} 
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <Label className="font-black text-[10px] uppercase text-slate-400 flex items-center gap-1">
+                <FileText className="w-3 h-3" /> N° de Factura (Opcional)
+              </Label>
+              <Input 
+                className="h-12 rounded-xl bg-slate-50 border-none font-bold" 
+                placeholder="Ej: 123456" 
+                value={quickInvoiceNumber} 
+                onChange={e => setQuickInvoiceNumber(e.target.value)} 
+              />
             </div>
           </div>
           <DialogFooter className="grid grid-cols-2 gap-2">
-            <Button variant="ghost" onClick={() => setQuickStockProduct(null)}>Cancelar</Button>
-            <Button onClick={handleQuickAdd} className="bg-primary hover:bg-primary/90 font-black">Añadir</Button>
+            <Button variant="ghost" className="rounded-xl" onClick={() => setQuickStockProduct(null)}>Cancelar</Button>
+            <Button onClick={handleQuickAdd} className="bg-primary hover:bg-primary/90 font-black rounded-xl h-12">Añadir</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

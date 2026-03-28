@@ -93,6 +93,7 @@
         "productId": { "type": "string" },
         "productName": { "type": "string" },
         "quantity": { "type": "number" },
+        "invoiceNumber": { "type": "string", "description": "The invoice number associated with this stock entry." },
         "timestamp": { "type": "string", "format": "date-time" },
         "type": { "type": "string", "enum": ["restock", "adjustment"] }
       },

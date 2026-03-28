@@ -1,9 +1,10 @@
+
 "use client";
 
 import { useCollection, useFirestore, useMemoFirebase, deleteDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase";
 import { collection, query, orderBy, doc, increment } from "firebase/firestore";
 import { Card } from "@/components/ui/card";
-import { FileSpreadsheet, Calendar, History, ShoppingBag, Loader2, ChevronRight, Trash2, Eraser, AlertCircle, X, ChevronLeft, Check, Banknote, CreditCard, PackagePlus, ArrowDownToLine } from "lucide-react";
+import { FileSpreadsheet, Calendar, History, ShoppingBag, Loader2, ChevronRight, Trash2, Eraser, AlertCircle, X, ChevronLeft, Check, Banknote, CreditCard, PackagePlus, ArrowDownToLine, FileText, Edit3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { exportToExcel } from "@/lib/export";
@@ -12,6 +13,7 @@ import { useEffect, useState, useMemo } from "react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -32,6 +34,10 @@ export default function HistoryPage() {
   const [bulkType, setBulkType] = useState<BulkDeleteType | null>(null);
   const [itemToDelete, setItemToDelete] = useState<any | null>(null);
   const [deleteContext, setDeleteContext] = useState<'sales' | 'inventoryLogs'>('sales');
+
+  // Estado para edición de factura
+  const [editingLog, setEditingLog] = useState<any | null>(null);
+  const [editInvoiceNumber, setEditInvoiceNumber] = useState("");
 
   useEffect(() => {
     setIsMounted(true);
@@ -105,7 +111,8 @@ export default function HistoryPage() {
           Hora: date.toLocaleTimeString(),
           Producto: l.productName,
           Cantidad_Ingresada: l.quantity,
-          Codigo_Producto: l.productId
+          Codigo_Producto: l.productId,
+          Factura: l.invoiceNumber || "N/A"
         };
       });
       exportToExcel(`IngresosStock_${dateFilter}`, flattenedLogs, "Ingresos");
@@ -151,6 +158,16 @@ export default function HistoryPage() {
       description: `Se han borrado ${targets.length} registros.` 
     });
     setCleanStep('idle');
+  };
+
+  const handleSaveInvoice = () => {
+    if (!editingLog) return;
+    const logRef = doc(firestore, "inventoryLogs", editingLog.id);
+    updateDocumentNonBlocking(logRef, {
+      invoiceNumber: editInvoiceNumber.trim()
+    });
+    toast({ title: "Factura actualizada" });
+    setEditingLog(null);
   };
 
   if (!isMounted) return <div className="min-h-screen bg-background" />;
@@ -345,42 +362,64 @@ export default function HistoryPage() {
             filteredLogs.map((log) => {
               const date = log.timestamp?.toDate?.() || (log.timestamp ? new Date(log.timestamp) : new Date());
               return (
-                <Card key={log.id} className="p-3 md:p-4 border-none shadow-sm rounded-2xl bg-white flex items-center gap-3 md:gap-6 group hover:shadow-md transition-all">
-                  <div className="min-w-[70px] flex flex-col">
-                    <span className="text-xs font-black text-slate-800">
-                      {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                    <span className="text-[9px] font-mono text-slate-400 uppercase">
-                      {date.toLocaleDateString()}
-                    </span>
+                <Card key={log.id} className="p-3 md:p-4 border-none shadow-sm rounded-2xl bg-white flex flex-col sm:flex-row sm:items-center gap-3 group hover:shadow-md transition-all">
+                  <div className="flex items-center gap-3 md:gap-6 flex-1">
+                    <div className="min-w-[70px] flex flex-col">
+                      <span className="text-xs font-black text-slate-800">
+                        {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                      <span className="text-[9px] font-mono text-slate-400 uppercase">
+                        {date.toLocaleDateString()}
+                      </span>
+                    </div>
+
+                    <div className="flex-1 min-w-0 flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center text-accent shrink-0">
+                        <ArrowDownToLine className="w-5 h-5" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-sm text-slate-800 leading-tight">{log.productName}</p>
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Cód: {log.productId}</p>
+                        {log.invoiceNumber && (
+                          <div className="flex items-center gap-1 mt-1 text-primary">
+                            <FileText className="w-3 h-3" />
+                            <span className="text-[9px] font-black uppercase">Factura: {log.invoiceNumber}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="flex-1 min-w-0 flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center text-accent shrink-0">
-                      <ArrowDownToLine className="w-5 h-5" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-bold text-sm text-slate-800 leading-tight">{log.productName}</p>
-                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Cód: {log.productId}</p>
-                    </div>
-                  </div>
-
-                  <div className="text-right flex items-center gap-4">
-                    <div className="flex flex-col items-end">
+                  <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-4 border-t sm:border-t-0 pt-2 sm:pt-0">
+                    <div className="text-right flex flex-col items-end mr-4">
                       <span className="text-xl font-black text-accent">+{log.quantity}</span>
                       <span className="text-[8px] font-black text-slate-400 uppercase">Unidades</span>
                     </div>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-8 w-8 text-destructive rounded-full" 
-                      onClick={() => {
-                        setDeleteContext('inventoryLogs');
-                        setItemToDelete(log);
-                      }}
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </Button>
+                    
+                    <div className="flex gap-1">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8 text-primary rounded-full bg-primary/5 hover:bg-primary/10" 
+                        onClick={() => {
+                          setEditingLog(log);
+                          setEditInvoiceNumber(log.invoiceNumber || "");
+                        }}
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8 text-destructive rounded-full" 
+                        onClick={() => {
+                          setDeleteContext('inventoryLogs');
+                          setItemToDelete(log);
+                        }}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
                   </div>
                 </Card>
               );
@@ -517,6 +556,42 @@ export default function HistoryPage() {
               ELIMINAR
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* EDICIÓN DE FACTURA */}
+      <Dialog open={!!editingLog} onOpenChange={(open) => !open && setEditingLog(null)}>
+        <DialogContent className="rounded-3xl p-6 border-none shadow-2xl max-w-[90vw] sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-black text-primary uppercase flex items-center gap-2">
+              <FileText className="w-5 h-5" /> Editar Factura
+            </DialogTitle>
+            <DialogDescription className="text-xs font-bold text-slate-500">
+              Actualiza el número de factura para este ingreso de stock.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4 space-y-4">
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+              <p className="text-[10px] font-black uppercase text-slate-400">Producto</p>
+              <p className="text-sm font-bold text-slate-700">{editingLog?.productName}</p>
+            </div>
+            
+            <div className="grid gap-2">
+              <Label className="text-[10px] font-black uppercase text-slate-400">Número de Factura</Label>
+              <Input 
+                className="h-12 rounded-xl bg-slate-50 border-none font-bold text-lg" 
+                placeholder="Ej: 999888"
+                value={editInvoiceNumber}
+                onChange={(e) => setEditInvoiceNumber(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="grid grid-cols-2 gap-2">
+            <Button variant="ghost" className="rounded-xl" onClick={() => setEditingLog(null)}>Cancelar</Button>
+            <Button className="rounded-xl bg-primary font-black" onClick={handleSaveInvoice}>GUARDAR</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
