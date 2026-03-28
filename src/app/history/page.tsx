@@ -373,7 +373,7 @@ export default function HistoryPage() {
                     <Button 
                       variant="ghost" 
                       size="icon" 
-                      className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100 transition-opacity rounded-full" 
+                      className="h-8 w-8 text-destructive rounded-full" 
                       onClick={() => {
                         setDeleteContext('inventoryLogs');
                         setItemToDelete(log);
