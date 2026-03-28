@@ -1,7 +1,7 @@
 "use client";
 
-import { useCollection, useFirestore, useMemoFirebase, deleteDocumentNonBlocking } from "@/firebase";
-import { collection, query, orderBy, doc } from "firebase/firestore";
+import { useCollection, useFirestore, useMemoFirebase, deleteDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase";
+import { collection, query, orderBy, doc, increment } from "firebase/firestore";
 import { Card } from "@/components/ui/card";
 import { FileSpreadsheet, Calendar, History, ShoppingBag, Loader2, ChevronRight, Trash2, Eraser, AlertCircle, X, ChevronLeft, Check, Banknote, CreditCard, PackagePlus, ArrowDownToLine } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -136,6 +136,13 @@ export default function HistoryPage() {
     }
 
     targets.forEach(t => {
+      // Si estamos borrando logs de stock en masa, también revertimos el stock
+      if (deleteContext === 'inventoryLogs' && t.productId && t.quantity) {
+        const productRef = doc(firestore, "products", t.productId);
+        updateDocumentNonBlocking(productRef, {
+          stock: increment(-t.quantity)
+        });
+      }
       deleteDocumentNonBlocking(doc(firestore, deleteContext, t.id));
     });
 
@@ -494,6 +501,14 @@ export default function HistoryPage() {
               variant="destructive" 
               className="rounded-xl h-12 flex-1 font-black uppercase"
               onClick={() => {
+                // Si estamos borrando un log de ingreso de stock individualmente, revertimos el stock en el inventario
+                if (deleteContext === 'inventoryLogs' && itemToDelete.productId && itemToDelete.quantity) {
+                  const productRef = doc(firestore, "products", itemToDelete.productId);
+                  updateDocumentNonBlocking(productRef, {
+                    stock: increment(-itemToDelete.quantity)
+                  });
+                }
+
                 deleteDocumentNonBlocking(doc(firestore, deleteContext, itemToDelete.id));
                 toast({ title: "Registro eliminado" });
                 setItemToDelete(null);
