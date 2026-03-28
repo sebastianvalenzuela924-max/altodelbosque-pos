@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -34,18 +35,17 @@ export function AuthWrapper({ children }: { children: React.ReactNode }) {
 
   // Sincronización del estado de autorización basada en el snapshot de Firestore
   useEffect(() => {
-    if (authDoc && !isAuthorized) {
-      // Agregamos un pequeño retraso para permitir que las reglas de seguridad
-      // de Firestore "vean" el documento recién creado o actualizado en el servidor.
-      // Esto evita errores de "insufficient permissions" por latencia de propagación de exists().
+    if (authDoc && authDoc.id === user?.uid && !isAuthorized) {
+      // Agregamos un margen para asegurar que las reglas de seguridad
+      // de Firestore "vean" el documento en el servidor antes de proceder.
       setIsSyncing(true);
       const timer = setTimeout(() => {
         setIsAuthorized(true);
         setIsSyncing(false);
-      }, 1000);
+      }, 1500); // Incrementado a 1.5s para mayor seguridad en la primera sesión
       return () => clearTimeout(timer);
     }
-  }, [authDoc, isAuthorized]);
+  }, [authDoc, user, isAuthorized]);
 
   // Creación automática del documento si no existe
   useEffect(() => {

@@ -5,6 +5,7 @@ service cloud.firestore {
 
     /**
      * ALTODELBOSQUE POS SECURITY RULES
+     * Version: 1.2 - Sincronización de autorización optimizada
      */
 
     function isSignedIn() {
