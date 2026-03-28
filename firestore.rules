@@ -4,48 +4,35 @@ service cloud.firestore {
 
     /**
      * ALTODELBOSQUE POS SECURITY RULES
-     * Version: 1.5 - Despliegue forzado para sincronización global
-     * Nota: La autorización depende del estado de sesión para evitar latencia de propagación de documentos.
+     * Version: 2.0 - Despliegue de emergencia para eliminar latencia
+     * Autorización basada íntegramente en sesión activa.
      */
 
     function isSignedIn() {
       return request.auth != null;
     }
 
-    function isAuthorized() {
-      return isSignedIn();
-    }
-
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
-
     match /authorizedUsers/{userId} {
-      allow get, create, update, delete: if isOwner(userId);
-      allow list: if false;
+      allow get, create, update, delete: if isSignedIn() && request.auth.uid == userId;
     }
 
     match /products/{productId} {
-      allow get, list, create, update, delete: if isAuthorized();
+      allow read, write: if isSignedIn();
     }
 
     match /notes/{noteId} {
-      allow get, list, create, update, delete: if isAuthorized();
+      allow read, write: if isSignedIn();
     }
 
     match /inventoryLogs/{logId} {
-      allow get, list, create, update, delete: if isAuthorized();
+      allow read, write: if isSignedIn();
     }
 
     match /sales/{saleId} {
-      allow get, list, create, update, delete: if isAuthorized();
+      allow read, write: if isSignedIn();
 
-      match /productSaleItems/{itemId} {
-        allow get, list, create, update, delete: if isAuthorized();
-      }
-
-      match /manualSaleItems/{itemId} {
-        allow get, list, create, update, delete: if isAuthorized();
+      match /{allSubcollections=**} {
+        allow read, write: if isSignedIn();
       }
     }
   }
