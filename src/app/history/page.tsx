@@ -352,8 +352,8 @@ export default function HistoryPage() {
                     <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center text-accent shrink-0">
                       <ArrowDownToLine className="w-5 h-5" />
                     </div>
-                    <div className="truncate">
-                      <p className="font-bold text-sm text-slate-800 truncate">{log.productName}</p>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-sm text-slate-800 leading-tight">{log.productName}</p>
                       <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Cód: {log.productId}</p>
                     </div>
                   </div>
