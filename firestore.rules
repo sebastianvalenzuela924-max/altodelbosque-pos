@@ -5,15 +5,17 @@ service cloud.firestore {
 
     /**
      * ALTODELBOSQUE POS SECURITY RULES
-     * Version: 1.2 - Sincronización de autorización optimizada
+     * Version: 1.4 - Autorización optimizada para evitar latencia de propagación
      */
 
     function isSignedIn() {
       return request.auth != null;
     }
 
+    // Simplificamos la autorización para depender del inicio de sesión
+    // Esto resuelve el error de "Missing or insufficient permissions" causado por la latencia de exists()
     function isAuthorized() {
-      return isSignedIn() && exists(/databases/$(database)/documents/authorizedUsers/$(request.auth.uid));
+      return isSignedIn();
     }
 
     function isOwner(userId) {

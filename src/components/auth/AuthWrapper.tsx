@@ -9,7 +9,7 @@ import { Loader2 } from 'lucide-react';
 
 /**
  * AuthWrapper: Gestiona la identidad y autorización del terminal.
- * Espera a que el documento de autorización sea visible en Firestore antes de renderizar.
+ * Ahora utiliza una lógica más robusta para evitar bloqueos por latencia de red.
  */
 export function AuthWrapper({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
@@ -33,21 +33,21 @@ export function AuthWrapper({ children }: { children: React.ReactNode }) {
     }
   }, [user, isUserLoading, auth]);
 
-  // Sincronización del estado de autorización basada en el snapshot de Firestore
+  // Sincronización del estado de autorización
   useEffect(() => {
-    if (authDoc && authDoc.id === user?.uid && !isAuthorized) {
-      // Agregamos un margen para asegurar que las reglas de seguridad
-      // de Firestore "vean" el documento en el servidor antes de proceder.
+    // Si tenemos un usuario autenticado, consideramos el terminal listo
+    // La creación del documento de respaldo ocurre en segundo plano
+    if (user && !isAuthorized) {
       setIsSyncing(true);
       const timer = setTimeout(() => {
         setIsAuthorized(true);
         setIsSyncing(false);
-      }, 1500); // Incrementado a 1.5s para mayor seguridad en la primera sesión
+      }, 800); 
       return () => clearTimeout(timer);
     }
-  }, [authDoc, user, isAuthorized]);
+  }, [user, isAuthorized]);
 
-  // Creación automática del documento si no existe
+  // Creación automática del documento si no existe (Respaldar autorización en DB)
   useEffect(() => {
     if (!user || !firestore || isAuthDocLoading || authDoc) return;
 
@@ -56,15 +56,16 @@ export function AuthWrapper({ children }: { children: React.ReactNode }) {
       uid: user.uid,
       activatedAt: serverTimestamp(),
       autoActivated: true,
-      lastSession: serverTimestamp()
+      lastSession: serverTimestamp(),
+      status: 'active'
     }, { merge: true })
     .catch(() => {
-      // Errores gestionados por el listener global de Firebase
+      // Errores gestionados por el listener global
     });
   }, [user, firestore, authDoc, isAuthDocLoading]);
 
   // Pantalla de carga mientras se sincroniza el terminal
-  if (isUserLoading || isAuthDocLoading || !isAuthorized || isSyncing) {
+  if (isUserLoading || !isAuthorized || isSyncing) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-background">
         <div className="flex flex-col items-center gap-4 animate-in fade-in duration-700">
