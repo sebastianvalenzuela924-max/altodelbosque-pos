@@ -40,9 +40,7 @@ export default function ReportsPage() {
   const { data: allProducts, isLoading: isLoadingProducts } = useCollection(productsQuery);
 
   const getProductStatus = (stock: number, ideal: number, warning?: number) => {
-    // Si el umbral de aviso es 0 o el ideal es 0, desactivamos alertas de stock para este producto
     if (warning === 0 || ideal === 0) return "ok";
-
     if (warning !== undefined && warning !== null && warning > 0) {
       return stock < warning ? "danger" : "ok";
     }
@@ -173,20 +171,20 @@ export default function ReportsPage() {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-20">
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-white p-4 md:p-6 rounded-3xl shadow-sm border border-slate-100">
         <div>
-          <h1 className="text-3xl font-black text-primary tracking-tighter uppercase flex items-center gap-3">
-            <TrendingUp className="w-8 h-8" />
+          <h1 className="text-2xl md:text-3xl font-black text-primary tracking-tighter uppercase flex items-center gap-3">
+            <TrendingUp className="w-7 h-7 md:w-8 md:h-8" />
             Reportes
           </h1>
-          <p className="text-muted-foreground text-sm font-bold mt-1">
+          <p className="text-muted-foreground text-xs md:text-sm font-bold mt-1">
             Rendimiento de ventas por día y categoría.
           </p>
         </div>
         
         <div className="flex flex-wrap gap-2 w-full md:w-auto">
           <Select value={dateFilter} onValueChange={(v: DateFilter) => setDateFilter(v)}>
-            <SelectTrigger className="w-[180px] rounded-2xl h-12 border-none bg-slate-100 font-bold focus:ring-primary shadow-sm">
+            <SelectTrigger className="flex-1 md:w-[180px] rounded-2xl h-11 md:h-12 border-none bg-slate-100 font-bold focus:ring-primary shadow-sm">
               <Calendar className="w-4 h-4 mr-2 text-primary" />
               <SelectValue />
             </SelectTrigger>
@@ -200,10 +198,10 @@ export default function ReportsPage() {
           </Select>
           
           {dateFilter === "custom" && (
-            <div className="animate-in slide-in-from-right-2 duration-300">
+            <div className="flex-1 md:flex-none animate-in slide-in-from-right-2 duration-300">
               <Input 
                 type="date" 
-                className="h-12 rounded-2xl bg-slate-100 border-none font-bold" 
+                className="h-11 md:h-12 rounded-2xl bg-slate-100 border-none font-bold w-full" 
                 value={customDate} 
                 onChange={(e) => setCustomDate(e.target.value)} 
               />
@@ -310,7 +308,7 @@ export default function ReportsPage() {
 
         <TabsContent value="categories" className="space-y-4 mt-6">
           <div className="flex items-center justify-between px-2">
-            <h2 className="text-xs font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
+            <h2 className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
               <Filter className="w-3 h-3" /> Desglose detallado por secciones
             </h2>
           </div>
@@ -325,52 +323,52 @@ export default function ReportsPage() {
                     "border-none shadow-md rounded-3xl overflow-hidden transition-all duration-300",
                     hasCritical ? "bg-red-50/50" : "bg-white"
                   )}>
-                    <AccordionTrigger className="hover:no-underline p-4 md:p-6 text-left">
-                      <div className="flex items-center gap-4 w-full">
+                    <AccordionTrigger className="hover:no-underline p-3 md:p-6 text-left">
+                      <div className="flex items-center gap-3 md:gap-4 w-full min-w-0">
                         <div className={cn(
-                          "w-12 h-12 rounded-2xl flex items-center justify-center font-black text-xl shadow-inner",
+                          "w-10 h-10 md:w-12 md:h-12 rounded-2xl flex items-center justify-center font-black text-lg md:text-xl shadow-inner shrink-0",
                           hasCritical ? "bg-red-100 text-red-600" : "bg-primary/10 text-primary"
                         )}>
                           {cat.category[0].toUpperCase()}
                         </div>
                         
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-black text-lg uppercase tracking-tighter text-slate-800 truncate">{cat.category}</h3>
-                            {hasCritical && <Badge className="bg-destructive text-[8px] font-black uppercase tracking-tighter animate-pulse">¡FALTA STOCK!</Badge>}
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 overflow-hidden">
+                            <h3 className="font-black text-sm md:text-lg uppercase tracking-tighter text-slate-800 truncate">{cat.category}</h3>
+                            {hasCritical && <Badge className="bg-destructive text-[7px] md:text-[8px] font-black uppercase tracking-tighter animate-pulse w-fit">¡STOCK BAJO!</Badge>}
                           </div>
                           <div className="flex flex-wrap gap-2 mt-1">
-                            <Badge variant="outline" className="text-[9px] font-black uppercase bg-primary/5 text-primary border-primary/20 rounded-lg px-2.5 py-1">
+                            <Badge variant="outline" className="text-[8px] md:text-[9px] font-black uppercase bg-primary/5 text-primary border-primary/20 rounded-lg px-2 py-0.5 md:px-2.5 md:py-1">
                               Ventas: {cat.unitsSold} u.
                             </Badge>
                           </div>
                         </div>
 
-                        <div className="text-right pr-4 shrink-0">
-                          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Recaudado</p>
-                          <p className="text-xl font-black font-mono text-primary leading-none tracking-tighter">
+                        <div className="text-right shrink-0 min-w-[80px] md:min-w-[120px] pr-2">
+                          <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Recaudado</p>
+                          <p className="text-sm md:text-xl font-black font-mono text-primary leading-none tracking-tighter">
                             ${Math.round(cat.totalRevenue).toLocaleString('es-CL')}
                           </p>
                         </div>
                       </div>
                     </AccordionTrigger>
                     
-                    <AccordionContent className="px-3 md:px-6 pb-6 pt-2 bg-slate-50/50">
+                    <AccordionContent className="px-2 md:px-6 pb-6 pt-2 bg-slate-50/50">
                       <div className="grid gap-3 mt-4">
                         <div className="flex items-center justify-between px-2 mb-1">
-                          <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Rendimiento por producto</span>
+                          <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Rendimiento por producto</span>
                         </div>
                         {cat.products.map((p: any) => {
                           const status = getProductStatus(p.stock, p.idealStock, p.warningStock);
                           const productTotalRevenue = Math.round(p.price * p.soldThisPeriod);
                           return (
                             <div key={p.id} className={cn(
-                              "bg-white p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between border-2 transition-all gap-4 shadow-sm hover:shadow-md hover:border-primary/20",
+                              "bg-white p-3 md:p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between border-2 transition-all gap-4 shadow-sm hover:shadow-md hover:border-primary/20 overflow-hidden",
                               status === 'danger' ? "border-red-300 bg-red-50/30" : "border-slate-200"
                             )}>
                               <div className="flex items-center gap-3 flex-1 min-w-0">
                                 <div className={cn(
-                                  "w-10 h-10 rounded-full flex items-center justify-center shrink-0",
+                                  "w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center shrink-0",
                                   status === 'danger' ? "bg-red-100" : status === 'warning' ? "bg-amber-100" : "bg-green-100"
                                 )}>
                                   {status === 'danger' ? <ShieldAlert className="w-5 h-5 text-destructive" /> : 
@@ -378,40 +376,40 @@ export default function ReportsPage() {
                                    <ShieldCheck className="w-5 h-5 text-green-500" />}
                                 </div>
                                 <div className="min-w-0">
-                                  <p className="font-bold text-sm text-slate-700 truncate">{p.name}</p>
-                                  <div className="flex items-center gap-2 mt-0.5">
-                                    <span className="text-[10px] text-slate-400 font-bold uppercase">
-                                      Stock: <span className={cn(status === 'danger' ? "text-destructive font-black" : "text-slate-500")}>{p.stock}</span> / {p.warningStock === 0 || p.idealStock === 0 ? "Sin alerta" : (p.warningStock ? `Aviso: < ${p.warningStock}` : `Ideal: ${p.idealStock}`)}
+                                  <p className="font-bold text-xs md:text-sm text-slate-700 truncate">{p.name}</p>
+                                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-0.5">
+                                    <span className="text-[9px] text-slate-400 font-bold uppercase shrink-0">
+                                      Stock: <span className={cn(status === 'danger' ? "text-destructive font-black" : "text-slate-500")}>{p.stock}</span>
                                     </span>
-                                    <span className="text-slate-300">•</span>
-                                    <span className="text-[10px] text-primary font-black flex items-center gap-1">
+                                    <span className="text-slate-300 hidden md:inline">•</span>
+                                    <span className="text-[9px] text-primary font-black flex items-center gap-1 shrink-0">
                                       <Tag className="w-2.5 h-2.5" /> ${Math.round(p.price).toLocaleString('es-CL')}
                                     </span>
                                   </div>
                                 </div>
                               </div>
                               
-                              <div className="flex items-center justify-between sm:justify-end gap-4 sm:gap-6 w-full sm:w-auto border-t sm:border-t-0 pt-3 sm:pt-0">
-                                <div className="flex flex-col items-start sm:items-end">
-                                  <p className="text-[9px] font-black text-primary uppercase tracking-widest mb-0.5">Vendidos</p>
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="text-2xl font-black text-primary leading-none">{p.soldThisPeriod}</span>
-                                    <span className="text-[10px] font-black text-primary/60 uppercase">u.</span>
+                              <div className="flex items-center justify-between sm:justify-end gap-3 md:gap-6 w-full sm:w-auto border-t sm:border-t-0 pt-2 md:pt-0">
+                                <div className="flex flex-col items-start sm:items-end min-w-[60px]">
+                                  <p className="text-[8px] font-black text-primary uppercase tracking-widest mb-0.5">Vendidos</p>
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-lg md:text-2xl font-black text-primary leading-none">{p.soldThisPeriod}</span>
+                                    <span className="text-[8px] font-black text-primary/60 uppercase">u.</span>
                                   </div>
                                 </div>
                                 
-                                <div className="flex flex-col items-end min-w-[90px]">
-                                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Subtotal</p>
-                                  <p className="text-lg font-black text-slate-800 font-mono leading-none tracking-tighter">
+                                <div className="flex flex-col items-end min-w-[80px] md:min-w-[100px]">
+                                  <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Subtotal</p>
+                                  <p className="text-base md:text-lg font-black text-slate-800 font-mono leading-none tracking-tighter">
                                     ${productTotalRevenue.toLocaleString('es-CL')}
                                   </p>
                                 </div>
 
                                 <Link 
                                   href={`/inventory?search=${p.id}`}
-                                  className="flex items-center justify-center rounded-2xl bg-slate-50 hover:bg-primary/10 text-primary h-12 w-12 transition-all border border-slate-100 shrink-0 shadow-sm"
+                                  className="flex items-center justify-center rounded-xl md:rounded-2xl bg-slate-50 hover:bg-primary/10 text-primary h-10 w-10 md:h-12 md:w-12 transition-all border border-slate-100 shrink-0 shadow-sm"
                                 >
-                                  <ArrowRight className="w-5 h-5" />
+                                  <ArrowRight className="w-4 h-4 md:w-5 md:h-5" />
                                 </Link>
                               </div>
                             </div>
@@ -428,35 +426,35 @@ export default function ReportsPage() {
 
         <TabsContent value="products" className="mt-6">
           <Card className="border-none shadow-xl rounded-3xl overflow-hidden bg-white">
-            <CardHeader>
-              <CardTitle className="text-xl font-black text-primary flex items-center gap-2">
-                <Trophy className="w-6 h-6 text-amber-500" />
+            <CardHeader className="p-4 md:p-6">
+              <CardTitle className="text-lg md:text-xl font-black text-primary flex items-center gap-2">
+                <Trophy className="w-5 h-5 md:w-6 md:h-6 text-amber-500" />
                 Los más vendidos
               </CardTitle>
-              <CardDescription className="text-xs font-bold uppercase tracking-widest text-slate-400">
+              <CardDescription className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
                 Basado en unidades totales del periodo
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-4 md:p-6">
               {topProducts.length === 0 ? (
                 <div className="text-center py-20 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
                    <Package className="w-16 h-16 mx-auto mb-4 text-slate-200" />
                    <p className="text-slate-400 font-bold uppercase tracking-widest">No hay ventas en este periodo</p>
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-4 md:space-y-6">
                   {topProducts.map((p, idx) => (
-                    <div key={idx} className="flex items-center gap-4 group">
+                    <div key={idx} className="flex items-center gap-3 md:gap-4 group">
                       <div className={cn(
-                        "w-10 h-10 rounded-xl flex items-center justify-center font-black text-lg transition-transform group-hover:scale-110",
+                        "w-8 h-8 md:w-10 md:h-10 rounded-xl flex items-center justify-center font-black text-sm md:text-lg transition-transform group-hover:scale-110 shrink-0",
                         idx === 0 ? "bg-amber-100 text-amber-600 shadow-md shadow-amber-200/50" : 
                         idx === 1 ? "bg-slate-100 text-slate-500" :
                         idx === 2 ? "bg-orange-100 text-orange-600" : "bg-slate-50 text-slate-300"
                       )}>
                         {idx + 1}
                       </div>
-                      <div className="flex-1">
-                        <p className="font-bold text-slate-700">{p.name}</p>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-xs md:text-sm text-slate-700 truncate">{p.name}</p>
                         <div className="w-full h-1.5 bg-slate-100 rounded-full mt-2 overflow-hidden">
                           <div 
                             className="h-full bg-primary rounded-full transition-all duration-1000" 
@@ -464,9 +462,9 @@ export default function ReportsPage() {
                           />
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-sm font-black text-primary">{p.quantity} u.</p>
-                        <p className="text-[10px] font-bold text-slate-400 font-mono">${Math.round(p.revenue).toLocaleString('es-CL')}</p>
+                      <div className="text-right shrink-0">
+                        <p className="text-xs md:text-sm font-black text-primary">{p.quantity} u.</p>
+                        <p className="text-[8px] md:text-[10px] font-bold text-slate-400 font-mono">${Math.round(p.revenue).toLocaleString('es-CL')}</p>
                       </div>
                     </div>
                   ))}
