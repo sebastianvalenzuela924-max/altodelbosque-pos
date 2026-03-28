@@ -272,7 +272,7 @@ function InventoryContent() {
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input 
               className="pl-12 pr-10 h-12 bg-white rounded-2xl font-bold border-none shadow-sm" 
-              placeholder="Buscar por nombre o código..." 
+              placeholder="Buscar" 
               value={searchTerm} 
               onChange={e => setSearchTerm(e.target.value)} 
             />
