@@ -345,7 +345,7 @@ export default function HistoryPage() {
                           </AccordionTrigger>
                         </div>
 
-                        <div className="text-right min-w-[85px] md:min-w-[90px] flex items-center justify-end gap-2 md:gap-3 shrink-0">
+                        <div className="text-right min-w-[120px] md:min-w-[130px] flex items-center justify-end gap-2 md:gap-3 shrink-0">
                           <span className={cn(
                             "text-base md:text-lg font-black font-mono tracking-tighter leading-none",
                             isCash ? "text-green-600" : "text-primary"
@@ -355,14 +355,14 @@ export default function HistoryPage() {
                           <Button 
                             variant="ghost" 
                             size="icon" 
-                            className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100 transition-opacity rounded-full hidden sm:flex" 
+                            className="h-9 w-9 text-destructive bg-destructive/5 sm:bg-transparent rounded-full" 
                             onClick={(e) => {
                               e.stopPropagation();
                               setDeleteContext('sales');
                               setItemToDelete(sale);
                             }}
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
                       </div>
@@ -468,33 +468,33 @@ export default function HistoryPage() {
                   </div>
 
                   <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-4 border-t sm:border-t-0 pt-2 sm:pt-0">
-                    <div className="text-right flex flex-col items-end mr-4">
+                    <div className="text-right flex flex-col items-end mr-2 md:mr-4">
                       <span className="text-xl font-black text-accent">+{log.quantity}</span>
                       <span className="text-[8px] font-black text-slate-400 uppercase">Unidades</span>
                     </div>
                     
-                    <div className="flex gap-1">
+                    <div className="flex gap-2">
                       <Button 
                         variant="ghost" 
                         size="icon" 
-                        className="h-8 w-8 text-primary rounded-full bg-primary/5 hover:bg-primary/10" 
+                        className="h-10 w-10 text-primary rounded-full bg-primary/5 hover:bg-primary/10 shadow-sm" 
                         onClick={() => {
                           setEditingLog(log);
                           setEditInvoiceNumber(log.invoiceNumber || "");
                         }}
                       >
-                        <Edit3 className="w-3.5 h-3.5" />
+                        <Edit3 className="w-4 h-4" />
                       </Button>
                       <Button 
                         variant="ghost" 
                         size="icon" 
-                        className="h-8 w-8 text-destructive rounded-full" 
+                        className="h-10 w-10 text-destructive bg-destructive/5 rounded-full shadow-sm" 
                         onClick={() => {
                           setDeleteContext('inventoryLogs');
                           setItemToDelete(log);
                         }}
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
                   </div>
