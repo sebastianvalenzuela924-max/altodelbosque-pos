@@ -328,7 +328,7 @@ export default function POSPage() {
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in fade-in duration-500">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in fade-in duration-500 pb-10">
       <div className="lg:col-span-5 flex flex-col gap-6">
         <section className="space-y-4">
           <div className="flex items-center justify-between px-1">
@@ -396,8 +396,8 @@ export default function POSPage() {
       </div>
 
       <div className="lg:col-span-7 flex flex-col gap-6">
-        <Card className="border-none shadow-2xl bg-white overflow-hidden rounded-3xl">
-          <CardHeader className="bg-primary text-white py-4 relative z-10">
+        <Card className="border-none shadow-2xl bg-white overflow-hidden rounded-3xl flex flex-col">
+          <CardHeader className="bg-primary text-white py-4 shrink-0">
             <div className="flex justify-between items-center gap-4">
               <div className="flex items-center gap-3 overflow-hidden min-w-0">
                 <ReceiptText className="w-6 h-6 md:w-8 md:h-8 shrink-0" />
@@ -422,12 +422,13 @@ export default function POSPage() {
             </div>
           </CardHeader>
 
-          <CardContent className="p-0 flex flex-col relative bg-slate-50">
-            <ScrollArea className="flex-1 max-h-[500px] md:max-h-[650px]">
-              <div className="divide-y divide-slate-100">
+          <CardContent className="p-0 flex flex-col bg-slate-50">
+            {/* Altura fija para el área de scroll para garantizar que todo el contenido sea accesible */}
+            <ScrollArea className="h-[450px] lg:h-[600px] w-full border-b border-slate-200">
+              <div className="divide-y divide-slate-100 pb-10">
                 {items.length === 0 && manualProducts.length === 0 && (
-                  <div className="flex flex-col items-center justify-center py-10 md:py-20 px-6 text-center space-y-4 opacity-40">
-                    <ShoppingCart className="w-10 h-10 md:w-12 md:h-12 text-slate-300" />
+                  <div className="flex flex-col items-center justify-center py-20 px-6 text-center space-y-4 opacity-40">
+                    <ShoppingCart className="w-12 h-12 text-slate-300" />
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Esperando productos...</p>
                   </div>
                 )}
@@ -474,9 +475,7 @@ export default function POSPage() {
               </div>
             </ScrollArea>
 
-            <Separator className="bg-slate-200" />
-
-            <div className="p-4 md:p-6 bg-white">
+            <div className="p-4 md:p-6 bg-white shrink-0 shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.1)]">
                <CalculatorComponent 
                 baseValue={Math.round(total)} 
                 isProcessing={isProcessing}
