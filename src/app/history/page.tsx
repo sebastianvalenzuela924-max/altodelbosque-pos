@@ -4,7 +4,7 @@
 import { useCollection, useFirestore, useMemoFirebase, deleteDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase";
 import { collection, query, orderBy, doc, increment } from "firebase/firestore";
 import { Card } from "@/components/ui/card";
-import { FileSpreadsheet, Calendar, History, ShoppingBag, Loader2, ChevronRight, Trash2, Eraser, AlertCircle, X, ChevronLeft, Check, Banknote, CreditCard, PackagePlus, ArrowDownToLine, FileText, Edit3 } from "lucide-react";
+import { FileSpreadsheet, Calendar, History, ShoppingBag, Loader2, ChevronRight, Trash2, Eraser, AlertCircle, X, ChevronLeft, Check, Banknote, CreditCard, PackagePlus, ArrowDownToLine, FileText, Edit3, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { exportToExcel } from "@/lib/export";
@@ -26,6 +26,7 @@ export default function HistoryPage() {
   const [isMounted, setIsMounted] = useState(false);
   const [dateFilter, setDateFilter] = useState<DateFilter>("today");
   const [customDate, setCustomDate] = useState<string>("");
+  const [logSearchTerm, setLogSearchTerm] = useState("");
   const firestore = useFirestore();
   const { toast } = useToast();
   
@@ -82,7 +83,17 @@ export default function HistoryPage() {
   };
 
   const filteredSales = useMemo(() => applyDateFilter(allSales || [], "saleDateTime"), [allSales, dateFilter, customDate, isMounted]);
-  const filteredLogs = useMemo(() => applyDateFilter(allLogs || [], "timestamp"), [allLogs, dateFilter, customDate, isMounted]);
+  
+  const filteredLogs = useMemo(() => {
+    const dateFiltered = applyDateFilter(allLogs || [], "timestamp");
+    if (!logSearchTerm.trim()) return dateFiltered;
+    
+    const term = logSearchTerm.toLowerCase().trim();
+    return dateFiltered.filter(l => 
+      l.productName?.toLowerCase().includes(term) || 
+      l.invoiceNumber?.toLowerCase().includes(term)
+    );
+  }, [allLogs, dateFilter, customDate, isMounted, logSearchTerm]);
 
   const handleExport = () => {
     if (filteredSales.length > 0) {
@@ -347,7 +358,25 @@ export default function HistoryPage() {
           )}
         </TabsContent>
 
-        <TabsContent value="stock" className="mt-6 space-y-2">
+        <TabsContent value="stock" className="mt-6 space-y-4">
+          <div className="relative mb-4">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Input 
+              className="pl-11 h-12 bg-white rounded-2xl border-none shadow-sm font-bold" 
+              placeholder="Buscar por producto o factura..." 
+              value={logSearchTerm}
+              onChange={(e) => setLogSearchTerm(e.target.value)}
+            />
+            {logSearchTerm && (
+              <button 
+                onClick={() => setLogSearchTerm("")}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+
           {isLogsLoading ? (
             <div className="flex flex-col items-center justify-center py-20 opacity-30">
                <Loader2 className="w-8 h-8 animate-spin mb-2 text-accent" />
@@ -356,7 +385,7 @@ export default function HistoryPage() {
           ) : filteredLogs.length === 0 ? (
             <div className="text-center py-20 bg-white rounded-3xl border-2 border-dashed border-slate-100">
               <PackagePlus className="w-12 h-12 mx-auto mb-3 text-slate-100" />
-              <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest">Sin ingresos de stock</h3>
+              <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest">Sin resultados</h3>
             </div>
           ) : (
             filteredLogs.map((log) => {
