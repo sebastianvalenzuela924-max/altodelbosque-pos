@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useFirestore, setDocumentNonBlocking } from "@/firebase";
+import { useFirestore, setDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase";
 import { doc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Package, Tag, Target, HelpCircle, AlertTriangle, Truck } from "lucide-react";
@@ -71,6 +71,13 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
 
     setLoading(true);
     const finalId = formData.id.trim() || `INT-${Date.now().toString().slice(-6)}-${Math.random().toString(36).substring(2, 5).toUpperCase()}`;
+    
+    // Si el ID cambió y estamos editando un producto existente, debemos borrar el registro antiguo
+    if (product?.id && product.id !== finalId) {
+      const oldDocRef = doc(firestore, "products", product.id);
+      deleteDocumentNonBlocking(oldDocRef);
+    }
+
     const docRef = doc(firestore, "products", finalId);
     
     const enteredCat = formData.category.trim();
@@ -90,7 +97,7 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
 
     setDocumentNonBlocking(docRef, data, { merge: true });
     toast({ 
-      title: product?.id ? "Producto Actualizado" : "Producto Creado", 
+      title: product?.id ? (product.id !== finalId ? "Código Actualizado" : "Producto Actualizado") : "Producto Creado", 
       description: `Se guardó correctamente con el código: ${finalId}` 
     });
     
@@ -115,16 +122,20 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
               <div className="flex items-center gap-2">
-                <Label htmlFor="id" className="font-bold text-slate-500 text-xs uppercase tracking-widest">Código</Label>
+                <Label htmlFor="id" className="font-bold text-slate-500 text-xs uppercase tracking-widest">Código / Barcode</Label>
               </div>
               <Input 
                 id="id" 
                 value={formData.id} 
-                disabled={!!product?.id && !!product?.name} 
-                className="h-12 rounded-xl bg-slate-50 border-none font-mono font-bold" 
+                className="h-12 rounded-xl bg-slate-50 border-none font-mono font-bold focus-visible:ring-primary" 
                 onChange={e => setFormData({ ...formData, id: e.target.value })} 
-                placeholder="Opcional (EAN)" 
+                placeholder="EAN-13 o Manual" 
               />
+              {product?.id && (
+                <p className="text-[8px] text-amber-600 font-bold uppercase tracking-tighter">
+                  Nota: Cambiar el código migrará el producto al nuevo ID.
+                </p>
+              )}
             </div>
             <div className="grid gap-2">
               <Label htmlFor="price" className="font-bold text-slate-500 text-xs uppercase tracking-widest">Precio ($)</Label>
