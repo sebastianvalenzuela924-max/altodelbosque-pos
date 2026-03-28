@@ -8,7 +8,7 @@ import { ScannerComponent } from "@/components/pos/ScannerComponent";
 import { CalculatorComponent } from "@/components/pos/CalculatorComponent";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
-import { Trash2, PlusCircle, MinusCircle, ShoppingCart, Scan, RotateCcw, Search, Plus, PackageSearch, Check, ReceiptText } from "lucide-react";
+import { Trash2, PlusCircle, MinusCircle, ShoppingCart, Scan, RotateCcw, Search, Plus, PackageSearch, Check, ReceiptText, IceCream, CupSoda } from "lucide-react";
 import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { doc, collection, serverTimestamp, increment, query } from "firebase/firestore";
@@ -136,6 +136,16 @@ export default function POSPage() {
       .filter(p => p.name.toLowerCase().includes(q))
       .slice(0, 5);
   }, [allProducts, searchQuery]);
+
+  // Productos de acceso rápido configurados por el usuario
+  const quickAccessProducts = useMemo(() => {
+    if (!allProducts) return [];
+    const names = ["Granizado pequeño", "Granizado grande", "Helado soft"];
+    return names.map(name => {
+      const found = allProducts.find(p => p.name.toLowerCase().trim() === name.toLowerCase().trim());
+      return { name, product: found };
+    });
+  }, [allProducts]);
 
   useEffect(() => {
     setMounted(true);
@@ -282,10 +292,9 @@ export default function POSPage() {
     setManualProducts([]);
     setSearchQuery("");
     
-    toast({ title: `Venta Finalizada (${paymentMethod === 'cash' ? 'Efectivo' : 'Tarjeta'})` });
-    
     setTimeout(() => {
       setIsProcessing(false);
+      toast({ title: `Venta Finalizada (${paymentMethod === 'cash' ? 'Efectivo' : 'Tarjeta'})` });
     }, 500);
   };
 
@@ -339,6 +348,39 @@ export default function POSPage() {
           </div>
         </section>
 
+        {/* Accesos Rápidos */}
+        <section className="space-y-3">
+           <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 px-1">
+            <PlusCircle className="w-3 h-3" /> Acceso Rápido
+          </h3>
+          <div className="grid grid-cols-3 gap-2">
+            {quickAccessProducts.map((item, idx) => (
+              <Button
+                key={idx}
+                variant="outline"
+                disabled={!item.product}
+                onClick={() => item.product && handleAddItem(item.product)}
+                className={cn(
+                  "h-auto py-3 px-2 flex flex-col gap-2 rounded-2xl border-none shadow-md transition-all active:scale-95 group",
+                  item.product 
+                    ? idx === 2 ? "bg-amber-100 hover:bg-amber-200 text-amber-700" : "bg-primary/10 hover:bg-primary/20 text-primary"
+                    : "opacity-40 grayscale cursor-not-allowed"
+                )}
+              >
+                <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
+                  {idx === 2 ? <IceCream className="w-4 h-4" /> : <CupSoda className="w-4 h-4" />}
+                </div>
+                <div className="flex flex-col items-center">
+                  <span className="text-[8px] font-black uppercase leading-tight text-center">{item.name}</span>
+                  {item.product && (
+                    <span className="text-[9px] font-black mt-0.5 opacity-60">${Math.round(item.product.price).toLocaleString('es-CL')}</span>
+                  )}
+                </div>
+              </Button>
+            ))}
+          </div>
+        </section>
+
         <section className="space-y-3">
           <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 px-1">
             <PackageSearch className="w-4 h-4" /> Buscar Producto
@@ -353,7 +395,7 @@ export default function POSPage() {
       </div>
 
       <div className="lg:col-span-7 flex flex-col gap-6">
-        <Card className="flex-1 flex flex-col border-none shadow-2xl bg-white overflow-hidden rounded-3xl">
+        <Card className="border-none shadow-2xl bg-white overflow-hidden rounded-3xl">
           <CardHeader className="bg-primary text-white py-4 relative z-10">
             <div className="flex justify-between items-center gap-4">
               <div className="flex items-center gap-3 overflow-hidden min-w-0">
@@ -379,7 +421,7 @@ export default function POSPage() {
             </div>
           </CardHeader>
 
-          <CardContent className="flex-1 p-0 flex flex-col relative bg-slate-50">
+          <CardContent className="p-0 flex flex-col relative bg-slate-50">
             <ScrollArea className="flex-1 max-h-[300px] md:max-h-[350px]">
               <div className="divide-y divide-slate-100">
                 {items.length === 0 && manualProducts.length === 0 && (
