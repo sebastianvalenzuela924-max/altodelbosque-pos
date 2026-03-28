@@ -9,7 +9,7 @@ import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Search, FileSpreadsheet, Edit3, Plus, Trash2, Package, Scan, Loader2, ShieldAlert, ShieldCheck, ShieldQuestion, MousePointer2, Filter, X, Tag, Truck } from "lucide-react";
+import { Search, FileSpreadsheet, Edit3, Plus, Trash2, Package, Scan, Loader2, ShieldAlert, ShieldCheck, ShieldQuestion, MousePointer2, Filter, X, Tag, Truck, Box } from "lucide-react";
 import { exportToExcel } from "@/lib/export";
 import { useToast } from "@/hooks/use-toast";
 import { ProductDialog } from "@/components/inventory/ProductDialog";
@@ -86,7 +86,6 @@ function InventoryContent() {
   }, [products]);
 
   const getProductStatus = (stock: number, ideal: number, warning?: number) => {
-    // Si el umbral de aviso es 0 o el ideal es 0, desactivamos alertas de stock para este producto
     if (warning === 0 || ideal === 0) return "ok";
     
     if (warning !== undefined && warning !== null && warning > 0) {
@@ -223,11 +222,18 @@ function InventoryContent() {
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-black text-primary flex items-center gap-2">
-            <Package className="w-8 h-8" />
-            Inventario
-          </h1>
-          <p className="text-muted-foreground text-sm font-bold flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl font-black text-primary flex items-center gap-2">
+              <Package className="w-8 h-8" />
+              Inventario
+            </h1>
+            {!isLoading && products && (
+              <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 font-black text-xs px-3 py-1 rounded-xl">
+                {products.length} {products.length === 1 ? 'Producto' : 'Productos'}
+              </Badge>
+            )}
+          </div>
+          <p className="text-muted-foreground text-sm font-bold flex items-center gap-2 mt-1">
             <MousePointer2 className="w-4 h-4 text-accent" />
             Mantén presionado un producto para carga rápida.
           </p>
