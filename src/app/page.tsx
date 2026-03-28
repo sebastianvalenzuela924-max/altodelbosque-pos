@@ -192,7 +192,6 @@ export default function POSPage() {
     const now = Date.now();
     
     // 1. BLOQUEO GLOBAL: Evita que el escáner registre CUALQUIER cosa por 1.2 segundos tras un éxito.
-    // Esto previene jitter y lecturas múltiples por movimiento de cámara.
     if (lastScanRef.current && (now - lastScanRef.current.time < 1200)) {
       return;
     }
@@ -424,7 +423,7 @@ export default function POSPage() {
           </CardHeader>
 
           <CardContent className="p-0 flex flex-col relative bg-slate-50">
-            <ScrollArea className="flex-1 max-h-[300px] md:max-h-[350px]">
+            <ScrollArea className="flex-1 max-h-[500px] md:max-h-[650px]">
               <div className="divide-y divide-slate-100">
                 {items.length === 0 && manualProducts.length === 0 && (
                   <div className="flex flex-col items-center justify-center py-10 md:py-20 px-6 text-center space-y-4 opacity-40">
