@@ -15,6 +15,7 @@ export function AuthWrapper({ children }: { children: React.ReactNode }) {
   const firestore = useFirestore();
   const auth = useAuth();
   const [isAuthorized, setIsAuthorized] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   // Referencia al documento de autorización
   const authDocRef = useMemoFirebase(() => {
@@ -33,10 +34,18 @@ export function AuthWrapper({ children }: { children: React.ReactNode }) {
 
   // Sincronización del estado de autorización basada en el snapshot de Firestore
   useEffect(() => {
-    if (authDoc) {
-      setIsAuthorized(true);
+    if (authDoc && !isAuthorized) {
+      // Agregamos un pequeño retraso para permitir que las reglas de seguridad
+      // de Firestore "vean" el documento recién creado o actualizado en el servidor.
+      // Esto evita errores de "insufficient permissions" por latencia de propagación de exists().
+      setIsSyncing(true);
+      const timer = setTimeout(() => {
+        setIsAuthorized(true);
+        setIsSyncing(false);
+      }, 1000);
+      return () => clearTimeout(timer);
     }
-  }, [authDoc]);
+  }, [authDoc, isAuthorized]);
 
   // Creación automática del documento si no existe
   useEffect(() => {
@@ -55,7 +64,7 @@ export function AuthWrapper({ children }: { children: React.ReactNode }) {
   }, [user, firestore, authDoc, isAuthDocLoading]);
 
   // Pantalla de carga mientras se sincroniza el terminal
-  if (isUserLoading || isAuthDocLoading || !isAuthorized) {
+  if (isUserLoading || isAuthDocLoading || !isAuthorized || isSyncing) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-background">
         <div className="flex flex-col items-center gap-4 animate-in fade-in duration-700">
@@ -65,10 +74,10 @@ export function AuthWrapper({ children }: { children: React.ReactNode }) {
               <div className="w-2 h-2 bg-primary rounded-full animate-ping" />
             </div>
           </div>
-          <div className="text-center">
+          <div className="text-center px-6">
             <h2 className="text-2xl font-black text-primary tracking-tighter uppercase">AltodelBosque POS</h2>
             <p className="text-[10px] text-muted-foreground font-black uppercase tracking-[0.2em] mt-1">
-              Sincronizando Terminal
+              {isSyncing ? "Verificando Autorización..." : "Sincronizando Terminal"}
             </p>
           </div>
         </div>
