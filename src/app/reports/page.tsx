@@ -4,7 +4,7 @@
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import { collection, query, orderBy } from "firebase/firestore";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { DollarSign, Package, TrendingUp, Calendar, ShoppingBag, Loader2, ListFilter, Trophy, CheckCircle2, Filter, ShieldAlert, ShieldCheck, AlertTriangle, Tag, ArrowRight, Wallet, Banknote, CreditCard, Ghost, Search } from "lucide-react";
+import { DollarSign, Package, TrendingUp, Calendar, ShoppingBag, Loader2, ListFilter, Trophy, CheckCircle2, Filter, ShieldAlert, ShieldCheck, AlertTriangle, Tag, ArrowRight, Wallet, Banknote, CreditCard, Ghost, Search, X } from "lucide-react";
 import { useMemo, useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +22,7 @@ export default function ReportsPage() {
   const [mounted, setMounted] = useState(false);
   const [dateFilter, setDateFilter] = useState<DateFilter>("today");
   const [customDate, setCustomDate] = useState<string>("");
+  const [productSearchTerm, setProductSearchTerm] = useState("");
   const firestore = useFirestore();
 
   useEffect(() => {
@@ -80,6 +81,33 @@ export default function ReportsPage() {
   const totalRevenue = filteredSales.reduce((sum, s) => sum + (s.totalAmount || 0), 0);
   const totalCash = filteredSales.filter(s => s.paymentMethod === 'cash').reduce((sum, s) => sum + (s.totalAmount || 0), 0);
   const totalCard = filteredSales.filter(s => s.paymentMethod !== 'cash').reduce((sum, s) => sum + (s.totalAmount || 0), 0);
+
+  // Estadísticas del buscador de productos
+  const searchResults = useMemo(() => {
+    if (!productSearchTerm || !allProducts) return [];
+    const term = productSearchTerm.toLowerCase().trim();
+    
+    // Calcular ventas por producto en el periodo filtrado
+    const salesSummary: Record<string, { quantity: number, revenue: number }> = {};
+    filteredSales.forEach(sale => {
+      sale.itemsSummary?.forEach((item: any) => {
+        if (item.id) {
+          if (!salesSummary[item.id]) salesSummary[item.id] = { quantity: 0, revenue: 0 };
+          salesSummary[item.id].quantity += item.quantity;
+          salesSummary[item.id].revenue += Math.round(item.price * item.quantity);
+        }
+      });
+    });
+
+    return allProducts
+      .filter(p => p.name.toLowerCase().includes(term) || String(p.id).includes(term))
+      .slice(0, 5)
+      .map(p => ({
+        ...p,
+        unitsSold: salesSummary[p.id]?.quantity || 0,
+        revenueGenerated: salesSummary[p.id]?.revenue || 0
+      }));
+  }, [productSearchTerm, allProducts, filteredSales]);
 
   const categoryStats = useMemo(() => {
     if (!allProducts || !mounted) return [];
@@ -281,6 +309,75 @@ export default function ReportsPage() {
             </CardTitle>
           </CardHeader>
         </Card>
+      </section>
+
+      {/* Buscador de Producto Específico */}
+      <section className="space-y-4 animate-in slide-in-from-top-4 duration-500">
+        <div className="relative group">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-primary transition-colors" />
+          <Input 
+            className="pl-12 h-14 bg-white rounded-2xl border-none shadow-lg font-bold text-lg focus:ring-2 focus:ring-primary/20" 
+            placeholder="Buscar producto para ver detalles de venta..." 
+            value={productSearchTerm}
+            onChange={(e) => setProductSearchTerm(e.target.value)}
+          />
+          {productSearchTerm && (
+            <button 
+              onClick={() => setProductSearchTerm("")}
+              className="absolute right-4 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-slate-600"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          )}
+        </div>
+
+        {productSearchTerm && (
+          <div className="grid gap-3 animate-in fade-in duration-300">
+            {searchResults.length > 0 ? (
+              searchResults.map((p: any) => (
+                <Card key={p.id} className="border-none shadow-sm rounded-2xl overflow-hidden bg-white hover:shadow-md transition-all">
+                  <div className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex items-center gap-4 flex-1 min-w-0">
+                      <div className="w-12 h-12 rounded-xl bg-primary/5 flex items-center justify-center text-primary shrink-0">
+                        <Package className="w-6 h-6" />
+                      </div>
+                      <div className="min-w-0">
+                        <h4 className="font-black text-slate-800 uppercase tracking-tighter truncate">{p.name}</h4>
+                        <div className="flex gap-2 mt-1">
+                          <Badge variant="outline" className="text-[8px] font-black uppercase bg-slate-50 border-slate-100">ID: {p.id}</Badge>
+                          <Badge variant="outline" className="text-[8px] font-black uppercase bg-slate-50 border-slate-100">{p.category || 'General'}</Badge>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-8 shrink-0">
+                      <div className="bg-slate-50 p-2 rounded-xl border border-slate-100 text-center">
+                        <p className="text-[8px] font-black text-slate-400 uppercase leading-none mb-1">Stock</p>
+                        <p className="text-sm font-black text-slate-700">{p.stock}</p>
+                      </div>
+                      <div className="bg-slate-50 p-2 rounded-xl border border-slate-100 text-center">
+                        <p className="text-[8px] font-black text-slate-400 uppercase leading-none mb-1">Precio</p>
+                        <p className="text-sm font-black text-primary">${Math.round(p.price).toLocaleString('es-CL')}</p>
+                      </div>
+                      <div className="bg-primary/5 p-2 rounded-xl border border-primary/10 text-center">
+                        <p className="text-[8px] font-black text-primary uppercase leading-none mb-1">Vendidos</p>
+                        <p className="text-sm font-black text-primary">{p.unitsSold} u.</p>
+                      </div>
+                      <div className="bg-green-50 p-2 rounded-xl border border-green-100 text-center">
+                        <p className="text-[8px] font-black text-green-600 uppercase leading-none mb-1">Recaudado</p>
+                        <p className="text-sm font-black text-green-700">${p.revenueGenerated.toLocaleString('es-CL')}</p>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              ))
+            ) : (
+              <div className="text-center py-6 bg-white rounded-2xl border-2 border-dashed border-slate-100">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">No se encontraron productos con ese nombre</p>
+              </div>
+            )}
+          </div>
+        )}
       </section>
 
       <Tabs defaultValue="categories" className="w-full">
