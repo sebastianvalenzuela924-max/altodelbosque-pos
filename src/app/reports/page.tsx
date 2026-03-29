@@ -4,7 +4,7 @@
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import { collection, query, orderBy } from "firebase/firestore";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { DollarSign, Package, TrendingUp, Calendar, ShoppingBag, Loader2, ListFilter, Trophy, CheckCircle2, Filter, ShieldAlert, ShieldCheck, AlertTriangle, Tag, ArrowRight, Wallet, Banknote, CreditCard } from "lucide-react";
+import { DollarSign, Package, TrendingUp, Calendar, ShoppingBag, Loader2, ListFilter, Trophy, CheckCircle2, Filter, ShieldAlert, ShieldCheck, AlertTriangle, Tag, ArrowRight, Wallet, Banknote, CreditCard, Ghost, Search } from "lucide-react";
 import { useMemo, useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -55,7 +55,7 @@ export default function ReportsPage() {
     const now = new Date();
     
     return allSales.filter(sale => {
-      const saleDate = sale.saleDateTime?.toDate?.() || new Date();
+      const saleDate = sale.saleDateTime?.toDate?.() || (sale.saleDateTime ? new Date(sale.saleDateTime) : new Date());
       
       if (dateFilter === "today") {
         return saleDate.toDateString() === now.toDateString();
@@ -152,8 +152,22 @@ export default function ReportsPage() {
     });
     return Object.values(productCounts)
       .sort((a, b) => b.quantity - a.quantity)
-      .slice(0, 10);
+      .slice(0, 15);
   }, [filteredSales]);
+
+  const unsoldProducts = useMemo(() => {
+    if (!allProducts || !mounted) return [];
+    const soldIds = new Set();
+    filteredSales.forEach(sale => {
+      sale.itemsSummary?.forEach((item: any) => {
+        if (item.id) soldIds.add(String(item.id).trim());
+      });
+    });
+
+    return allProducts
+      .filter(p => !soldIds.has(String(p.id).trim()))
+      .sort((a, b) => (b.stock || 0) - (a.stock || 0));
+  }, [filteredSales, allProducts, mounted]);
 
   if (!mounted || isLoadingSales || isLoadingProducts) {
     return (
@@ -178,7 +192,7 @@ export default function ReportsPage() {
             Reportes
           </h1>
           <p className="text-muted-foreground text-xs md:text-sm font-bold mt-1">
-            Rendimiento de ventas por día y categoría.
+            Análisis de rendimiento y productos sin rotación.
           </p>
         </div>
         
@@ -260,63 +274,23 @@ export default function ReportsPage() {
         </Card>
       </section>
 
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="border-none shadow-md bg-white rounded-3xl overflow-hidden relative group">
-          <div className="absolute top-0 right-0 p-4 text-slate-100 group-hover:scale-110 transition-transform">
-            <ShoppingBag className="w-16 h-16" />
-          </div>
-          <CardHeader className="pb-2">
-            <CardDescription className="text-slate-400 font-black text-[10px] uppercase tracking-widest">Ventas Realizadas</CardDescription>
-            <CardTitle className="text-2xl font-black text-slate-800">{totalSalesCount}</CardTitle>
-          </CardHeader>
-        </Card>
-
-        <Card className="border-none shadow-md bg-white rounded-3xl overflow-hidden relative group">
-          <div className="absolute top-0 right-0 p-4 text-red-50 group-hover:scale-110 transition-transform">
-            <AlertTriangle className="w-16 h-16 text-red-100" />
-          </div>
-          <CardHeader className="pb-2">
-            <CardDescription className="text-slate-400 font-black text-[10px] uppercase tracking-widest">Reponer Urgente</CardDescription>
-            <CardTitle className={cn("text-2xl font-black", criticalProductsCount > 0 ? "text-destructive" : "text-slate-800")}>
-              {criticalProductsCount}
-            </CardTitle>
-          </CardHeader>
-        </Card>
-
-        <Card className="border-none shadow-md bg-white rounded-3xl overflow-hidden relative group">
-          <div className="absolute top-0 right-0 p-4 text-green-50 group-hover:scale-110 transition-transform">
-            <CheckCircle2 className="w-16 h-16 text-green-100" />
-          </div>
-          <CardHeader className="pb-2">
-            <CardDescription className="text-slate-400 font-black text-[10px] uppercase tracking-widest">Salud Inventario</CardDescription>
-            <CardTitle className={cn("text-2xl font-black", inventoryHealth > 80 ? "text-green-600" : "text-amber-600")}>
-              {inventoryHealth}%
-            </CardTitle>
-          </CardHeader>
-        </Card>
-      </section>
-
       <Tabs defaultValue="categories" className="w-full">
-        <TabsList className="bg-white p-1 rounded-2xl shadow-sm border h-14 w-full md:w-auto grid grid-cols-2">
-          <TabsTrigger value="categories" className="rounded-xl font-bold uppercase text-[10px] tracking-widest data-[state=active]:bg-primary data-[state=active]:text-white">
-            <ListFilter className="w-4 h-4 mr-2" /> Por Categoría
+        <TabsList className="bg-white p-1 rounded-2xl shadow-sm border h-14 w-full grid grid-cols-3">
+          <TabsTrigger value="categories" className="rounded-xl font-bold uppercase text-[9px] md:text-[10px] tracking-widest data-[state=active]:bg-primary data-[state=active]:text-white">
+            <ListFilter className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" /> Categoría
           </TabsTrigger>
-          <TabsTrigger value="products" className="rounded-xl font-bold uppercase text-[10px] tracking-widest data-[state=active]:bg-primary data-[state=active]:text-white">
-            <Trophy className="w-4 h-4 mr-2" /> Ranking Ventas
+          <TabsTrigger value="products" className="rounded-xl font-bold uppercase text-[9px] md:text-[10px] tracking-widest data-[state=active]:bg-primary data-[state=active]:text-white">
+            <Trophy className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" /> Top Ventas
+          </TabsTrigger>
+          <TabsTrigger value="unsold" className="rounded-xl font-bold uppercase text-[9px] md:text-[10px] tracking-widest data-[state=active]:bg-destructive data-[state=active]:text-white">
+            <Ghost className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" /> Sin Ventas
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="categories" className="space-y-4 mt-6">
-          <div className="flex items-center justify-between px-2">
-            <h2 className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
-              <Filter className="w-3 h-3" /> Desglose detallado por secciones
-            </h2>
-          </div>
-
           <Accordion type="multiple" className="space-y-3">
             {categoryStats.map((cat, idx) => {
               const hasCritical = cat.stockCritical > 0;
-
               return (
                 <AccordionItem key={idx} value={`cat-${idx}`} className="border-none">
                   <Card className={cn(
@@ -333,19 +307,16 @@ export default function ReportsPage() {
                         </div>
                         
                         <div className="flex-1 min-w-0">
-                          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 overflow-hidden">
-                            <h3 className="font-black text-sm md:text-lg uppercase tracking-tighter text-slate-800 truncate">{cat.category}</h3>
-                            {hasCritical && <Badge className="bg-destructive text-[7px] md:text-[8px] font-black uppercase tracking-tighter animate-pulse w-fit">¡STOCK BAJO!</Badge>}
-                          </div>
+                          <h3 className="font-black text-sm md:text-lg uppercase tracking-tighter text-slate-800 truncate">{cat.category}</h3>
                           <div className="flex flex-wrap gap-2 mt-1">
-                            <Badge variant="outline" className="text-[8px] md:text-[9px] font-black uppercase bg-primary/5 text-primary border-primary/20 rounded-lg px-2 py-0.5 md:px-2.5 md:py-1">
-                              Ventas: {cat.unitsSold} u.
+                            <Badge variant="outline" className="text-[8px] md:text-[9px] font-black uppercase bg-primary/5 text-primary border-primary/20 rounded-lg px-2 py-0.5">
+                              {cat.unitsSold} u. vendidas
                             </Badge>
                           </div>
                         </div>
 
                         <div className="text-right shrink-0 min-w-[80px] md:min-w-[120px] pr-2">
-                          <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Recaudado</p>
+                          <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Total</p>
                           <p className="text-sm md:text-xl font-black font-mono text-primary leading-none tracking-tighter">
                             ${Math.round(cat.totalRevenue).toLocaleString('es-CL')}
                           </p>
@@ -353,63 +324,43 @@ export default function ReportsPage() {
                       </div>
                     </AccordionTrigger>
                     
-                    <AccordionContent className="px-2 md:px-6 pb-6 pt-2 bg-slate-50/50">
-                      <div className="grid gap-3 mt-4">
-                        <div className="flex items-center justify-between px-2 mb-1">
-                          <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Rendimiento por producto</span>
-                        </div>
+                    <AccordionContent className="px-2 md:px-6 pb-6 pt-0 bg-slate-50/50">
+                      <div className="grid gap-1 mt-2">
                         {cat.products.map((p: any) => {
                           const status = getProductStatus(p.stock, p.idealStock, p.warningStock);
                           const productTotalRevenue = Math.round(p.price * p.soldThisPeriod);
                           return (
                             <div key={p.id} className={cn(
-                              "bg-white p-3 md:p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between border-2 transition-all gap-4 shadow-sm hover:shadow-md hover:border-primary/20 overflow-hidden",
-                              status === 'danger' ? "border-red-300 bg-red-50/30" : "border-slate-200"
+                              "bg-white p-2 md:p-3 rounded-xl flex items-center justify-between border transition-all gap-2 md:gap-4 shadow-sm hover:border-primary/20",
+                              status === 'danger' ? "border-red-200 bg-red-50/20" : "border-slate-100"
                             )}>
-                              <div className="flex items-center gap-3 flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-1 min-w-0">
                                 <div className={cn(
-                                  "w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center shrink-0",
-                                  status === 'danger' ? "bg-red-100" : status === 'warning' ? "bg-amber-100" : "bg-green-100"
+                                  "w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center shrink-0",
+                                  status === 'danger' ? "bg-red-100 text-destructive" : "bg-slate-100 text-slate-400"
                                 )}>
-                                  {status === 'danger' ? <ShieldAlert className="w-5 h-5 text-destructive" /> : 
-                                   status === 'warning' ? <AlertTriangle className="w-5 h-5 text-amber-500" /> : 
-                                   <ShieldCheck className="w-5 h-5 text-green-500" />}
+                                  {status === 'danger' ? <ShieldAlert className="w-4 h-4" /> : <Package className="w-4 h-4" />}
                                 </div>
                                 <div className="min-w-0">
-                                  <p className="font-bold text-xs md:text-sm text-slate-700 truncate">{p.name}</p>
-                                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-0.5">
-                                    <span className="text-[9px] text-slate-400 font-bold uppercase shrink-0">
-                                      Stock: <span className={cn(status === 'danger' ? "text-destructive font-black" : "text-slate-500")}>{p.stock}</span>
-                                    </span>
-                                    <span className="text-slate-300 hidden md:inline">•</span>
-                                    <span className="text-[9px] text-primary font-black flex items-center gap-1 shrink-0">
-                                      <Tag className="w-2.5 h-2.5" /> ${Math.round(p.price).toLocaleString('es-CL')}
-                                    </span>
-                                  </div>
+                                  <p className="font-bold text-[10px] md:text-xs text-slate-700 truncate leading-tight">{p.name}</p>
+                                  <p className="text-[8px] text-slate-400 font-bold uppercase mt-0.5">Stock: {p.stock} • ${Math.round(p.price).toLocaleString('es-CL')}</p>
                                 </div>
                               </div>
                               
-                              <div className="flex items-center justify-between sm:justify-end gap-3 md:gap-6 w-full sm:w-auto border-t sm:border-t-0 pt-2 md:pt-0">
-                                <div className="flex flex-col items-start sm:items-end min-w-[60px]">
-                                  <p className="text-[8px] font-black text-primary uppercase tracking-widest mb-0.5">Vendidos</p>
-                                  <div className="flex items-center gap-1">
-                                    <span className="text-lg md:text-2xl font-black text-primary leading-none">{p.soldThisPeriod}</span>
-                                    <span className="text-[8px] font-black text-primary/60 uppercase">u.</span>
-                                  </div>
+                              <div className="flex items-center gap-3 md:gap-6 shrink-0 text-right">
+                                <div className="flex flex-col items-end">
+                                  <span className="text-[10px] md:text-sm font-black text-primary">{p.soldThisPeriod} u.</span>
                                 </div>
-                                
-                                <div className="flex flex-col items-end min-w-[80px] md:min-w-[100px]">
-                                  <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Subtotal</p>
-                                  <p className="text-base md:text-lg font-black text-slate-800 font-mono leading-none tracking-tighter">
+                                <div className="min-w-[70px] md:min-w-[90px] flex flex-col items-end">
+                                  <span className="text-[10px] md:text-sm font-black text-slate-800 font-mono tracking-tighter">
                                     ${productTotalRevenue.toLocaleString('es-CL')}
-                                  </p>
+                                  </span>
                                 </div>
-
                                 <Link 
                                   href={`/inventory?search=${p.id}`}
-                                  className="flex items-center justify-center rounded-xl md:rounded-2xl bg-slate-50 hover:bg-primary/10 text-primary h-10 w-10 md:h-12 md:w-12 transition-all border border-slate-100 shrink-0 shadow-sm"
+                                  className="h-7 w-7 md:h-8 md:w-8 flex items-center justify-center rounded-lg bg-slate-100 hover:bg-primary/10 text-primary transition-colors"
                                 >
-                                  <ArrowRight className="w-4 h-4 md:w-5 md:h-5" />
+                                  <ArrowRight className="w-3 h-3 md:w-4 md:h-4" />
                                 </Link>
                               </div>
                             </div>
@@ -426,28 +377,25 @@ export default function ReportsPage() {
 
         <TabsContent value="products" className="mt-6">
           <Card className="border-none shadow-xl rounded-3xl overflow-hidden bg-white">
-            <CardHeader className="p-4 md:p-6">
-              <CardTitle className="text-lg md:text-xl font-black text-primary flex items-center gap-2">
-                <Trophy className="w-5 h-5 md:w-6 md:h-6 text-amber-500" />
+            <CardHeader className="p-4 md:p-6 bg-amber-50/30">
+              <CardTitle className="text-lg md:text-xl font-black text-amber-600 flex items-center gap-2">
+                <Trophy className="w-5 h-5 md:w-6 md:h-6" />
                 Los más vendidos
               </CardTitle>
-              <CardDescription className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                Basado en unidades totales del periodo
-              </CardDescription>
             </CardHeader>
             <CardContent className="p-4 md:p-6">
               {topProducts.length === 0 ? (
-                <div className="text-center py-20 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
-                   <Package className="w-16 h-16 mx-auto mb-4 text-slate-200" />
-                   <p className="text-slate-400 font-bold uppercase tracking-widest">No hay ventas en este periodo</p>
+                <div className="text-center py-20">
+                   <Package className="w-16 h-16 mx-auto mb-4 text-slate-100" />
+                   <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">Sin ventas en este periodo</p>
                 </div>
               ) : (
-                <div className="space-y-4 md:space-y-6">
+                <div className="space-y-4">
                   {topProducts.map((p, idx) => (
-                    <div key={idx} className="flex items-center gap-3 md:gap-4 group">
+                    <div key={idx} className="flex items-center gap-4 group">
                       <div className={cn(
-                        "w-8 h-8 md:w-10 md:h-10 rounded-xl flex items-center justify-center font-black text-sm md:text-lg transition-transform group-hover:scale-110 shrink-0",
-                        idx === 0 ? "bg-amber-100 text-amber-600 shadow-md shadow-amber-200/50" : 
+                        "w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs shrink-0",
+                        idx === 0 ? "bg-amber-100 text-amber-600" : 
                         idx === 1 ? "bg-slate-100 text-slate-500" :
                         idx === 2 ? "bg-orange-100 text-orange-600" : "bg-slate-50 text-slate-300"
                       )}>
@@ -455,16 +403,16 @@ export default function ReportsPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-bold text-xs md:text-sm text-slate-700 truncate">{p.name}</p>
-                        <div className="w-full h-1.5 bg-slate-100 rounded-full mt-2 overflow-hidden">
+                        <div className="w-full h-1 bg-slate-100 rounded-full mt-2">
                           <div 
-                            className="h-full bg-primary rounded-full transition-all duration-1000" 
+                            className="h-full bg-primary rounded-full" 
                             style={{ width: `${(p.quantity / topProducts[0].quantity) * 100}%` }}
                           />
                         </div>
                       </div>
-                      <div className="text-right shrink-0">
-                        <p className="text-xs md:text-sm font-black text-primary">{p.quantity} u.</p>
-                        <p className="text-[8px] md:text-[10px] font-bold text-slate-400 font-mono">${Math.round(p.revenue).toLocaleString('es-CL')}</p>
+                      <div className="text-right shrink-0 min-w-[100px]">
+                        <p className="text-xs font-black text-primary">{p.quantity} u.</p>
+                        <p className="text-[10px] font-bold text-slate-400 font-mono">${Math.round(p.revenue).toLocaleString('es-CL')}</p>
                       </div>
                     </div>
                   ))}
@@ -473,7 +421,66 @@ export default function ReportsPage() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="unsold" className="mt-6">
+          <Card className="border-none shadow-xl rounded-3xl overflow-hidden bg-white">
+            <CardHeader className="p-4 md:p-6 bg-slate-50">
+              <CardTitle className="text-lg md:text-xl font-black text-slate-600 flex items-center gap-2">
+                <Ghost className="w-5 h-5 md:w-6 md:h-6" />
+                Sin Ventas en el Periodo
+              </CardTitle>
+              <CardDescription className="text-[10px] font-bold uppercase tracking-widest">
+                Productos en stock que no han tenido rotación.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="max-h-[600px] overflow-y-auto">
+                {unsoldProducts.length === 0 ? (
+                  <div className="text-center py-20">
+                     <CheckCircle2 className="w-16 h-16 mx-auto mb-4 text-green-100" />
+                     <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">¡Excelente! Todo el stock se ha movido.</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-slate-50">
+                    {unsoldProducts.map((p, idx) => (
+                      <div key={p.id} className="p-3 md:p-4 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <span className="text-[10px] font-bold text-slate-300 w-5">{idx + 1}</span>
+                          <div className="min-w-0">
+                            <p className="font-bold text-xs md:text-sm text-slate-700 truncate">{p.name}</p>
+                            <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest">{p.category || "General"}</p>
+                          </div>
+                        </div>
+                        <div className="text-right flex items-center gap-4 md:gap-8">
+                          <div className="flex flex-col items-end">
+                            <p className="text-[8px] font-black text-slate-400 uppercase leading-none mb-1">Stock</p>
+                            <p className={cn("text-xs md:text-sm font-black", p.stock === 0 ? "text-slate-300" : "text-slate-700")}>
+                              {p.stock} u.
+                            </p>
+                          </div>
+                          <div className="flex flex-col items-end">
+                            <p className="text-[8px] font-black text-slate-400 uppercase leading-none mb-1">Precio</p>
+                            <p className="text-xs md:text-sm font-black text-primary font-mono tracking-tighter">
+                              ${Math.round(p.price).toLocaleString('es-CL')}
+                            </p>
+                          </div>
+                          <Link 
+                            href={`/inventory?search=${p.id}`}
+                            className="h-8 w-8 flex items-center justify-center rounded-lg bg-slate-100 text-slate-400 hover:text-primary transition-colors"
+                          >
+                            <ArrowRight className="w-4 h-4" />
+                          </Link>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
     </div>
   );
 }
+
