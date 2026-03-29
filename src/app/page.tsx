@@ -555,7 +555,10 @@ export default function POSPage() {
 
       {/* Diálogo de Ingreso de Stock con Factura */}
       <Dialog open={isStockEntryDialogOpen} onOpenChange={setIsStockEntryDialogOpen}>
-        <DialogContent className="rounded-3xl p-6 border-none shadow-2xl max-w-[90vw] sm:max-w-md">
+        <DialogContent 
+          className="rounded-3xl p-6 border-none shadow-2xl max-w-[90vw] sm:max-w-md"
+          onOpenAutoFocus={(e) => e.preventDefault()}
+        >
           <DialogHeader>
             <DialogTitle className="text-xl font-black text-accent uppercase flex items-center gap-2">
               <FileText className="w-6 h-6" /> Ingreso de Stock
@@ -596,7 +599,7 @@ export default function POSPage() {
           <DialogFooter className="grid grid-cols-2 gap-2">
             <Button variant="ghost" className="rounded-xl h-12 font-bold" onClick={() => setIsStockEntryDialogOpen(false)}>Cancelar</Button>
             <Button 
-              className="rounded-xl bg-accent hover:bg-accent/90 font-black h-12 shadow-lg shadow-accent/20" 
+              className="rounded-xl bg-accent hover:bg-accent/90 font-black h-12 shadow-lg shadow-accent/20 text-[10px] sm:text-xs" 
               onClick={confirmStockEntry}
               disabled={isProcessing}
             >
