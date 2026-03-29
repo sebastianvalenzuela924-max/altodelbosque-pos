@@ -333,14 +333,14 @@ export default function ReportsPage() {
                       </div>
                     </AccordionTrigger>
                     
-                    <AccordionContent className="px-2 md:px-6 pb-6 pt-0 bg-slate-50/50">
+                    <AccordionContent className="px-1.5 md:px-6 pb-6 pt-0 bg-slate-50/50">
                       <div className="grid gap-1 mt-2">
                         {cat.products.map((p: any) => {
                           const status = getProductStatus(p.stock, p.idealStock, p.warningStock);
                           const productTotalRevenue = Math.round(p.price * p.soldThisPeriod);
                           return (
                             <div key={p.id} className={cn(
-                              "bg-white p-2 md:p-3 rounded-xl flex items-center justify-between border transition-all gap-2 md:gap-4 shadow-sm hover:border-primary/20",
+                              "bg-white p-2 md:p-3 rounded-xl flex items-center justify-between border transition-all gap-1.5 md:gap-4 shadow-sm hover:border-primary/20",
                               status === 'danger' ? "border-red-200 bg-red-50/20" : "border-slate-100"
                             )}>
                               <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -350,24 +350,24 @@ export default function ReportsPage() {
                                 )}>
                                   {status === 'danger' ? <ShieldAlert className="w-4 h-4" /> : <Package className="w-4 h-4" />}
                                 </div>
-                                <div className="min-w-0">
+                                <div className="min-w-0 flex-1">
                                   <p className="font-bold text-[10px] md:text-xs text-slate-700 truncate leading-tight">{p.name}</p>
                                   <p className="text-[8px] text-slate-400 font-bold uppercase mt-0.5">Stock: {p.stock} • ${Math.round(p.price).toLocaleString('es-CL')}</p>
                                 </div>
                               </div>
                               
-                              <div className="flex items-center gap-3 md:gap-6 shrink-0 text-right">
-                                <div className="flex flex-col items-end">
-                                  <span className="text-[10px] md:text-sm font-black text-primary">{p.soldThisPeriod} u.</span>
+                              <div className="flex items-center gap-1.5 md:gap-6 shrink-0 text-right">
+                                <div className="flex flex-col items-end min-w-[35px]">
+                                  <span className="text-[9px] md:text-sm font-black text-primary">{p.soldThisPeriod} u.</span>
                                 </div>
-                                <div className="min-w-[70px] md:min-w-[90px] flex flex-col items-end">
-                                  <span className="text-[10px] md:text-sm font-black text-slate-800 font-mono tracking-tighter">
+                                <div className="min-w-[55px] md:min-w-[90px] flex flex-col items-end">
+                                  <span className="text-[9px] md:text-sm font-black text-slate-800 font-mono tracking-tighter">
                                     ${productTotalRevenue.toLocaleString('es-CL')}
                                   </span>
                                 </div>
                                 <Link 
                                   href={`/inventory?search=${p.id}`}
-                                  className="h-7 w-7 md:h-8 md:w-8 flex items-center justify-center rounded-lg bg-slate-100 hover:bg-primary/10 text-primary transition-colors"
+                                  className="h-7 w-7 md:h-8 md:w-8 flex items-center justify-center rounded-lg bg-slate-100 hover:bg-primary/10 text-primary transition-colors shrink-0"
                                 >
                                   <ArrowRight className="w-3 h-3 md:w-4 md:h-4" />
                                 </Link>
@@ -455,7 +455,7 @@ export default function ReportsPage() {
                           <Ghost className="w-5 h-5 text-slate-200 mr-2" />
                         </div>
                       </AccordionTrigger>
-                      <AccordionContent className="px-2 md:px-6 pb-6 pt-0 bg-slate-50/50">
+                      <AccordionContent className="px-1.5 md:px-6 pb-6 pt-0 bg-slate-50/50">
                         <div className="grid gap-1 mt-2">
                           {group.products.map((p) => (
                             <div key={p.id} className="bg-white p-2 md:p-3 rounded-xl flex items-center justify-between border border-slate-100 shadow-sm gap-2">
@@ -463,18 +463,18 @@ export default function ReportsPage() {
                                 <p className="font-bold text-[10px] md:text-xs text-slate-700 truncate leading-tight">{p.name}</p>
                                 <p className="text-[8px] text-slate-400 font-bold uppercase mt-0.5">Cód: {p.id}</p>
                               </div>
-                              <div className="text-right flex items-center gap-4">
-                                <div className="flex flex-col items-end">
-                                  <p className="text-[8px] font-black text-slate-400 uppercase leading-none mb-1">Stock</p>
-                                  <p className="text-[10px] md:text-sm font-black text-slate-700">{p.stock} u.</p>
+                              <div className="text-right flex items-center gap-2 md:gap-4 shrink-0">
+                                <div className="flex flex-col items-end min-w-[35px] md:min-w-[50px]">
+                                  <p className="text-[7px] md:text-[8px] font-black text-slate-400 uppercase leading-none mb-1">Stock</p>
+                                  <p className="text-[9px] md:text-sm font-black text-slate-700">{p.stock} u.</p>
                                 </div>
-                                <div className="flex flex-col items-end">
-                                  <p className="text-[8px] font-black text-slate-400 uppercase leading-none mb-1">Precio</p>
-                                  <p className="text-[10px] md:text-sm font-black text-primary font-mono">${Math.round(p.price).toLocaleString('es-CL')}</p>
+                                <div className="flex flex-col items-end min-w-[55px] md:min-w-[80px]">
+                                  <p className="text-[7px] md:text-[8px] font-black text-slate-400 uppercase leading-none mb-1">Precio</p>
+                                  <p className="text-[9px] md:text-sm font-black text-primary font-mono">${Math.round(p.price).toLocaleString('es-CL')}</p>
                                 </div>
                                 <Link 
                                   href={`/inventory?search=${p.id}`}
-                                  className="h-7 w-7 md:h-8 md:w-8 flex items-center justify-center rounded-lg bg-slate-100 text-slate-400 hover:text-primary transition-colors"
+                                  className="h-7 w-7 md:h-8 md:w-8 flex items-center justify-center rounded-lg bg-slate-100 text-slate-400 hover:text-primary transition-colors shrink-0"
                                 >
                                   <ArrowRight className="w-3 h-3 md:w-4 md:h-4" />
                                 </Link>
