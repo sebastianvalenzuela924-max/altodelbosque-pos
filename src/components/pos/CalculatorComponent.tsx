@@ -233,10 +233,10 @@ export function CalculatorComponent({
       </div>
 
       {/* Acciones Finales */}
-      <div className="flex gap-2 mt-1 md:mt-2">
+      <div className="flex gap-1.5 md:gap-2 mt-1 md:mt-2">
         <Button 
             variant="outline"
-            className="h-14 md:h-18 w-14 md:w-18 flex flex-col items-center justify-center gap-1 border-destructive/20 text-destructive hover:bg-destructive/5 hover:text-destructive rounded-2xl shrink-0 transition-all active:scale-95"
+            className="h-14 md:h-18 w-12 md:w-18 flex flex-col items-center justify-center gap-1 border-destructive/20 text-destructive hover:bg-destructive/5 hover:text-destructive rounded-2xl shrink-0 transition-all active:scale-95"
             onClick={onClearCart}
             disabled={isProcessing}
         >
@@ -246,7 +246,7 @@ export function CalculatorComponent({
 
         <Button 
             variant="outline"
-            className="h-14 md:h-18 w-14 md:w-18 flex flex-col items-center justify-center gap-1 border-amber-200 text-amber-600 hover:bg-amber-50 rounded-2xl shrink-0 transition-all active:scale-95"
+            className="h-14 md:h-18 w-12 md:w-18 flex flex-col items-center justify-center gap-1 border-amber-200 text-amber-600 hover:bg-amber-50 rounded-2xl shrink-0 transition-all active:scale-95"
             onClick={handleDeductInternal}
             disabled={isProcessing}
         >
@@ -256,7 +256,7 @@ export function CalculatorComponent({
 
         <Button 
             variant="outline"
-            className="h-14 md:h-18 w-14 md:w-18 flex flex-col items-center justify-center gap-1 border-accent/20 text-accent hover:bg-accent/5 rounded-2xl shrink-0 transition-all active:scale-95"
+            className="h-14 md:h-18 w-12 md:w-18 flex flex-col items-center justify-center gap-1 border-accent/20 text-accent hover:bg-accent/5 rounded-2xl shrink-0 transition-all active:scale-95"
             onClick={onStockEntry}
             disabled={isProcessing}
         >
@@ -266,7 +266,7 @@ export function CalculatorComponent({
         
         <Button 
             className={cn(
-              "flex-1 h-14 md:h-18 text-lg md:text-2xl font-black rounded-2xl shadow-xl transition-all active:scale-95 flex items-center justify-center gap-2 md:gap-4",
+              "flex-1 h-14 md:h-18 text-base md:text-2xl font-black rounded-2xl shadow-xl transition-all active:scale-95 flex items-center justify-center gap-2 md:gap-4",
               isProcessing ? "bg-slate-400" : "bg-primary hover:bg-primary/90"
             )}
             onClick={handleFinalizeInternal}
