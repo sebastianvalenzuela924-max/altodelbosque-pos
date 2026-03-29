@@ -340,7 +340,7 @@ export default function ReportsPage() {
                           const productTotalRevenue = Math.round(p.price * p.soldThisPeriod);
                           return (
                             <div key={p.id} className={cn(
-                              "bg-white p-2 md:p-3 rounded-xl flex items-center justify-between border transition-all gap-1.5 md:gap-4 shadow-sm hover:border-primary/20",
+                              "bg-white p-1.5 md:p-3 rounded-xl flex items-center justify-between border transition-all gap-1 md:gap-4 shadow-sm hover:border-primary/20",
                               status === 'danger' ? "border-red-200 bg-red-50/20" : "border-slate-100"
                             )}>
                               <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -352,15 +352,15 @@ export default function ReportsPage() {
                                 </div>
                                 <div className="min-w-0 flex-1">
                                   <p className="font-bold text-[10px] md:text-xs text-slate-700 truncate leading-tight">{p.name}</p>
-                                  <p className="text-[8px] text-slate-400 font-bold uppercase mt-0.5">Stock: {p.stock} • ${Math.round(p.price).toLocaleString('es-CL')}</p>
+                                  <p className="text-[8px] text-slate-400 font-bold uppercase mt-0.5">St: {p.stock} • ${Math.round(p.price).toLocaleString('es-CL')}</p>
                                 </div>
                               </div>
                               
-                              <div className="flex items-center gap-1.5 md:gap-6 shrink-0 text-right">
-                                <div className="flex flex-col items-end min-w-[35px]">
-                                  <span className="text-[9px] md:text-sm font-black text-primary">{p.soldThisPeriod} u.</span>
+                              <div className="flex items-center gap-1 md:gap-6 shrink-0 text-right">
+                                <div className="flex flex-col items-end min-w-[32px] md:min-w-[40px]">
+                                  <span className="text-[9px] md:text-sm font-black text-primary">{p.soldThisPeriod}u</span>
                                 </div>
-                                <div className="min-w-[55px] md:min-w-[90px] flex flex-col items-end">
+                                <div className="min-w-[50px] md:min-w-[90px] flex flex-col items-end">
                                   <span className="text-[9px] md:text-sm font-black text-slate-800 font-mono tracking-tighter">
                                     ${productTotalRevenue.toLocaleString('es-CL')}
                                   </span>
@@ -458,17 +458,17 @@ export default function ReportsPage() {
                       <AccordionContent className="px-1.5 md:px-6 pb-6 pt-0 bg-slate-50/50">
                         <div className="grid gap-1 mt-2">
                           {group.products.map((p) => (
-                            <div key={p.id} className="bg-white p-2 md:p-3 rounded-xl flex items-center justify-between border border-slate-100 shadow-sm gap-2">
+                            <div key={p.id} className="bg-white p-1.5 md:p-3 rounded-xl flex items-center justify-between border border-slate-100 shadow-sm gap-1 md:gap-2">
                               <div className="min-w-0 flex-1">
                                 <p className="font-bold text-[10px] md:text-xs text-slate-700 truncate leading-tight">{p.name}</p>
                                 <p className="text-[8px] text-slate-400 font-bold uppercase mt-0.5">Cód: {p.id}</p>
                               </div>
-                              <div className="text-right flex items-center gap-2 md:gap-4 shrink-0">
-                                <div className="flex flex-col items-end min-w-[35px] md:min-w-[50px]">
-                                  <p className="text-[7px] md:text-[8px] font-black text-slate-400 uppercase leading-none mb-1">Stock</p>
-                                  <p className="text-[9px] md:text-sm font-black text-slate-700">{p.stock} u.</p>
+                              <div className="text-right flex items-center gap-1.5 md:gap-4 shrink-0">
+                                <div className="flex flex-col items-end min-w-[32px] md:min-w-[50px]">
+                                  <p className="text-[7px] md:text-[8px] font-black text-slate-400 uppercase leading-none mb-1">St</p>
+                                  <p className="text-[9px] md:text-sm font-black text-slate-700">{p.stock}</p>
                                 </div>
-                                <div className="flex flex-col items-end min-w-[55px] md:min-w-[80px]">
+                                <div className="flex flex-col items-end min-w-[50px] md:min-w-[80px]">
                                   <p className="text-[7px] md:text-[8px] font-black text-slate-400 uppercase leading-none mb-1">Precio</p>
                                   <p className="text-[9px] md:text-sm font-black text-primary font-mono">${Math.round(p.price).toLocaleString('es-CL')}</p>
                                 </div>
@@ -494,3 +494,4 @@ export default function ReportsPage() {
     </div>
   );
 }
+
