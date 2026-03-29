@@ -423,9 +423,9 @@ export default function POSPage() {
           </CardHeader>
 
           <CardContent className="p-0 flex flex-col bg-slate-50">
-            {/* Altura fija para el área de scroll para garantizar que todo el contenido sea accesible */}
-            <ScrollArea className="h-[450px] lg:h-[600px] w-full border-b border-slate-200">
-              <div className="divide-y divide-slate-100 pb-10">
+            {/* Altura ajustada para mostrar aproximadamente 5 productos antes del scroll */}
+            <ScrollArea className="h-[320px] lg:h-[480px] w-full border-b border-slate-200">
+              <div className="divide-y divide-slate-100 pb-4">
                 {items.length === 0 && manualProducts.length === 0 && (
                   <div className="flex flex-col items-center justify-center py-20 px-6 text-center space-y-4 opacity-40">
                     <ShoppingCart className="w-12 h-12 text-slate-300" />
