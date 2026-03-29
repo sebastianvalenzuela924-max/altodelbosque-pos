@@ -2,9 +2,9 @@
 "use client";
 
 import { useCollection, useFirestore, useMemoFirebase, deleteDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase";
-import { collection, query, orderBy, doc, increment } from "firebase/firestore";
+import { collection, query, orderBy, doc, increment, Timestamp } from "firebase/firestore";
 import { Card } from "@/components/ui/card";
-import { FileSpreadsheet, Calendar, History, ShoppingBag, Loader2, ChevronRight, Trash2, Eraser, AlertCircle, X, ChevronLeft, Check, Banknote, CreditCard, PackagePlus, ArrowDownToLine, FileText, Edit3, Search, PackageMinus, Box } from "lucide-react";
+import { FileSpreadsheet, Calendar, History, ShoppingBag, Loader2, ChevronRight, Trash2, Eraser, AlertCircle, X, ChevronLeft, Check, Banknote, CreditCard, PackagePlus, ArrowDownToLine, FileText, Edit3, Search, PackageMinus, Box, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { exportSheetsToExcel } from "@/lib/export";
@@ -37,6 +37,8 @@ export default function HistoryPage() {
 
   const [editingLog, setEditingLog] = useState<any | null>(null);
   const [editInvoiceNumber, setEditInvoiceNumber] = useState("");
+  const [editDate, setEditDate] = useState("");
+  const [editTime, setEditTime] = useState("");
 
   useEffect(() => {
     setIsMounted(true);
@@ -114,11 +116,11 @@ export default function HistoryPage() {
       groups[inv].push(log);
     });
     
-    return Object.entries(groups).sort((a, b) => {
-      const timeA = Math.max(...a[1].map(l => l.timestamp?.toDate?.()?.getTime() || 0));
-      const timeB = Math.max(...b[1].map(l => l.timestamp?.toDate?.()?.getTime() || 0));
-      return timeB - timeA;
-    });
+    return Object.entries(groups).map(([invoice, logs]) => {
+      // Usar el tiempo MÍNIMO (el primer ingreso creado) como fecha de la factura
+      const minTimestamp = Math.min(...logs.map(l => l.timestamp?.toDate?.()?.getTime() || 0));
+      return { invoice, logs, minTime: minTimestamp };
+    }).sort((a, b) => b.minTime - a.minTime);
   }, [filteredLogs]);
 
   const handleExport = () => {
@@ -228,11 +230,16 @@ export default function HistoryPage() {
 
   const handleSaveInvoice = () => {
     if (!editingLog) return;
+    
+    const newDateTime = new Date(`${editDate}T${editTime}`);
     const logRef = doc(firestore, "inventoryLogs", editingLog.id);
+    
     updateDocumentNonBlocking(logRef, {
-      invoiceNumber: editInvoiceNumber.trim()
+      invoiceNumber: editInvoiceNumber.trim(),
+      timestamp: Timestamp.fromDate(newDateTime)
     });
-    toast({ title: "Factura actualizada" });
+    
+    toast({ title: "Registro actualizado", description: "Los cambios se guardaron correctamente." });
     setEditingLog(null);
   };
 
@@ -432,8 +439,8 @@ export default function HistoryPage() {
             </div>
           ) : (
             <div className="space-y-2">
-              {groupedLogsByInvoice.map(([invoice, logs]) => {
-                const latestDate = logs[0].timestamp?.toDate?.() || new Date();
+              {groupedLogsByInvoice.map(({ invoice, logs, minTime }) => {
+                const invoiceDate = new Date(minTime);
                 const totalUnits = logs.reduce((sum, l) => sum + (l.quantity || 0), 0);
                 const isNoInvoice = invoice === "SIN_FACTURA";
                 
@@ -451,7 +458,7 @@ export default function HistoryPage() {
                               {isNoInvoice ? "Carga Sin Factura" : `Factura: ${invoice}`}
                             </h3>
                             <div className="flex gap-2 mt-0.5">
-                              <span className="text-[8px] font-black text-slate-400 uppercase">{latestDate.toLocaleDateString()}</span>
+                              <span className="text-[8px] font-black text-slate-400 uppercase">Inicio: {invoiceDate.toLocaleDateString()}</span>
                               <span className="text-[8px] font-black text-accent uppercase">{totalUnits} Unidades Totales</span>
                             </div>
                           </div>
@@ -469,7 +476,7 @@ export default function HistoryPage() {
                                 <div key={log.id} className="flex justify-between items-center p-2 bg-white rounded-xl border border-slate-100 text-xs">
                                   <div className="flex-1 min-w-0 mr-4">
                                     <p className="font-bold text-slate-700 truncate">{log.productName}</p>
-                                    <p className="text-[8px] text-slate-400 font-bold uppercase">Hora: {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • Cód: {log.productId}</p>
+                                    <p className="text-[8px] text-slate-400 font-bold uppercase">Fecha: {date.toLocaleDateString()} • {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • Cód: {log.productId}</p>
                                   </div>
                                   <div className="flex items-center gap-3 shrink-0">
                                     <span className="font-black text-accent text-sm">+{log.quantity}</span>
@@ -481,6 +488,9 @@ export default function HistoryPage() {
                                         onClick={() => {
                                           setEditingLog(log);
                                           setEditInvoiceNumber(log.invoiceNumber || "");
+                                          const d = log.timestamp?.toDate?.() || new Date();
+                                          setEditDate(d.toISOString().split('T')[0]);
+                                          setEditTime(d.toTimeString().split(' ')[0].slice(0, 5));
                                         }}
                                       >
                                         <Edit3 className="w-3.5 h-3.5" />
@@ -654,15 +664,15 @@ export default function HistoryPage() {
         </DialogContent>
       </Dialog>
 
-      {/* EDICIÓN DE FACTURA */}
+      {/* EDICIÓN DE LOG DE STOCK */}
       <Dialog open={!!editingLog} onOpenChange={(open) => !open && setEditingLog(null)}>
         <DialogContent className="rounded-3xl p-6 border-none shadow-2xl max-w-[90vw] sm:max-w-sm">
           <DialogHeader>
             <DialogTitle className="text-xl font-black text-primary uppercase flex items-center gap-2">
-              <FileText className="w-5 h-5" /> Editar Factura
+              <Edit3 className="w-5 h-5" /> Editar Registro
             </DialogTitle>
             <DialogDescription className="text-xs font-bold text-slate-500">
-              Actualiza el número de factura para este ingreso de stock.
+              Modifica los detalles de este ingreso de stock.
             </DialogDescription>
           </DialogHeader>
           
@@ -681,11 +691,36 @@ export default function HistoryPage() {
                 onChange={(e) => setEditInvoiceNumber(e.target.value)}
               />
             </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div className="grid gap-2">
+                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-1">
+                  <Calendar className="w-3 h-3" /> Fecha
+                </Label>
+                <Input 
+                  type="date"
+                  className="h-10 rounded-xl bg-slate-50 border-none font-bold text-xs" 
+                  value={editDate}
+                  onChange={(e) => setEditDate(e.target.value)}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-1">
+                  <Clock className="w-3 h-3" /> Hora
+                </Label>
+                <Input 
+                  type="time"
+                  className="h-10 rounded-xl bg-slate-50 border-none font-bold text-xs" 
+                  value={editTime}
+                  onChange={(e) => setEditTime(e.target.value)}
+                />
+              </div>
+            </div>
           </div>
 
           <DialogFooter className="grid grid-cols-2 gap-2">
             <Button variant="ghost" className="rounded-xl" onClick={() => setEditingLog(null)}>Cancelar</Button>
-            <Button className="rounded-xl bg-primary font-black" onClick={handleSaveInvoice}>GUARDAR</Button>
+            <Button className="rounded-xl bg-primary font-black" onClick={handleSaveInvoice}>GUARDAR CAMBIOS</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
