@@ -155,7 +155,7 @@ export default function ReportsPage() {
       .slice(0, 15);
   }, [filteredSales]);
 
-  const unsoldProducts = useMemo(() => {
+  const unsoldByCategories = useMemo(() => {
     if (!allProducts || !mounted) return [];
     const soldIds = new Set();
     filteredSales.forEach(sale => {
@@ -164,9 +164,21 @@ export default function ReportsPage() {
       });
     });
 
-    return allProducts
-      .filter(p => !soldIds.has(String(p.id).trim()))
-      .sort((a, b) => (b.stock || 0) - (a.stock || 0));
+    const unsold = allProducts.filter(p => !soldIds.has(String(p.id).trim()));
+    
+    const groups: Record<string, any[]> = {};
+    unsold.forEach(p => {
+      const cat = p.category || "General";
+      if (!groups[cat]) groups[cat] = [];
+      groups[cat].push(p);
+    });
+
+    return Object.entries(groups)
+      .map(([category, products]) => ({
+        category,
+        products: products.sort((a, b) => (b.stock || 0) - (a.stock || 0))
+      }))
+      .sort((a, b) => a.category.localeCompare(b.category));
   }, [filteredSales, allProducts, mounted]);
 
   if (!mounted || isLoadingSales || isLoadingProducts) {
@@ -178,9 +190,6 @@ export default function ReportsPage() {
     );
   }
 
-  const totalSalesCount = filteredSales.length;
-  const criticalProductsCount = allProducts?.filter(p => getProductStatus(p.stock, p.idealStock, p.warningStock) === "danger").length || 0;
-  const inventoryHealth = allProducts?.length ? Math.round((allProducts.filter(p => getProductStatus(p.stock, p.idealStock, p.warningStock) === "ok").length / allProducts.length) * 100) : 100;
   const totalInventoryValue = allProducts?.reduce((sum, p) => sum + (Math.round(p.price) * (p.stock || 0)), 0) || 0;
 
   return (
@@ -423,64 +432,65 @@ export default function ReportsPage() {
         </TabsContent>
 
         <TabsContent value="unsold" className="mt-6">
-          <Card className="border-none shadow-xl rounded-3xl overflow-hidden bg-white">
-            <CardHeader className="p-4 md:p-6 bg-slate-50">
-              <CardTitle className="text-lg md:text-xl font-black text-slate-600 flex items-center gap-2">
-                <Ghost className="w-5 h-5 md:w-6 md:h-6" />
-                Sin Ventas en el Periodo
-              </CardTitle>
-              <CardDescription className="text-[10px] font-bold uppercase tracking-widest">
-                Productos en stock que no han tenido rotación.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="max-h-[600px] overflow-y-auto">
-                {unsoldProducts.length === 0 ? (
-                  <div className="text-center py-20">
-                     <CheckCircle2 className="w-16 h-16 mx-auto mb-4 text-green-100" />
-                     <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">¡Excelente! Todo el stock se ha movido.</p>
-                  </div>
-                ) : (
-                  <div className="divide-y divide-slate-50">
-                    {unsoldProducts.map((p, idx) => (
-                      <div key={p.id} className="p-3 md:p-4 flex items-center justify-between hover:bg-slate-50 transition-colors">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <span className="text-[10px] font-bold text-slate-300 w-5">{idx + 1}</span>
-                          <div className="min-w-0">
-                            <p className="font-bold text-xs md:text-sm text-slate-700 truncate">{p.name}</p>
-                            <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest">{p.category || "General"}</p>
-                          </div>
-                        </div>
-                        <div className="text-right flex items-center gap-4 md:gap-8">
-                          <div className="flex flex-col items-end">
-                            <p className="text-[8px] font-black text-slate-400 uppercase leading-none mb-1">Stock</p>
-                            <p className={cn("text-xs md:text-sm font-black", p.stock === 0 ? "text-slate-300" : "text-slate-700")}>
-                              {p.stock} u.
-                            </p>
-                          </div>
-                          <div className="flex flex-col items-end">
-                            <p className="text-[8px] font-black text-slate-400 uppercase leading-none mb-1">Precio</p>
-                            <p className="text-xs md:text-sm font-black text-primary font-mono tracking-tighter">
-                              ${Math.round(p.price).toLocaleString('es-CL')}
-                            </p>
-                          </div>
-                          <Link 
-                            href={`/inventory?search=${p.id}`}
-                            className="h-8 w-8 flex items-center justify-center rounded-lg bg-slate-100 text-slate-400 hover:text-primary transition-colors"
-                          >
-                            <ArrowRight className="w-4 h-4" />
-                          </Link>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+          <div className="space-y-4">
+            {unsoldByCategories.length === 0 ? (
+              <div className="text-center py-20 bg-white rounded-3xl shadow-xl">
+                 <CheckCircle2 className="w-16 h-16 mx-auto mb-4 text-green-100" />
+                 <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">¡Excelente! Todo el stock se ha movido.</p>
               </div>
-            </CardContent>
-          </Card>
+            ) : (
+              <Accordion type="multiple" className="space-y-3">
+                {unsoldByCategories.map((group, idx) => (
+                  <AccordionItem key={idx} value={`unsold-cat-${idx}`} className="border-none">
+                    <Card className="border-none shadow-md rounded-3xl overflow-hidden bg-white">
+                      <AccordionTrigger className="hover:no-underline p-3 md:p-6 text-left">
+                        <div className="flex items-center gap-3 md:gap-4 w-full min-w-0">
+                          <div className="w-10 h-10 md:w-12 md:h-12 rounded-2xl flex items-center justify-center font-black text-lg md:text-xl bg-slate-100 text-slate-400 shadow-inner shrink-0">
+                            {group.category[0].toUpperCase()}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-black text-sm md:text-lg uppercase tracking-tighter text-slate-800 truncate">{group.category}</h3>
+                            <p className="text-[9px] font-bold uppercase text-slate-400">{group.products.length} productos sin movimiento</p>
+                          </div>
+                          <Ghost className="w-5 h-5 text-slate-200 mr-2" />
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="px-2 md:px-6 pb-6 pt-0 bg-slate-50/50">
+                        <div className="grid gap-1 mt-2">
+                          {group.products.map((p) => (
+                            <div key={p.id} className="bg-white p-2 md:p-3 rounded-xl flex items-center justify-between border border-slate-100 shadow-sm gap-2">
+                              <div className="min-w-0 flex-1">
+                                <p className="font-bold text-[10px] md:text-xs text-slate-700 truncate leading-tight">{p.name}</p>
+                                <p className="text-[8px] text-slate-400 font-bold uppercase mt-0.5">Cód: {p.id}</p>
+                              </div>
+                              <div className="text-right flex items-center gap-4">
+                                <div className="flex flex-col items-end">
+                                  <p className="text-[8px] font-black text-slate-400 uppercase leading-none mb-1">Stock</p>
+                                  <p className="text-[10px] md:text-sm font-black text-slate-700">{p.stock} u.</p>
+                                </div>
+                                <div className="flex flex-col items-end">
+                                  <p className="text-[8px] font-black text-slate-400 uppercase leading-none mb-1">Precio</p>
+                                  <p className="text-[10px] md:text-sm font-black text-primary font-mono">${Math.round(p.price).toLocaleString('es-CL')}</p>
+                                </div>
+                                <Link 
+                                  href={`/inventory?search=${p.id}`}
+                                  className="h-7 w-7 md:h-8 md:w-8 flex items-center justify-center rounded-lg bg-slate-100 text-slate-400 hover:text-primary transition-colors"
+                                >
+                                  <ArrowRight className="w-3 h-3 md:w-4 md:h-4" />
+                                </Link>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </AccordionContent>
+                    </Card>
+                  </AccordionItem>
+                ))}
+              </Accordion>
+            )}
+          </div>
         </TabsContent>
       </Tabs>
     </div>
   );
 }
-
