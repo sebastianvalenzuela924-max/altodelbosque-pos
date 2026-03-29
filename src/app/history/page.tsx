@@ -4,7 +4,7 @@
 import { useCollection, useFirestore, useMemoFirebase, deleteDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase";
 import { collection, query, orderBy, doc, increment } from "firebase/firestore";
 import { Card } from "@/components/ui/card";
-import { FileSpreadsheet, Calendar, History, ShoppingBag, Loader2, ChevronRight, Trash2, Eraser, AlertCircle, X, ChevronLeft, Check, Banknote, CreditCard, PackagePlus, ArrowDownToLine, FileText, Edit3, Search, PackageMinus } from "lucide-react";
+import { FileSpreadsheet, Calendar, History, ShoppingBag, Loader2, ChevronRight, Trash2, Eraser, AlertCircle, X, ChevronLeft, Check, Banknote, CreditCard, PackagePlus, ArrowDownToLine, FileText, Edit3, Search, PackageMinus, Box } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { exportSheetsToExcel } from "@/lib/export";
@@ -30,13 +30,11 @@ export default function HistoryPage() {
   const firestore = useFirestore();
   const { toast } = useToast();
   
-  // Estados de limpieza unificados en un solo flujo
   const [cleanStep, setCleanStep] = useState<CleanStep>('idle');
   const [bulkType, setBulkType] = useState<BulkDeleteType | null>(null);
   const [itemToDelete, setItemToDelete] = useState<any | null>(null);
   const [deleteContext, setDeleteContext] = useState<'sales' | 'inventoryLogs'>('sales');
 
-  // Estado para edición de factura
   const [editingLog, setEditingLog] = useState<any | null>(null);
   const [editInvoiceNumber, setEditInvoiceNumber] = useState("");
 
@@ -107,6 +105,21 @@ export default function HistoryPage() {
       l.invoiceNumber?.toLowerCase().includes(term)
     );
   }, [allLogs, dateFilter, customDate, isMounted, logSearchTerm]);
+
+  const groupedLogsByInvoice = useMemo(() => {
+    const groups: Record<string, any[]> = {};
+    filteredLogs.forEach(log => {
+      const inv = log.invoiceNumber?.trim() || "SIN_FACTURA";
+      if (!groups[inv]) groups[inv] = [];
+      groups[inv].push(log);
+    });
+    
+    return Object.entries(groups).sort((a, b) => {
+      const timeA = Math.max(...a[1].map(l => l.timestamp?.toDate?.()?.getTime() || 0));
+      const timeB = Math.max(...b[1].map(l => l.timestamp?.toDate?.()?.getTime() || 0));
+      return timeB - timeA;
+    });
+  }, [filteredLogs]);
 
   const handleExport = () => {
     const sheets = [];
@@ -309,7 +322,6 @@ export default function HistoryPage() {
               const totalItems = (sale.productSaleItemIds?.length || 0) + (sale.manualSaleItemIds?.length || 0);
               const isCash = sale.paymentMethod === 'cash';
               const isCard = sale.paymentMethod === 'card';
-              const isDeduction = sale.paymentMethod === 'deduction';
               
               return (
                 <Card key={sale.id} className="overflow-hidden border-none shadow-sm hover:shadow-md transition-all duration-200 rounded-2xl group bg-white">
@@ -352,7 +364,7 @@ export default function HistoryPage() {
                             "text-base md:text-lg font-black font-mono tracking-tighter leading-none",
                             isCash ? "text-green-600" : isCard ? "text-primary" : "text-amber-600"
                           )}>
-                            {isDeduction ? "ADMIN" : `$${Math.round(sale.totalAmount).toLocaleString('es-CL')}`}
+                            {sale.paymentMethod === 'deduction' ? "ADMIN" : `$${Math.round(sale.totalAmount).toLocaleString('es-CL')}`}
                           </span>
                           <Button 
                             variant="ghost" 
@@ -388,17 +400,6 @@ export default function HistoryPage() {
                             </div>
                           ))}
                         </div>
-                        <Button 
-                          variant="destructive" 
-                          size="sm" 
-                          className="w-full mt-4 sm:hidden font-black text-[10px] uppercase h-10 rounded-xl"
-                          onClick={() => {
-                            setDeleteContext('sales');
-                            setItemToDelete(sale);
-                          }}
-                        >
-                          <Trash2 className="w-3.5 h-3.5 mr-2" /> Eliminar Venta
-                        </Button>
                       </AccordionContent>
                     </AccordionItem>
                   </Accordion>
@@ -417,14 +418,6 @@ export default function HistoryPage() {
               value={logSearchTerm}
               onChange={(e) => setLogSearchTerm(e.target.value)}
             />
-            {logSearchTerm && (
-              <button 
-                onClick={() => setLogSearchTerm("")}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            )}
           </div>
 
           {isLogsLoading ? (
@@ -432,82 +425,93 @@ export default function HistoryPage() {
                <Loader2 className="w-8 h-8 animate-spin mb-2 text-accent" />
                <p className="text-[10px] font-black uppercase tracking-widest">Cargando ingresos...</p>
              </div>
-          ) : filteredLogs.length === 0 ? (
+          ) : groupedLogsByInvoice.length === 0 ? (
             <div className="text-center py-20 bg-white rounded-3xl border-2 border-dashed border-slate-100">
               <PackagePlus className="w-12 h-12 mx-auto mb-3 text-slate-100" />
               <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest">Sin resultados</h3>
             </div>
           ) : (
-            filteredLogs.map((log) => {
-              const date = log.timestamp?.toDate?.() || (log.timestamp ? new Date(log.timestamp) : new Date());
-              return (
-                <Card key={log.id} className="p-3 md:p-4 border-none shadow-sm rounded-2xl bg-white flex flex-col sm:flex-row sm:items-center gap-3 transition-all">
-                  <div className="flex items-center gap-3 md:gap-6 flex-1">
-                    <div className="min-w-[70px] flex flex-col">
-                      <span className="text-xs font-black text-slate-800">
-                        {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                      <span className="text-[9px] font-mono text-slate-400 uppercase">
-                        {date.toLocaleDateString()}
-                      </span>
-                    </div>
-
-                    <div className="flex-1 min-w-0 flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center text-accent shrink-0">
-                        <ArrowDownToLine className="w-5 h-5" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-bold text-sm text-slate-800 leading-tight">{log.productName}</p>
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Cód: {log.productId}</p>
-                        {log.invoiceNumber && (
-                          <div className="flex items-center gap-1 mt-1 text-primary">
-                            <FileText className="w-3 h-3" />
-                            <span className="text-[9px] font-black uppercase">Factura: {log.invoiceNumber}</span>
+            <Accordion type="multiple" className="space-y-2">
+              {groupedLogsByInvoice.map(([invoice, logs]) => {
+                const latestDate = logs[0].timestamp?.toDate?.() || new Date();
+                const totalUnits = logs.reduce((sum, l) => sum + (l.quantity || 0), 0);
+                const isNoInvoice = invoice === "SIN_FACTURA";
+                
+                return (
+                  <Card key={invoice} className="overflow-hidden border-none shadow-sm hover:shadow-md transition-all duration-200 rounded-2xl bg-white">
+                    <AccordionItem value={invoice} className="border-none">
+                      <div className="flex items-center p-3 md:p-4 gap-4">
+                        <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center text-accent shrink-0">
+                          {isNoInvoice ? <Box className="w-5 h-5" /> : <FileText className="w-5 h-5" />}
+                        </div>
+                        
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-black text-xs md:text-sm text-slate-800 uppercase tracking-tighter truncate">
+                            {isNoInvoice ? "Carga Sin Factura" : `Factura: ${invoice}`}
+                          </h3>
+                          <div className="flex gap-2 mt-0.5">
+                            <span className="text-[8px] font-black text-slate-400 uppercase">{latestDate.toLocaleDateString()}</span>
+                            <span className="text-[8px] font-black text-accent uppercase">{totalUnits} Unidades Totales</span>
                           </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+                        </div>
 
-                  <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-4 border-t sm:border-t-0 pt-2 sm:pt-0">
-                    <div className="text-right flex flex-col items-end mr-2 md:mr-4">
-                      <span className="text-xl font-black text-accent">+{log.quantity}</span>
-                      <span className="text-[8px] font-black text-slate-400 uppercase">Unidades</span>
-                    </div>
-                    
-                    <div className="flex gap-2">
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-10 w-10 text-primary rounded-full bg-primary/10 hover:bg-primary hover:text-white transition-all shadow-sm" 
-                        onClick={() => {
-                          setEditingLog(log);
-                          setEditInvoiceNumber(log.invoiceNumber || "");
-                        }}
-                      >
-                        <Edit3 className="w-4 h-4" />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-10 w-10 text-destructive bg-destructive/10 hover:bg-destructive hover:text-white rounded-full transition-all shadow-sm" 
-                        onClick={() => {
-                          setDeleteContext('inventoryLogs');
-                          setItemToDelete(log);
-                        }}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </Card>
-              );
-            })
+                        <AccordionTrigger className="hover:no-underline py-0 justify-start gap-1 md:gap-2 text-accent font-black text-[10px] uppercase tracking-tighter shrink-0 [&>svg:last-child]:hidden">
+                          <ChevronRight className="w-4 h-4" /> Ver Detalle
+                        </AccordionTrigger>
+                      </div>
+
+                      <AccordionContent className="bg-slate-50/50 px-2 md:px-4 pb-4 pt-2 border-t border-slate-100">
+                        <div className="space-y-1.5 mt-2">
+                          {logs.map((log) => {
+                            const date = log.timestamp?.toDate?.() || new Date();
+                            return (
+                              <div key={log.id} className="flex justify-between items-center p-2 bg-white rounded-xl border border-slate-100 text-xs">
+                                <div className="flex-1 min-w-0 mr-4">
+                                  <p className="font-bold text-slate-700 truncate">{log.productName}</p>
+                                  <p className="text-[8px] text-slate-400 font-bold uppercase">Hora: {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • Cód: {log.productId}</p>
+                                </div>
+                                <div className="flex items-center gap-3 shrink-0">
+                                  <span className="font-black text-accent text-sm">+{log.quantity}</span>
+                                  <div className="flex gap-1">
+                                    <Button 
+                                      variant="ghost" 
+                                      size="icon" 
+                                      className="h-8 w-8 text-primary rounded-full hover:bg-primary/10"
+                                      onClick={() => {
+                                        setEditingLog(log);
+                                        setEditInvoiceNumber(log.invoiceNumber || "");
+                                      }}
+                                    >
+                                      <Edit3 className="w-3.5 h-3.5" />
+                                    </Button>
+                                    <Button 
+                                      variant="ghost" 
+                                      size="icon" 
+                                      className="h-8 w-8 text-destructive rounded-full hover:bg-destructive/10"
+                                      onClick={() => {
+                                        setDeleteContext('inventoryLogs');
+                                        setItemToDelete(log);
+                                      }}
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
+                );
+              })}
+            </Accordion>
           )}
         </TabsContent>
       </Tabs>
 
-      {/* DIÁLOGOS Y COMPONENTES RESTANTES SIN CAMBIOS... */}
+      {/* DIÁLOGOS DE LIMPIEZA, BORRADO Y EDICIÓN - SIN CAMBIOS SIGNIFICATIVOS */}
       <Dialog open={cleanStep !== 'idle'} onOpenChange={(open) => !open && setCleanStep('idle')}>
         <DialogContent className="rounded-3xl p-6 border-none shadow-2xl max-w-[90vw] sm:max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
           {cleanStep === 'options' ? (
@@ -576,8 +580,6 @@ export default function HistoryPage() {
                   <span className="text-slate-800 font-black text-sm uppercase">
                     {bulkType === 'day' ? 'Hoy' : bulkType === 'month' ? 'Este Mes' : 'Todo el Historial'} ({deleteContext === 'sales' ? 'Ventas' : 'Stock'})
                   </span>
-                  <br/><br/>
-                  <span className="bg-destructive/5 text-destructive px-3 py-1 rounded-lg">Esta acción es irreversible</span>
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-2">
