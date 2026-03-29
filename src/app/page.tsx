@@ -110,6 +110,7 @@ export default function POSPage() {
   const [mounted, setMounted] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const lastScanRef = useRef<{ code: string; time: number } | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
   const productsQuery = useMemoFirebase(() => {
@@ -156,6 +157,13 @@ export default function POSPage() {
     const timer = setInterval(updateTime, 60000);
     return () => clearInterval(timer);
   }, []);
+
+  // Efecto para auto-scroll al añadir productos
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  }, [items, manualProducts]);
 
   const total = useMemo(() => {
     return items.reduce((sum, item) => sum + (item.price * item.quantity), 0) +
@@ -472,6 +480,9 @@ export default function POSPage() {
                     </div>
                   </div>
                 ))}
+
+                {/* Referencia para auto-scroll */}
+                <div ref={scrollRef} />
               </div>
             </ScrollArea>
 
