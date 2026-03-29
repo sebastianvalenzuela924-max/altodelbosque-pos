@@ -242,16 +242,16 @@ function InventoryContent() {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
+    <div className="space-y-4 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-black text-primary flex items-center gap-2">
-              <Package className="w-8 h-8" />
+            <h1 className="text-2xl font-black text-primary flex items-center gap-2">
+              <Package className="w-7 h-7" />
               Inventario
             </h1>
             {!isLoading && products && (
-              <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 font-black text-xs px-3 py-1 rounded-xl">
+              <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 font-black text-xs px-2 py-0.5 rounded-lg">
                 {processedProducts.length} {processedProducts.length === 1 ? 'Producto' : 'Productos'}
                 {processedProducts.length !== products.length && (
                   <span className="ml-1 opacity-70 font-bold">(de {products.length})</span>
@@ -259,38 +259,38 @@ function InventoryContent() {
               </Badge>
             )}
           </div>
-          <p className="text-muted-foreground text-sm font-bold flex items-center gap-2 mt-1">
-            <MousePointer2 className="w-4 h-4 text-accent" />
-            Haz clic para editar. Mantén presionado para carga rápida.
+          <p className="text-muted-foreground text-[10px] font-bold flex items-center gap-2 mt-1">
+            <MousePointer2 className="w-3 h-3 text-accent" />
+            Clic: Editar • Mantener: Carga Rápida
           </p>
         </div>
         <div className="flex flex-wrap gap-2 w-full md:w-auto">
-          <Button variant="outline" className="flex-1 md:flex-none h-11 rounded-2xl" onClick={handleExport} disabled={!products?.length}>
-            <FileSpreadsheet className="w-4 h-4 mr-2 text-green-600" /> Exportar
+          <Button variant="outline" className="flex-1 md:flex-none h-10 rounded-xl text-xs" onClick={handleExport} disabled={!products?.length}>
+            <FileSpreadsheet className="w-3.5 h-3.5 mr-1.5 text-green-600" /> Exportar
           </Button>
-          <Button variant="outline" className="flex-1 md:flex-none h-11 rounded-2xl" onClick={handleOpenScanner}>
-            <Scan className="w-4 h-4 mr-2" /> Escanear
+          <Button variant="outline" className="flex-1 md:flex-none h-10 rounded-xl text-xs" onClick={handleOpenScanner}>
+            <Scan className="w-3.5 h-3.5 mr-1.5" /> Escanear
           </Button>
-          <Button className="flex-1 md:flex-none bg-accent hover:bg-accent/90 h-11 rounded-2xl font-black" onClick={() => { setSelectedProduct(null); setIsDialogOpen(true); }}>
-            <Plus className="w-4 h-4 mr-2" /> NUEVO
+          <Button className="flex-1 md:flex-none bg-accent hover:bg-accent/90 h-10 rounded-xl font-black text-xs" onClick={() => { setSelectedProduct(null); setIsDialogOpen(true); }}>
+            <Plus className="w-3.5 h-3.5 mr-1.5" /> NUEVO
           </Button>
         </div>
       </div>
 
-      <Card className="border-none shadow-xl rounded-3xl overflow-hidden">
-        <CardHeader className="bg-slate-50/50 pb-6 border-b space-y-4">
+      <Card className="border-none shadow-xl rounded-2xl overflow-hidden bg-white">
+        <CardHeader className="bg-slate-50/50 p-3 border-b space-y-3">
           <div className="relative w-full">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input 
-              className="pl-12 pr-10 h-12 bg-white rounded-2xl font-bold border-none shadow-sm" 
-              placeholder="Buscar" 
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <input 
+              className="w-full pl-10 pr-10 h-10 bg-white rounded-xl font-bold border-none shadow-sm text-sm focus:ring-2 focus:ring-primary/20 transition-all" 
+              placeholder="Buscar..." 
               value={searchTerm} 
               onChange={e => setSearchTerm(e.target.value)} 
             />
             {searchTerm && (
               <button 
                 onClick={() => setSearchTerm("")}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -298,14 +298,14 @@ function InventoryContent() {
           </div>
           
           <div className="flex flex-wrap gap-2 items-center">
-            <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-2xl shadow-sm border border-slate-100 flex-1 md:flex-none">
+            <div className="flex items-center gap-2 bg-white px-2 py-1 rounded-xl shadow-sm border border-slate-100 flex-1 md:flex-none">
               <Filter className="w-3 h-3 text-slate-400" />
               <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger className="border-none h-8 p-0 focus:ring-0 shadow-none font-bold text-xs min-w-[120px]">
+                <SelectTrigger className="border-none h-7 p-0 focus:ring-0 shadow-none font-bold text-[10px] min-w-[100px]">
                   <SelectValue placeholder="Categoría" />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl border-none shadow-2xl">
-                  <SelectItem value="all" className="text-xs font-bold">Todas las Categorías</SelectItem>
+                  <SelectItem value="all" className="text-xs font-bold">Todas</SelectItem>
                   {categories.map(cat => (
                     <SelectItem key={cat} value={cat} className="text-xs font-bold">{cat}</SelectItem>
                   ))}
@@ -313,14 +313,14 @@ function InventoryContent() {
               </Select>
             </div>
 
-            <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-2xl shadow-sm border border-slate-100 flex-1 md:flex-none">
+            <div className="flex items-center gap-2 bg-white px-2 py-1 rounded-xl shadow-sm border border-slate-100 flex-1 md:flex-none">
               <Truck className="w-3 h-3 text-slate-400" />
               <Select value={distributorFilter} onValueChange={setDistributorFilter}>
-                <SelectTrigger className="border-none h-8 p-0 focus:ring-0 shadow-none font-bold text-xs min-w-[120px]">
+                <SelectTrigger className="border-none h-7 p-0 focus:ring-0 shadow-none font-bold text-[10px] min-w-[100px]">
                   <SelectValue placeholder="Distribuidora" />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl border-none shadow-2xl">
-                  <SelectItem value="all" className="text-xs font-bold">Todas las Distribuidoras</SelectItem>
+                  <SelectItem value="all" className="text-xs font-bold">Todas</SelectItem>
                   {distributors.map(dist => (
                     <SelectItem key={dist} value={dist} className="text-xs font-bold">{dist}</SelectItem>
                   ))}
@@ -328,34 +328,18 @@ function InventoryContent() {
               </Select>
             </div>
 
-            <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-2xl shadow-sm border border-slate-100 flex-1 md:flex-none">
-              <ShieldCheck className="w-3 h-3 text-slate-400" />
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="border-none h-8 p-0 focus:ring-0 shadow-none font-bold text-xs min-w-[120px]">
-                  <SelectValue placeholder="Estado de Stock" />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl border-none shadow-2xl">
-                  <SelectItem value="all" className="text-xs font-bold">Cualquier Estado</SelectItem>
-                  <SelectItem value="peligro" className="text-xs font-bold text-destructive">Peligro (Crítico)</SelectItem>
-                  <SelectItem value="precaución" className="text-xs font-bold text-amber-600">Precaución (Bajo)</SelectItem>
-                  <SelectItem value="ok" className="text-xs font-bold text-green-600">Estado OK</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-2xl shadow-sm border border-slate-100 flex-1 md:flex-none ml-auto">
+            <div className="flex items-center gap-2 bg-white px-2 py-1 rounded-xl shadow-sm border border-slate-100 flex-1 md:flex-none ml-auto">
               <Select value={sortBy} onValueChange={(v: SortOption) => setSortBy(v)}>
-                <SelectTrigger className="border-none h-8 p-0 focus:ring-0 shadow-none font-bold text-xs min-w-[140px]">
+                <SelectTrigger className="border-none h-7 p-0 focus:ring-0 shadow-none font-bold text-[10px] min-w-[120px]">
                   <SelectValue placeholder="Ordenar por..." />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl border-none shadow-2xl">
                   <SelectItem value="name" className="text-xs font-bold">Nombre (A-Z)</SelectItem>
-                  <SelectItem value="status-critical" className="text-xs font-bold">Urgencia de Reposición</SelectItem>
+                  <SelectItem value="status-critical" className="text-xs font-bold">Urgencia</SelectItem>
                   <SelectItem value="stock-asc" className="text-xs font-bold">Menor Stock</SelectItem>
                   <SelectItem value="stock-desc" className="text-xs font-bold">Mayor Stock</SelectItem>
-                  <SelectItem value="price-asc" className="text-xs font-bold">Precio más bajo</SelectItem>
-                  <SelectItem value="price-desc" className="text-xs font-bold">Precio más alto</SelectItem>
-                  <SelectItem value="distributor-asc" className="text-xs font-bold">Distribuidora (A-Z)</SelectItem>
+                  <SelectItem value="price-asc" className="text-xs font-bold">Precio ↓</SelectItem>
+                  <SelectItem value="price-desc" className="text-xs font-bold">Precio ↑</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -366,23 +350,23 @@ function InventoryContent() {
             <Table>
               <TableHeader className="bg-slate-50/30">
                 <TableRow className="border-none">
-                  <TableHead className="px-6 font-black uppercase text-[10px] tracking-widest min-w-[200px]">Producto</TableHead>
-                  <TableHead className="px-6 font-black uppercase text-[10px] tracking-widest min-w-[120px]">Stock / Meta</TableHead>
-                  <TableHead className="px-6 font-black uppercase text-[10px] tracking-widest min-w-[120px]">Categoría</TableHead>
-                  <TableHead className="px-6 font-black uppercase text-[10px] tracking-widest min-w-[120px]">Precio Unitario</TableHead>
-                  <TableHead className="px-6 font-black uppercase text-[10px] tracking-widest min-w-[140px]">Precio Neto (Sin IVA)</TableHead>
-                  <TableHead className="px-6 font-black uppercase text-[10px] tracking-widest min-w-[140px]">Distribuidora</TableHead>
-                  <TableHead className="px-6 font-black uppercase text-[10px] tracking-widest min-w-[120px]">Estado</TableHead>
-                  <TableHead className="px-6 text-right font-black uppercase text-[10px] tracking-widest min-w-[80px]">Acciones</TableHead>
+                  <TableHead className="px-3 py-3 font-black uppercase text-[9px] tracking-widest min-w-[180px]">Producto</TableHead>
+                  <TableHead className="px-3 py-3 font-black uppercase text-[9px] tracking-widest min-w-[100px]">Stock/Meta</TableHead>
+                  <TableHead className="px-3 py-3 font-black uppercase text-[9px] tracking-widest min-w-[100px]">Categoría</TableHead>
+                  <TableHead className="px-3 py-3 font-black uppercase text-[9px] tracking-widest min-w-[100px]">P. Unitario</TableHead>
+                  <TableHead className="px-3 py-3 font-black uppercase text-[9px] tracking-widest min-w-[100px]">P. Neto</TableHead>
+                  <TableHead className="px-3 py-3 font-black uppercase text-[9px] tracking-widest min-w-[120px]">Distribuidora</TableHead>
+                  <TableHead className="px-3 py-3 font-black uppercase text-[9px] tracking-widest min-w-[100px]">Estado</TableHead>
+                  <TableHead className="px-3 py-3 text-right font-black uppercase text-[9px] tracking-widest min-w-[60px]">Acc.</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading ? (
-                  <TableRow><TableCell colSpan={8} className="h-64 text-center"><Loader2 className="w-8 h-8 animate-spin mx-auto" /></TableCell></TableRow>
+                  <TableRow><TableCell colSpan={8} className="h-48 text-center"><Loader2 className="w-6 h-6 animate-spin mx-auto text-primary" /></TableCell></TableRow>
                 ) : processedProducts.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="h-64 text-center text-slate-400 font-bold uppercase tracking-widest">
-                      No se encontraron productos con estos filtros
+                    <TableCell colSpan={8} className="h-48 text-center text-slate-400 font-bold uppercase text-[10px] tracking-widest">
+                      Sin resultados
                     </TableCell>
                   </TableRow>
                 ) : processedProducts.map((p) => {
@@ -396,78 +380,70 @@ function InventoryContent() {
                       onPointerLeave={handlePointerUp}
                       onClick={() => handleRowClick(p)}
                       className={cn(
-                        "transition-colors border-b select-none touch-none cursor-pointer", 
-                        status === "peligro" ? "bg-red-100 hover:bg-red-200" : 
-                        status === "precaución" ? "bg-amber-100 hover:bg-amber-200" : 
-                        status === "ok" ? "bg-green-100 hover:bg-green-200" : "hover:bg-slate-50"
+                        "transition-colors border-b select-none touch-none cursor-pointer h-12", 
+                        status === "peligro" ? "bg-red-50 hover:bg-red-100" : 
+                        status === "precaución" ? "bg-amber-50 hover:bg-amber-100" : 
+                        status === "ok" ? "bg-green-50 hover:bg-green-100" : "hover:bg-slate-50"
                       )}
                     >
-                      <TableCell className="px-6">
-                        <div className="flex items-center gap-2 group/name">
-                          <div className="flex flex-col">
-                            <p className="font-bold text-sm">{p.name}</p>
-                            <p className="text-[10px] font-mono text-slate-400">#{p.id}</p>
+                      <TableCell className="px-3 py-2">
+                        <div className="flex items-center gap-1.5 group/name">
+                          <div className="flex flex-col min-w-0">
+                            <p className="font-bold text-xs truncate max-w-[160px]">{p.name}</p>
+                            <p className="text-[8px] font-mono text-slate-400">#{p.id}</p>
                           </div>
-                          <div className="bg-primary/10 p-1.5 rounded-full text-primary opacity-0 group-hover/name:opacity-100 transition-opacity">
-                            <Edit3 className="w-3 h-3" />
+                          <div className="bg-primary/10 p-1 rounded-full text-primary opacity-0 group-hover/name:opacity-100 transition-opacity">
+                            <Edit3 className="w-2.5 h-2.5" />
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell className="px-6">
+                      <TableCell className="px-3 py-2">
                         <div className="flex flex-col">
-                          <span className="font-black text-lg">{p.stock}</span>
-                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
-                            {p.warningStock === 0 || p.idealStock === 0 ? "Sin alerta de stock" : (p.warningStock ? `Aviso: < ${p.warningStock}` : `Ideal: ${p.idealStock || 10}`)}
+                          <span className="font-black text-sm">{p.stock}</span>
+                          <span className="text-[8px] text-slate-400 font-bold uppercase">
+                            {p.warningStock === 0 || p.idealStock === 0 ? "Sin alerta" : (p.warningStock ? `Av: <${p.warningStock}` : `Id: ${p.idealStock || 10}`)}
                           </span>
                         </div>
                       </TableCell>
-                      <TableCell className="px-6">
-                        <Badge variant="outline" className="text-[9px] font-black uppercase border-slate-300 bg-white/50">{p.category || "General"}</Badge>
+                      <TableCell className="px-3 py-2">
+                        <Badge variant="outline" className="text-[8px] font-black uppercase border-slate-300 bg-white/50 px-1.5 py-0 leading-none h-4">{p.category || "General"}</Badge>
                       </TableCell>
-                      <TableCell className="px-6">
-                        <div className="flex flex-col">
-                          <span className="font-black text-slate-800 text-sm">${Math.round(p.price).toLocaleString('es-CL')}</span>
-                          <span className="text-[8px] text-slate-400 font-black uppercase tracking-widest">P. Venta</span>
-                        </div>
+                      <TableCell className="px-3 py-2">
+                        <span className="font-black text-slate-800 text-xs">${Math.round(p.price).toLocaleString('es-CL')}</span>
                       </TableCell>
-                      <TableCell className="px-6">
-                        <div className="flex flex-col">
-                          <span className="font-black text-slate-600 text-sm">${netPrice.toLocaleString('es-CL')}</span>
-                          <span className="text-[8px] text-slate-400 font-black uppercase tracking-widest">Neto (IVA)</span>
-                        </div>
+                      <TableCell className="px-3 py-2">
+                        <span className="font-bold text-slate-500 text-xs">${netPrice.toLocaleString('es-CL')}</span>
                       </TableCell>
-                      <TableCell className="px-6">
-                        <span className="text-xs font-bold text-slate-600">{p.distributor || "No definida"}</span>
+                      <TableCell className="px-3 py-2">
+                        <span className="text-[10px] font-bold text-slate-600 truncate max-w-[100px] block">{p.distributor || "-"}</span>
                       </TableCell>
-                      <TableCell className="px-6">
+                      <TableCell className="px-3 py-2">
                         {status === "peligro" ? (
-                          <Badge className="bg-destructive text-white border-none flex items-center gap-1 rounded-full px-3 py-1 font-black text-[9px] uppercase">
-                            <ShieldAlert className="w-3 h-3" /> Peligro
+                          <Badge className="bg-destructive text-white border-none flex items-center gap-1 rounded-full px-2 py-0.5 font-black text-[8px] uppercase">
+                            Peligro
                           </Badge>
                         ) : status === "precaución" ? (
-                          <Badge className="bg-amber-600 hover:bg-amber-700 border-none flex items-center gap-1 rounded-full px-3 py-1 font-black text-[9px] uppercase text-white">
-                            <ShieldQuestion className="w-3 h-3" /> Precaución
+                          <Badge className="bg-amber-600 border-none flex items-center gap-1 rounded-full px-2 py-0.5 font-black text-[8px] uppercase text-white">
+                            Bajo
                           </Badge>
                         ) : (
-                          <Badge className="bg-green-700 text-white border-none flex items-center gap-1 rounded-full px-3 py-1 font-black text-[9px] uppercase">
-                            <ShieldCheck className="w-3 h-3" /> OK
+                          <Badge className="bg-green-700 text-white border-none flex items-center gap-1 rounded-full px-2 py-0.5 font-black text-[8px] uppercase">
+                            OK
                           </Badge>
                         )}
                       </TableCell>
-                      <TableCell className="px-6 text-right">
-                        <div className="flex justify-end">
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="text-destructive hover:bg-destructive/10 rounded-full" 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setProductToDelete(p);
-                            }}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
+                      <TableCell className="px-3 py-2 text-right">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-7 w-7 text-destructive hover:bg-destructive/10 rounded-full" 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setProductToDelete(p);
+                          }}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   );
