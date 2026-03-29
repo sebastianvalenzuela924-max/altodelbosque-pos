@@ -8,7 +8,7 @@ import { ScannerComponent } from "@/components/pos/ScannerComponent";
 import { CalculatorComponent } from "@/components/pos/CalculatorComponent";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
-import { Trash2, PlusCircle, MinusCircle, ShoppingCart, Scan, RotateCcw, Search, Plus, PackageSearch, Check, ReceiptText, IceCream, CupSoda, FileText } from "lucide-react";
+import { Trash2, PlusCircle, MinusCircle, ShoppingCart, Scan, RotateCcw, Search, Plus, PackageSearch, Check, ReceiptText, IceCream, CupSoda, FileText, Loader2 } from "lucide-react";
 import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { doc, collection, serverTimestamp, increment, query } from "firebase/firestore";
