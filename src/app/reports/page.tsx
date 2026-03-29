@@ -82,12 +82,10 @@ export default function ReportsPage() {
   const totalCash = filteredSales.filter(s => s.paymentMethod === 'cash').reduce((sum, s) => sum + (s.totalAmount || 0), 0);
   const totalCard = filteredSales.filter(s => s.paymentMethod !== 'cash').reduce((sum, s) => sum + (s.totalAmount || 0), 0);
 
-  // Estadísticas del buscador de productos
   const searchResults = useMemo(() => {
     if (!productSearchTerm || !allProducts) return [];
     const term = productSearchTerm.toLowerCase().trim();
     
-    // Calcular ventas por producto en el periodo filtrado
     const salesSummary: Record<string, { quantity: number, revenue: number }> = {};
     filteredSales.forEach(sale => {
       sale.itemsSummary?.forEach((item: any) => {
@@ -311,69 +309,69 @@ export default function ReportsPage() {
         </Card>
       </section>
 
-      {/* Buscador de Producto Específico */}
-      <section className="space-y-4 animate-in slide-in-from-top-4 duration-500">
+      {/* Buscador de Producto Específico - Compactado */}
+      <section className="space-y-3 animate-in slide-in-from-top-4 duration-500">
         <div className="relative group">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-primary transition-colors" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-primary transition-colors" />
           <Input 
-            className="pl-12 h-14 bg-white rounded-2xl border-none shadow-lg font-bold text-lg focus:ring-2 focus:ring-primary/20" 
-            placeholder="Buscar producto para ver detalles de venta..." 
+            className="pl-11 h-12 bg-white rounded-2xl border-none shadow-md font-bold text-base focus:ring-2 focus:ring-primary/20" 
+            placeholder="Buscar producto..." 
             value={productSearchTerm}
             onChange={(e) => setProductSearchTerm(e.target.value)}
           />
           {productSearchTerm && (
             <button 
               onClick={() => setProductSearchTerm("")}
-              className="absolute right-4 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-slate-600"
+              className="absolute right-4 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-slate-600"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </button>
           )}
         </div>
 
         {productSearchTerm && (
-          <div className="grid gap-3 animate-in fade-in duration-300">
+          <div className="grid gap-2 animate-in fade-in duration-300">
             {searchResults.length > 0 ? (
               searchResults.map((p: any) => (
-                <Card key={p.id} className="border-none shadow-sm rounded-2xl overflow-hidden bg-white hover:shadow-md transition-all">
-                  <div className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="flex items-center gap-4 flex-1 min-w-0">
-                      <div className="w-12 h-12 rounded-xl bg-primary/5 flex items-center justify-center text-primary shrink-0">
-                        <Package className="w-6 h-6" />
+                <Card key={p.id} className="border-none shadow-sm rounded-xl overflow-hidden bg-white hover:shadow-md transition-all">
+                  <div className="p-3 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <div className="w-9 h-9 rounded-lg bg-primary/5 flex items-center justify-center text-primary shrink-0">
+                        <Package className="w-5 h-5" />
                       </div>
                       <div className="min-w-0">
-                        <h4 className="font-black text-slate-800 uppercase tracking-tighter truncate">{p.name}</h4>
-                        <div className="flex gap-2 mt-1">
-                          <Badge variant="outline" className="text-[8px] font-black uppercase bg-slate-50 border-slate-100">ID: {p.id}</Badge>
-                          <Badge variant="outline" className="text-[8px] font-black uppercase bg-slate-50 border-slate-100">{p.category || 'General'}</Badge>
+                        <h4 className="font-bold text-slate-800 text-xs uppercase tracking-tight truncate leading-none">{p.name}</h4>
+                        <div className="flex gap-1.5 mt-1">
+                          <span className="text-[8px] font-black text-slate-400 uppercase tracking-tighter bg-slate-50 px-1 rounded">ID: {p.id}</span>
+                          <span className="text-[8px] font-black text-slate-400 uppercase tracking-tighter bg-slate-50 px-1 rounded">{p.category || 'General'}</span>
                         </div>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-8 shrink-0">
-                      <div className="bg-slate-50 p-2 rounded-xl border border-slate-100 text-center">
-                        <p className="text-[8px] font-black text-slate-400 uppercase leading-none mb-1">Stock</p>
-                        <p className="text-sm font-black text-slate-700">{p.stock}</p>
+                    <div className="grid grid-cols-4 gap-2 shrink-0 md:min-w-[300px]">
+                      <div className="bg-slate-50 p-1.5 rounded-lg border border-slate-100 text-center">
+                        <p className="text-[7px] font-black text-slate-400 uppercase leading-none mb-0.5">Stock</p>
+                        <p className="text-[10px] font-black text-slate-700 leading-none">{p.stock}</p>
                       </div>
-                      <div className="bg-slate-50 p-2 rounded-xl border border-slate-100 text-center">
-                        <p className="text-[8px] font-black text-slate-400 uppercase leading-none mb-1">Precio</p>
-                        <p className="text-sm font-black text-primary">${Math.round(p.price).toLocaleString('es-CL')}</p>
+                      <div className="bg-slate-50 p-1.5 rounded-lg border border-slate-100 text-center">
+                        <p className="text-[7px] font-black text-slate-400 uppercase leading-none mb-0.5">Precio</p>
+                        <p className="text-[10px] font-black text-primary leading-none">${Math.round(p.price).toLocaleString('es-CL')}</p>
                       </div>
-                      <div className="bg-primary/5 p-2 rounded-xl border border-primary/10 text-center">
-                        <p className="text-[8px] font-black text-primary uppercase leading-none mb-1">Vendidos</p>
-                        <p className="text-sm font-black text-primary">{p.unitsSold} u.</p>
+                      <div className="bg-primary/5 p-1.5 rounded-lg border border-primary/10 text-center">
+                        <p className="text-[7px] font-black text-primary uppercase leading-none mb-0.5">Vendido</p>
+                        <p className="text-[10px] font-black text-primary leading-none">{p.unitsSold} u.</p>
                       </div>
-                      <div className="bg-green-50 p-2 rounded-xl border border-green-100 text-center">
-                        <p className="text-[8px] font-black text-green-600 uppercase leading-none mb-1">Recaudado</p>
-                        <p className="text-sm font-black text-green-700">${p.revenueGenerated.toLocaleString('es-CL')}</p>
+                      <div className="bg-green-50 p-1.5 rounded-lg border border-green-100 text-center">
+                        <p className="text-[7px] font-black text-green-600 uppercase leading-none mb-0.5">Total</p>
+                        <p className="text-[10px] font-black text-green-700 leading-none">${p.revenueGenerated.toLocaleString('es-CL')}</p>
                       </div>
                     </div>
                   </div>
                 </Card>
               ))
             ) : (
-              <div className="text-center py-6 bg-white rounded-2xl border-2 border-dashed border-slate-100">
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">No se encontraron productos con ese nombre</p>
+              <div className="text-center py-4 bg-white rounded-xl border-2 border-dashed border-slate-100">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Sin resultados</p>
               </div>
             )}
           </div>
