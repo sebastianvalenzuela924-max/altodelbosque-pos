@@ -122,6 +122,9 @@ export default function ReportsPage() {
     });
     
     allProducts.forEach(p => {
+      const soldThisPeriod = productSoldMap[p.id] || 0;
+      if (soldThisPeriod <= 0) return; // Solo incluimos productos vendidos en esta sección
+
       const cat = p.category || "General";
       const key = cat.toLowerCase();
       
@@ -135,8 +138,6 @@ export default function ReportsPage() {
           products: []
         };
       }
-      
-      const soldThisPeriod = productSoldMap[p.id] || 0;
       
       stats[key].productCount++;
       if (getProductStatus(p.stock, p.idealStock, p.warningStock) === "danger") {
@@ -309,7 +310,6 @@ export default function ReportsPage() {
         </Card>
       </section>
 
-      {/* Buscador de Producto Específico - Compactado */}
       <section className="space-y-3 animate-in slide-in-from-top-4 duration-500">
         <div className="relative group">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-primary transition-colors" />
@@ -378,10 +378,10 @@ export default function ReportsPage() {
         )}
       </section>
 
-      <Tabs defaultValue="categories" className="w-full">
+      <Tabs defaultValue="sales" className="w-full">
         <TabsList className="bg-white p-1 rounded-2xl shadow-sm border h-14 w-full grid grid-cols-3">
-          <TabsTrigger value="categories" className="rounded-xl font-bold uppercase text-[9px] md:text-[10px] tracking-widest data-[state=active]:bg-primary data-[state=active]:text-white">
-            <ListFilter className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" /> Categoría
+          <TabsTrigger value="sales" className="rounded-xl font-bold uppercase text-[9px] md:text-[10px] tracking-widest data-[state=active]:bg-primary data-[state=active]:text-white">
+            <ShoppingBag className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" /> Ventas
           </TabsTrigger>
           <TabsTrigger value="products" className="rounded-xl font-bold uppercase text-[9px] md:text-[10px] tracking-widest data-[state=active]:bg-primary data-[state=active]:text-white">
             <Trophy className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" /> Top Ventas
@@ -391,91 +391,97 @@ export default function ReportsPage() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="categories" className="space-y-4 mt-6">
+        <TabsContent value="sales" className="space-y-4 mt-6">
           <Accordion type="multiple" className="space-y-3">
-            {categoryStats.map((cat, idx) => {
-              const hasCritical = cat.stockCritical > 0;
-              return (
-                <AccordionItem key={idx} value={`cat-${idx}`} className="border-none">
-                  <Card className={cn(
-                    "border-none shadow-md rounded-3xl overflow-hidden transition-all duration-300",
-                    hasCritical ? "bg-red-50/50" : "bg-white"
-                  )}>
-                    <AccordionTrigger className="hover:no-underline p-2 md:p-6 text-left">
-                      <div className="flex items-center gap-2 md:gap-4 w-full min-w-0">
-                        <div className={cn(
-                          "w-8 h-8 md:w-12 md:h-12 rounded-2xl flex items-center justify-center font-black text-base md:text-xl shadow-inner shrink-0",
-                          hasCritical ? "bg-red-100 text-red-600" : "bg-primary/10 text-primary"
-                        )}>
-                          {cat.category[0].toUpperCase()}
-                        </div>
-                        
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-black text-xs md:text-lg uppercase tracking-tighter text-slate-800 truncate">{cat.category}</h3>
-                          <div className="flex flex-wrap gap-1 mt-0.5">
-                            <Badge variant="outline" className="text-[7px] md:text-[9px] font-black uppercase bg-primary/5 text-primary border-primary/20 rounded-lg px-1.5 py-0">
-                              {cat.unitsSold} u.
-                            </Badge>
+            {categoryStats.length === 0 ? (
+              <div className="text-center py-20 bg-white rounded-3xl border-2 border-dashed border-slate-100">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">No hay ventas registradas en este periodo</p>
+              </div>
+            ) : (
+              categoryStats.map((cat, idx) => {
+                const hasCritical = cat.stockCritical > 0;
+                return (
+                  <AccordionItem key={idx} value={`cat-${idx}`} className="border-none">
+                    <Card className={cn(
+                      "border-none shadow-md rounded-3xl overflow-hidden transition-all duration-300",
+                      hasCritical ? "bg-red-50/50" : "bg-white"
+                    )}>
+                      <AccordionTrigger className="hover:no-underline p-2 md:p-6 text-left">
+                        <div className="flex items-center gap-2 md:gap-4 w-full min-w-0">
+                          <div className={cn(
+                            "w-8 h-8 md:w-12 md:h-12 rounded-2xl flex items-center justify-center font-black text-base md:text-xl shadow-inner shrink-0",
+                            hasCritical ? "bg-red-100 text-red-600" : "bg-primary/10 text-primary"
+                          )}>
+                            {cat.category[0].toUpperCase()}
+                          </div>
+                          
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-black text-xs md:text-lg uppercase tracking-tighter text-slate-800 truncate">{cat.category}</h3>
+                            <div className="flex flex-wrap gap-1 mt-0.5">
+                              <Badge variant="outline" className="text-[7px] md:text-[9px] font-black uppercase bg-primary/5 text-primary border-primary/20 rounded-lg px-1.5 py-0">
+                                {cat.unitsSold} u. vendidas
+                              </Badge>
+                            </div>
+                          </div>
+
+                          <div className="text-right shrink-0 min-w-[70px] md:min-w-[120px] pr-1 md:pr-2">
+                            <p className="text-[7px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-0.5">Recaudado</p>
+                            <p className="text-sm md:text-xl font-black font-mono text-primary leading-none tracking-tighter">
+                              ${Math.round(cat.totalRevenue).toLocaleString('es-CL')}
+                            </p>
                           </div>
                         </div>
-
-                        <div className="text-right shrink-0 min-w-[70px] md:min-w-[120px] pr-1 md:pr-2">
-                          <p className="text-[7px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-0.5">Total</p>
-                          <p className="text-sm md:text-xl font-black font-mono text-primary leading-none tracking-tighter">
-                            ${Math.round(cat.totalRevenue).toLocaleString('es-CL')}
-                          </p>
+                      </AccordionTrigger>
+                      
+                      <AccordionContent className="px-1 md:px-6 pb-4 md:pb-6 pt-0 bg-slate-50/50">
+                        <div className="grid gap-1 mt-1 md:mt-2">
+                          {cat.products.map((p: any) => {
+                            const status = getProductStatus(p.stock, p.idealStock, p.warningStock);
+                            const productTotalRevenue = Math.round(p.price * p.soldThisPeriod);
+                            return (
+                              <div key={p.id} className={cn(
+                                "bg-white p-1 md:p-3 rounded-xl flex items-center justify-between border transition-all gap-0.5 md:gap-4 shadow-sm hover:border-primary/20",
+                                status === 'danger' ? "border-red-200 bg-red-50/20" : "border-slate-100"
+                              )}>
+                                <div className="flex items-center gap-1.5 md:gap-2 flex-1 min-w-0">
+                                  <div className={cn(
+                                    "w-6 h-6 md:w-8 md:h-8 rounded-full flex items-center justify-center shrink-0",
+                                    status === 'danger' ? "bg-red-100 text-destructive" : "bg-slate-100 text-slate-400"
+                                  )}>
+                                    {status === 'danger' ? <ShieldAlert className="w-3.5 h-3.5" /> : <Package className="w-3.5 h-3.5" />}
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <p className="font-bold text-[9px] md:text-xs text-slate-700 truncate leading-tight">{p.name}</p>
+                                    <p className="text-[7px] text-slate-400 font-bold uppercase mt-0.5">St: {p.stock} • ${Math.round(p.price).toLocaleString('es-CL')}</p>
+                                  </div>
+                                </div>
+                                
+                                <div className="flex items-center gap-0.5 md:gap-6 shrink-0 text-right">
+                                  <div className="flex flex-col items-end px-1">
+                                    <span className="text-[8px] md:text-sm font-black text-primary">{p.soldThisPeriod}u</span>
+                                  </div>
+                                  <div className="flex flex-col items-end px-1">
+                                    <span className="text-[8px] md:text-sm font-black text-slate-800 font-mono tracking-tighter">
+                                      ${productTotalRevenue.toLocaleString('es-CL')}
+                                    </span>
+                                  </div>
+                                  <Link 
+                                    href={`/inventory?search=${p.id}`}
+                                    className="h-7 w-7 md:h-8 md:w-8 flex items-center justify-center rounded-lg bg-slate-100 hover:bg-primary/10 text-primary transition-colors shrink-0 ml-1"
+                                  >
+                                    <ArrowRight className="w-3 h-3 md:w-4 md:h-4" />
+                                  </Link>
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
-                      </div>
-                    </AccordionTrigger>
-                    
-                    <AccordionContent className="px-1 md:px-6 pb-4 md:pb-6 pt-0 bg-slate-50/50">
-                      <div className="grid gap-1 mt-1 md:mt-2">
-                        {cat.products.map((p: any) => {
-                          const status = getProductStatus(p.stock, p.idealStock, p.warningStock);
-                          const productTotalRevenue = Math.round(p.price * p.soldThisPeriod);
-                          return (
-                            <div key={p.id} className={cn(
-                              "bg-white p-1 md:p-3 rounded-xl flex items-center justify-between border transition-all gap-0.5 md:gap-4 shadow-sm hover:border-primary/20",
-                              status === 'danger' ? "border-red-200 bg-red-50/20" : "border-slate-100"
-                            )}>
-                              <div className="flex items-center gap-1.5 md:gap-2 flex-1 min-w-0">
-                                <div className={cn(
-                                  "w-6 h-6 md:w-8 md:h-8 rounded-full flex items-center justify-center shrink-0",
-                                  status === 'danger' ? "bg-red-100 text-destructive" : "bg-slate-100 text-slate-400"
-                                )}>
-                                  {status === 'danger' ? <ShieldAlert className="w-3.5 h-3.5" /> : <Package className="w-3.5 h-3.5" />}
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  <p className="font-bold text-[9px] md:text-xs text-slate-700 truncate leading-tight">{p.name}</p>
-                                  <p className="text-[7px] text-slate-400 font-bold uppercase mt-0.5">St: {p.stock} • ${Math.round(p.price).toLocaleString('es-CL')}</p>
-                                </div>
-                              </div>
-                              
-                              <div className="flex items-center gap-0.5 md:gap-6 shrink-0 text-right">
-                                <div className="flex flex-col items-end px-1">
-                                  <span className="text-[8px] md:text-sm font-black text-primary">{p.soldThisPeriod}u</span>
-                                </div>
-                                <div className="flex flex-col items-end px-1">
-                                  <span className="text-[8px] md:text-sm font-black text-slate-800 font-mono tracking-tighter">
-                                    ${productTotalRevenue.toLocaleString('es-CL')}
-                                  </span>
-                                </div>
-                                <Link 
-                                  href={`/inventory?search=${p.id}`}
-                                  className="h-7 w-7 md:h-8 md:w-8 flex items-center justify-center rounded-lg bg-slate-100 hover:bg-primary/10 text-primary transition-colors shrink-0 ml-1"
-                                >
-                                  <ArrowRight className="w-3 h-3 md:w-4 md:h-4" />
-                                </Link>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </AccordionContent>
-                  </Card>
-                </AccordionItem>
-              );
-            })}
+                      </AccordionContent>
+                    </Card>
+                  </AccordionItem>
+                );
+              })
+            )}
           </Accordion>
         </TabsContent>
 
