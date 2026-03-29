@@ -78,9 +78,18 @@ export default function ReportsPage() {
     });
   }, [allSales, dateFilter, customDate, mounted]);
 
-  const totalRevenue = filteredSales.reduce((sum, s) => sum + (s.totalAmount || 0), 0);
-  const totalCash = filteredSales.filter(s => s.paymentMethod === 'cash').reduce((sum, s) => sum + (s.totalAmount || 0), 0);
-  const totalCard = filteredSales.filter(s => s.paymentMethod !== 'cash').reduce((sum, s) => sum + (s.totalAmount || 0), 0);
+  // Solo incluir ventas monetarias en ingresos
+  const totalRevenue = filteredSales
+    .filter(s => s.paymentMethod !== 'deduction')
+    .reduce((sum, s) => sum + (s.totalAmount || 0), 0);
+    
+  const totalCash = filteredSales
+    .filter(s => s.paymentMethod === 'cash')
+    .reduce((sum, s) => sum + (s.totalAmount || 0), 0);
+    
+  const totalCard = filteredSales
+    .filter(s => s.paymentMethod === 'card')
+    .reduce((sum, s) => sum + (s.totalAmount || 0), 0);
 
   const searchResults = useMemo(() => {
     if (!productSearchTerm || !allProducts) return [];
@@ -92,7 +101,10 @@ export default function ReportsPage() {
         if (item.id) {
           if (!salesSummary[item.id]) salesSummary[item.id] = { quantity: 0, revenue: 0 };
           salesSummary[item.id].quantity += item.quantity;
-          salesSummary[item.id].revenue += Math.round(item.price * item.quantity);
+          // Las deducciones administrativas no generan ingresos monetarios en el buscador
+          if (sale.paymentMethod !== 'deduction') {
+            salesSummary[item.id].revenue += Math.round(item.price * item.quantity);
+          }
         }
       });
     });
@@ -123,7 +135,7 @@ export default function ReportsPage() {
     
     allProducts.forEach(p => {
       const soldThisPeriod = productSoldMap[p.id] || 0;
-      if (soldThisPeriod <= 0) return; // Solo incluimos productos vendidos en esta sección
+      if (soldThisPeriod <= 0) return; // Solo incluimos productos con movimiento
 
       const cat = p.category || "General";
       const key = cat.toLowerCase();
@@ -147,10 +159,14 @@ export default function ReportsPage() {
     });
 
     filteredSales.forEach(sale => {
+      // Solo contar ingresos monetarios en las estadísticas de categoría
+      const isMonetary = sale.paymentMethod !== 'deduction';
       sale.itemsSummary?.forEach((item: any) => {
         const key = (item.category || "General").toLowerCase();
         if (stats[key]) {
-          stats[key].totalRevenue += Math.round(item.price * item.quantity);
+          if (isMonetary) {
+            stats[key].totalRevenue += Math.round(item.price * item.quantity);
+          }
           stats[key].unitsSold += item.quantity;
         }
       });
@@ -167,13 +183,16 @@ export default function ReportsPage() {
   const topProducts = useMemo(() => {
     const productCounts: Record<string, any> = {};
     filteredSales.forEach(sale => {
+      const isMonetary = sale.paymentMethod !== 'deduction';
       sale.itemsSummary?.forEach((item: any) => {
         if (item.type === 'product') {
           if (!productCounts[item.id]) {
             productCounts[item.id] = { name: item.name, quantity: 0, revenue: 0 };
           }
           productCounts[item.id].quantity += item.quantity;
-          productCounts[item.id].revenue += (item.price * item.quantity);
+          if (isMonetary) {
+            productCounts[item.id].revenue += (item.price * item.quantity);
+          }
         }
       });
     });

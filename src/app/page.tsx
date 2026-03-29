@@ -217,11 +217,12 @@ export default function POSPage() {
     }
   };
 
-  const handleFinalize = (manualFinalAmount?: number, paymentMethod: 'cash' | 'card' = 'card') => {
+  const handleFinalize = (manualFinalAmount?: number, paymentMethod: 'cash' | 'card' | 'deduction' = 'card') => {
     let currentManualItems = [...manualProducts];
     let currentCartTotal = total;
 
-    if (manualFinalAmount !== undefined) {
+    // Solo aplicar ajustes de calculadora si no es una deducción administrativa
+    if (manualFinalAmount !== undefined && paymentMethod !== 'deduction') {
       const diff = Math.round(manualFinalAmount) - Math.round(currentCartTotal);
       if (diff !== 0) {
         currentManualItems.push({ description: "Ajuste Manual / Calculadora", amount: diff });
@@ -234,8 +235,11 @@ export default function POSPage() {
     const salesRef = collection(firestore, "sales");
     const saleId = crypto.randomUUID();
     
-    const finalTotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0) +
-                       currentManualItems.reduce((sum, item) => sum + item.amount, 0);
+    // Si es deducción, el monto total es 0 para finanzas, pero guardamos el desglose
+    const finalTotal = paymentMethod === 'deduction' 
+      ? 0 
+      : (items.reduce((sum, item) => sum + (item.price * item.quantity), 0) +
+         currentManualItems.reduce((sum, item) => sum + item.amount, 0));
 
     const saleData = {
       id: saleId,
@@ -304,7 +308,12 @@ export default function POSPage() {
     
     setTimeout(() => {
       setIsProcessing(false);
-      toast({ title: `Venta Finalizada (${paymentMethod === 'cash' ? 'Efectivo' : 'Tarjeta'})` });
+      let toastMsg = "Venta Finalizada";
+      if (paymentMethod === 'cash') toastMsg += " (Efectivo)";
+      if (paymentMethod === 'card') toastMsg += " (Tarjeta)";
+      if (paymentMethod === 'deduction') toastMsg = "Stock Descontado (Administrativo)";
+      
+      toast({ title: toastMsg });
     }, 500);
   };
 
@@ -431,7 +440,6 @@ export default function POSPage() {
           </CardHeader>
 
           <CardContent className="p-0 flex flex-col bg-slate-50">
-            {/* Altura ajustada para mostrar aproximadamente 5 productos antes del scroll */}
             <ScrollArea className="h-[320px] lg:h-[480px] w-full border-b border-slate-200">
               <div className="divide-y divide-slate-100 pb-4">
                 {items.length === 0 && manualProducts.length === 0 && (
@@ -481,7 +489,6 @@ export default function POSPage() {
                   </div>
                 ))}
 
-                {/* Referencia para auto-scroll */}
                 <div ref={scrollRef} />
               </div>
             </ScrollArea>

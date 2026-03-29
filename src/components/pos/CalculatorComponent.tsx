@@ -3,13 +3,13 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, Minus, X, Divide, CheckCircle2, RotateCcw, Banknote, Loader2, Equal } from "lucide-react";
+import { Plus, Minus, X, Divide, CheckCircle2, RotateCcw, Banknote, Loader2, Equal, PackageMinus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface CalculatorComponentProps {
   baseValue: number;
   isProcessing?: boolean;
-  onFinalize: (amount: number, method: 'cash' | 'card') => void;
+  onFinalize: (amount: number, method: 'cash' | 'card' | 'deduction') => void;
   onClearCart: () => void;
 }
 
@@ -132,6 +132,14 @@ export function CalculatorComponent({
     setIsCashMode(false);
   };
 
+  const handleDeductInternal = () => {
+    onFinalize(currentTotal, 'deduction');
+    setManualOps("");
+    setCurrentInput("");
+    setCashReceived("");
+    setIsCashMode(false);
+  };
+
   const receivedAmount = parseInt(cashReceived || "0");
   const changeAmount = receivedAmount > 0 ? receivedAmount - currentTotal : 0;
 
@@ -232,6 +240,16 @@ export function CalculatorComponent({
         >
           <RotateCcw className="w-4 h-4" />
           <span className="text-[7px] md:text-[9px] font-black uppercase leading-tight">Vaciar<br/>Caja</span>
+        </Button>
+
+        <Button 
+            variant="outline"
+            className="h-14 md:h-18 w-14 md:w-18 flex flex-col items-center justify-center gap-1 border-amber-200 text-amber-600 hover:bg-amber-50 rounded-2xl shrink-0 transition-all active:scale-95"
+            onClick={handleDeductInternal}
+            disabled={isProcessing}
+        >
+          <PackageMinus className="w-4 h-4" />
+          <span className="text-[7px] md:text-[9px] font-black uppercase leading-tight text-center">Descontar<br/>Stock</span>
         </Button>
         
         <Button 

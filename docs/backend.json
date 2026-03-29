@@ -65,8 +65,8 @@
         },
         "paymentMethod": {
           "type": "string",
-          "enum": ["cash", "card"],
-          "description": "The method used for the payment."
+          "enum": ["cash", "card", "deduction"],
+          "description": "The method used for the payment. 'deduction' means stock removal without charge."
         },
         "productSaleItemIds": {
           "type": "array",

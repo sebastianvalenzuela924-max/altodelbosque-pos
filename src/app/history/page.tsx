@@ -1,9 +1,10 @@
+
 "use client";
 
 import { useCollection, useFirestore, useMemoFirebase, deleteDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase";
 import { collection, query, orderBy, doc, increment } from "firebase/firestore";
 import { Card } from "@/components/ui/card";
-import { FileSpreadsheet, Calendar, History, ShoppingBag, Loader2, ChevronRight, Trash2, Eraser, AlertCircle, X, ChevronLeft, Check, Banknote, CreditCard, PackagePlus, ArrowDownToLine, FileText, Edit3, Search } from "lucide-react";
+import { FileSpreadsheet, Calendar, History, ShoppingBag, Loader2, ChevronRight, Trash2, Eraser, AlertCircle, X, ChevronLeft, Check, Banknote, CreditCard, PackagePlus, ArrowDownToLine, FileText, Edit3, Search, PackageMinus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { exportSheetsToExcel } from "@/lib/export";
@@ -117,7 +118,7 @@ export default function HistoryPage() {
           ID_Venta: s.id,
           Fecha: date.toLocaleDateString(),
           Hora: date.toLocaleTimeString(),
-          Metodo_Pago: s.paymentMethod === 'cash' ? 'Efectivo' : 'Tarjeta',
+          Metodo_Pago: s.paymentMethod === 'cash' ? 'Efectivo' : s.paymentMethod === 'card' ? 'Tarjeta' : 'Descontado',
           Producto: item.name,
           Cantidad: item.quantity,
           Precio: Math.round(item.price),
@@ -307,6 +308,8 @@ export default function HistoryPage() {
               const date = sale.saleDateTime?.toDate?.() || (sale.saleDateTime ? new Date(sale.saleDateTime) : new Date());
               const totalItems = (sale.productSaleItemIds?.length || 0) + (sale.manualSaleItemIds?.length || 0);
               const isCash = sale.paymentMethod === 'cash';
+              const isCard = sale.paymentMethod === 'card';
+              const isDeduction = sale.paymentMethod === 'deduction';
               
               return (
                 <Card key={sale.id} className="overflow-hidden border-none shadow-sm hover:shadow-md transition-all duration-200 rounded-2xl group bg-white">
@@ -331,11 +334,11 @@ export default function HistoryPage() {
                               variant="outline" 
                               className={cn(
                                 "text-[8px] font-black uppercase px-1.5 md:px-2 py-0.5 shrink-0 w-fit border-none",
-                                isCash ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"
+                                isCash ? "bg-green-100 text-green-700" : isCard ? "bg-blue-100 text-blue-700" : "bg-amber-100 text-amber-700"
                               )}
                             >
-                              {isCash ? <Banknote className="w-3 h-3 mr-1 inline" /> : <CreditCard className="w-3 h-3 mr-1 inline" />}
-                              <span className="hidden sm:inline">{isCash ? 'Efectivo' : 'Tarjeta'}</span>
+                              {isCash ? <Banknote className="w-3 h-3 mr-1 inline" /> : isCard ? <CreditCard className="w-3 h-3 mr-1 inline" /> : <PackageMinus className="w-3 h-3 mr-1 inline" />}
+                              <span className="hidden sm:inline">{isCash ? 'Efectivo' : isCard ? 'Tarjeta' : 'Descontado'}</span>
                             </Badge>
                           </div>
                           
@@ -347,9 +350,9 @@ export default function HistoryPage() {
                         <div className="text-right min-w-[120px] md:min-w-[130px] flex items-center justify-end gap-2 md:gap-3 shrink-0">
                           <span className={cn(
                             "text-base md:text-lg font-black font-mono tracking-tighter leading-none",
-                            isCash ? "text-green-600" : "text-primary"
+                            isCash ? "text-green-600" : isCard ? "text-primary" : "text-amber-600"
                           )}>
-                            ${Math.round(sale.totalAmount).toLocaleString('es-CL')}
+                            {isDeduction ? "ADMIN" : `$${Math.round(sale.totalAmount).toLocaleString('es-CL')}`}
                           </span>
                           <Button 
                             variant="ghost" 
@@ -378,7 +381,7 @@ export default function HistoryPage() {
                               </div>
                               <div className="text-right">
                                 <span className="font-black text-slate-500 mr-2 text-[10px]">{item.quantity} x ${Math.round(item.price).toLocaleString('es-CL')}</span>
-                                <span className={cn("font-black", isCash ? "text-green-600" : "text-primary")}>
+                                <span className={cn("font-black", isCash ? "text-green-600" : isCard ? "text-primary" : "text-amber-600")}>
                                   ${Math.round(item.price * item.quantity).toLocaleString('es-CL')}
                                 </span>
                               </div>
