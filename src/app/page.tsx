@@ -8,12 +8,14 @@ import { ScannerComponent } from "@/components/pos/ScannerComponent";
 import { CalculatorComponent } from "@/components/pos/CalculatorComponent";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
-import { Trash2, PlusCircle, MinusCircle, ShoppingCart, Scan, RotateCcw, Search, Plus, PackageSearch, Check, ReceiptText, IceCream, CupSoda } from "lucide-react";
+import { Trash2, PlusCircle, MinusCircle, ShoppingCart, Scan, RotateCcw, Search, Plus, PackageSearch, Check, ReceiptText, IceCream, CupSoda, FileText } from "lucide-react";
 import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { doc, collection, serverTimestamp, increment, query } from "firebase/firestore";
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 
 // Función para emitir un "beep" de confirmación fuerte usando Web Audio API
 const playSuccessSound = () => {
@@ -112,6 +114,10 @@ export default function POSPage() {
   const lastScanRef = useRef<{ code: string; time: number } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+
+  // Estados para Ingreso de Stock
+  const [isStockEntryDialogOpen, setIsStockEntryDialogOpen] = useState(false);
+  const [invoiceNumber, setInvoiceNumber] = useState("");
 
   const productsQuery = useMemoFirebase(() => {
     return query(collection(firestore, "products"));
@@ -317,6 +323,47 @@ export default function POSPage() {
     }, 500);
   };
 
+  const handleStockEntry = () => {
+    if (items.length === 0) {
+      toast({ title: "Caja vacía", description: "Añade productos para ingresar stock.", variant: "destructive" });
+      return;
+    }
+    setIsStockEntryDialogOpen(true);
+  };
+
+  const confirmStockEntry = () => {
+    setIsProcessing(true);
+    const logsRef = collection(firestore, "inventoryLogs");
+    
+    items.forEach(item => {
+      const productRef = doc(firestore, "products", item.id);
+      
+      // Incrementar stock físico
+      updateDocumentNonBlocking(productRef, {
+        stock: increment(item.quantity)
+      });
+
+      // Registrar en el historial de ingresos
+      addDocumentNonBlocking(logsRef, {
+        id: crypto.randomUUID(),
+        productId: item.id,
+        productName: item.name,
+        quantity: item.quantity,
+        invoiceNumber: invoiceNumber.trim() || "N/A",
+        timestamp: serverTimestamp(),
+        type: 'restock'
+      });
+    });
+
+    toast({ title: "Stock Ingresado", description: `Se han procesado ${items.length} productos.` });
+    
+    setItems([]);
+    setManualProducts([]);
+    setInvoiceNumber("");
+    setIsStockEntryDialogOpen(false);
+    setIsProcessing(false);
+  };
+
   const updateQuantity = (id: string, delta: number) => {
     setItems(prev => prev.map(item => {
       if (item.id === id) {
@@ -497,13 +544,68 @@ export default function POSPage() {
                <CalculatorComponent 
                 baseValue={Math.round(total)} 
                 isProcessing={isProcessing}
-                onFinalize={handleFinalize} 
+                onFinalize={handleFinalize}
+                onStockEntry={handleStockEntry}
                 onClearCart={handleClearCart}
               />
             </div>
           </CardContent>
         </Card>
       </div>
+
+      {/* Diálogo de Ingreso de Stock con Factura */}
+      <Dialog open={isStockEntryDialogOpen} onOpenChange={setIsStockEntryDialogOpen}>
+        <DialogContent className="rounded-3xl p-6 border-none shadow-2xl max-w-[90vw] sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-black text-accent uppercase flex items-center gap-2">
+              <FileText className="w-6 h-6" /> Ingreso de Stock
+            </DialogTitle>
+            <DialogDescription className="text-xs font-bold text-slate-500">
+              Registra la entrada de estos productos al inventario.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4 space-y-4">
+            <div className="grid gap-2">
+              <Label htmlFor="invoice" className="text-[10px] font-black uppercase text-slate-400">Número de Factura / Guía (Opcional)</Label>
+              <Input 
+                id="invoice"
+                className="h-12 rounded-xl bg-slate-50 border-none font-bold text-lg" 
+                placeholder="Ej: 888777"
+                value={invoiceNumber}
+                onChange={(e) => setInvoiceNumber(e.target.value)}
+              />
+            </div>
+
+            <div className="p-3 bg-accent/5 rounded-xl border border-accent/10">
+              <p className="text-[9px] font-black uppercase text-accent/60 mb-2">Resumen de Carga</p>
+              <div className="space-y-1">
+                {items.slice(0, 3).map((item, idx) => (
+                  <div key={idx} className="flex justify-between text-xs">
+                    <span className="font-bold text-slate-700 truncate mr-2">{item.name}</span>
+                    <span className="font-black text-accent">+{item.quantity}</span>
+                  </div>
+                ))}
+                {items.length > 3 && (
+                  <p className="text-[8px] font-bold text-slate-400 text-center mt-1 italic">...y {items.length - 3} productos más</p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="grid grid-cols-2 gap-2">
+            <Button variant="ghost" className="rounded-xl h-12 font-bold" onClick={() => setIsStockEntryDialogOpen(false)}>Cancelar</Button>
+            <Button 
+              className="rounded-xl bg-accent hover:bg-accent/90 font-black h-12 shadow-lg shadow-accent/20" 
+              onClick={confirmStockEntry}
+              disabled={isProcessing}
+            >
+              {isProcessing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Check className="w-4 h-4 mr-2" />}
+              CONFIRMAR CARGA
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

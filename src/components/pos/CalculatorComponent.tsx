@@ -3,13 +3,14 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, Minus, X, Divide, CheckCircle2, RotateCcw, Banknote, Loader2, Equal, PackageMinus } from "lucide-react";
+import { Plus, Minus, X, Divide, CheckCircle2, RotateCcw, Banknote, Loader2, Equal, PackageMinus, PackagePlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface CalculatorComponentProps {
   baseValue: number;
   isProcessing?: boolean;
   onFinalize: (amount: number, method: 'cash' | 'card' | 'deduction') => void;
+  onStockEntry: () => void;
   onClearCart: () => void;
 }
 
@@ -22,6 +23,7 @@ export function CalculatorComponent({
   baseValue, 
   isProcessing = false,
   onFinalize,
+  onStockEntry,
   onClearCart
 }: CalculatorComponentProps) {
   // Estado para la cadena de operaciones manuales (ej: "+ 500 - 200")
@@ -250,6 +252,16 @@ export function CalculatorComponent({
         >
           <PackageMinus className="w-4 h-4" />
           <span className="text-[7px] md:text-[9px] font-black uppercase leading-tight text-center">Descontar<br/>Stock</span>
+        </Button>
+
+        <Button 
+            variant="outline"
+            className="h-14 md:h-18 w-14 md:w-18 flex flex-col items-center justify-center gap-1 border-accent/20 text-accent hover:bg-accent/5 rounded-2xl shrink-0 transition-all active:scale-95"
+            onClick={onStockEntry}
+            disabled={isProcessing}
+        >
+          <PackagePlus className="w-4 h-4" />
+          <span className="text-[7px] md:text-[9px] font-black uppercase leading-tight text-center">Ingreso<br/>Stock</span>
         </Button>
         
         <Button 
