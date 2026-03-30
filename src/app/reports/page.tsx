@@ -236,7 +236,12 @@ export default function ReportsPage() {
     );
   }
 
-  const totalInventoryValue = allProducts?.reduce((sum, p) => sum + (Math.round(p.price) * (p.stock || 0)), 0) || 0;
+  // Filtrar productos sin alertas del valor del inventario
+  const totalInventoryValue = allProducts?.reduce((sum, p) => {
+    const noAlerts = p.warningStock === 0 || p.idealStock === 0;
+    if (noAlerts) return sum;
+    return sum + (Math.round(p.price) * (p.stock || 0));
+  }, 0) || 0;
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-20">

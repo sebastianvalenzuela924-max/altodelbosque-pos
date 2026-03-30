@@ -3,15 +3,17 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, Minus, X, Divide, CheckCircle2, RotateCcw, Banknote, Loader2, Equal, PackageMinus, PackagePlus } from "lucide-react";
+import { Plus, Minus, X, Divide, CheckCircle2, RotateCcw, Banknote, Loader2, Equal, PackageMinus, PackagePlus, Undo2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface CalculatorComponentProps {
   baseValue: number;
   isProcessing?: boolean;
+  hasLastOperation?: boolean;
   onFinalize: (amount: number, method: 'cash' | 'card' | 'deduction') => void;
   onStockEntry: () => void;
   onClearCart: () => void;
+  onUndo: () => void;
 }
 
 /**
@@ -22,9 +24,11 @@ interface CalculatorComponentProps {
 export function CalculatorComponent({ 
   baseValue, 
   isProcessing = false,
+  hasLastOperation = false,
   onFinalize,
   onStockEntry,
-  onClearCart
+  onClearCart,
+  onUndo
 }: CalculatorComponentProps) {
   // Estado para la cadena de operaciones manuales (ej: "+ 500 - 200")
   const [manualOps, setManualOps] = useState("");
@@ -252,8 +256,8 @@ export function CalculatorComponent({
         </Button>
       </div>
 
-      {/* Botones de Utilidad: Fila Inferior */}
-      <div className="grid grid-cols-3 gap-3">
+      {/* Botones de Utilidad: Reorganizados 2x2 */}
+      <div className="grid grid-cols-2 gap-3">
         <Button 
             variant="outline"
             className="h-14 flex flex-col items-center justify-center gap-1 border-destructive/20 text-destructive hover:bg-destructive/5 rounded-2xl transition-all"
@@ -262,6 +266,19 @@ export function CalculatorComponent({
         >
           <RotateCcw className="w-4 h-4" />
           <span className="text-[8px] font-black uppercase">Vaciar</span>
+        </Button>
+
+        <Button 
+            variant="outline"
+            className={cn(
+              "h-14 flex flex-col items-center justify-center gap-1 rounded-2xl transition-all border-primary/20 text-primary",
+              !hasLastOperation ? "opacity-30 grayscale cursor-not-allowed" : "hover:bg-primary/5"
+            )}
+            onClick={onUndo}
+            disabled={isProcessing || !hasLastOperation}
+        >
+          <Undo2 className="w-4 h-4" />
+          <span className="text-[8px] font-black uppercase">Volver atrás</span>
         </Button>
 
         <Button 

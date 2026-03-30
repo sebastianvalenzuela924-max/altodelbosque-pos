@@ -9,7 +9,7 @@ import { CalculatorComponent } from "@/components/pos/CalculatorComponent";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Trash2, PlusCircle, MinusCircle, ShoppingCart, Scan, RotateCcw, Search, Plus, PackageSearch, Check, ReceiptText, IceCream, CupSoda, FileText, Loader2 } from "lucide-react";
-import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase";
+import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { doc, collection, serverTimestamp, increment, query } from "firebase/firestore";
 import { cn } from "@/lib/utils";
@@ -114,6 +114,9 @@ export default function POSPage() {
   const lastScanRef = useRef<{ code: string; time: number } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+
+  // Estado para la última venta (Undo)
+  const [lastOperation, setLastOperation] = useState<any | null>(null);
 
   // Estados para Ingreso de Stock
   const [isStockEntryDialogOpen, setIsStockEntryDialogOpen] = useState(false);
@@ -277,18 +280,6 @@ export default function POSPage() {
     addDocumentNonBlocking(salesRef, saleData);
 
     items.forEach(item => {
-      const itemRef = collection(doc(firestore, "sales", saleId), "productSaleItems");
-      addDocumentNonBlocking(itemRef, {
-        id: crypto.randomUUID(),
-        saleId: saleId,
-        productId: item.id,
-        productName: item.name,
-        unitPrice: Math.round(item.price),
-        quantity: item.quantity,
-        subtotal: Math.round(item.price * item.quantity),
-        category: item.category
-      });
-
       const productRef = doc(firestore, "products", item.id);
       const product = productMap.get(String(item.id).trim());
       const noAlerts = product?.warningStock === 0 || product?.idealStock === 0;
@@ -298,15 +289,8 @@ export default function POSPage() {
       });
     });
 
-    currentManualItems.forEach(mp => {
-      const manualRef = collection(doc(firestore, "sales", saleId), "manualSaleItems");
-      addDocumentNonBlocking(manualRef, {
-        id: crypto.randomUUID(),
-        saleId: saleId,
-        description: mp.description,
-        amount: Math.round(mp.amount)
-      });
-    });
+    // Guardar para deshacer
+    setLastOperation({ type: 'sale', id: saleId, data: saleData });
 
     setItems([]);
     setManualProducts([]);
@@ -334,8 +318,11 @@ export default function POSPage() {
   const confirmStockEntry = () => {
     setIsProcessing(true);
     const logsRef = collection(firestore, "inventoryLogs");
+    const entryIds: string[] = [];
     
     items.forEach(item => {
+      const logId = crypto.randomUUID();
+      entryIds.push(logId);
       const productRef = doc(firestore, "products", item.id);
       
       // Incrementar stock físico
@@ -345,7 +332,7 @@ export default function POSPage() {
 
       // Registrar en el historial de ingresos
       addDocumentNonBlocking(logsRef, {
-        id: crypto.randomUUID(),
+        id: logId,
         productId: item.id,
         productName: item.name,
         quantity: item.quantity,
@@ -355,12 +342,78 @@ export default function POSPage() {
       });
     });
 
+    // Guardar para deshacer
+    setLastOperation({ 
+      type: 'stock', 
+      ids: entryIds, 
+      itemsSummary: items.map(i => ({ id: i.id, quantity: i.quantity, name: i.name, price: i.price, category: i.category })) 
+    });
+
     toast({ title: "Stock Ingresado", description: `Se han procesado ${items.length} productos.` });
     
     setItems([]);
     setManualProducts([]);
     setInvoiceNumber("");
     setIsStockEntryDialogOpen(false);
+    setIsProcessing(false);
+  };
+
+  const handleUndoLastOperation = () => {
+    if (!lastOperation) return;
+
+    setIsProcessing(true);
+    
+    if (lastOperation.type === 'sale') {
+      const sale = lastOperation.data;
+      
+      // 1. Restaurar items a la caja
+      const restoredItems = sale.itemsSummary
+        .filter((i: any) => i.type === 'product')
+        .map((i: any) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity, category: i.category }));
+      
+      const restoredManual = sale.itemsSummary
+        .filter((i: any) => i.type === 'manual')
+        .map((i: any) => ({ description: i.name, amount: i.price }));
+
+      setItems(restoredItems);
+      setManualProducts(restoredManual);
+
+      // 2. Revertir inventario
+      restoredItems.forEach((item: any) => {
+        const productRef = doc(firestore, "products", item.id);
+        const product = productMap.get(String(item.id).trim());
+        const noAlerts = product?.warningStock === 0 || product?.idealStock === 0;
+        
+        updateDocumentNonBlocking(productRef, {
+          stock: increment(noAlerts ? -item.quantity : item.quantity)
+        });
+      });
+
+      // 3. Borrar venta
+      deleteDocumentNonBlocking(doc(firestore, "sales", lastOperation.id));
+
+      toast({ title: "Venta deshecha", description: "Los productos han vuelto a la caja." });
+    } else if (lastOperation.type === 'stock') {
+      // 1. Restaurar items a la caja
+      setItems(lastOperation.itemsSummary);
+      
+      // 2. Revertir inventario (restar lo que se sumó)
+      lastOperation.itemsSummary.forEach((item: any) => {
+        const productRef = doc(firestore, "products", item.id);
+        updateDocumentNonBlocking(productRef, {
+          stock: increment(-item.quantity)
+        });
+      });
+
+      // 3. Borrar logs
+      lastOperation.ids.forEach((id: string) => {
+        deleteDocumentNonBlocking(doc(firestore, "inventoryLogs", id));
+      });
+
+      toast({ title: "Ingreso deshecho", description: "Los productos han vuelto a la caja." });
+    }
+
+    setLastOperation(null);
     setIsProcessing(false);
   };
 
@@ -547,6 +600,8 @@ export default function POSPage() {
                 onFinalize={handleFinalize}
                 onStockEntry={handleStockEntry}
                 onClearCart={handleClearCart}
+                onUndo={handleUndoLastOperation}
+                hasLastOperation={!!lastOperation}
               />
             </div>
           </CardContent>
