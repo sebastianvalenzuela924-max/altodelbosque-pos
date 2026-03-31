@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { AlertCircle, Package, Send, Sparkles, Truck, ListFilter, Trash2, CheckSquare, Search, X, CheckCircle2, Info } from "lucide-react";
+import { AlertCircle, Package, Send, Sparkles, Truck, ListFilter, Trash2, CheckSquare, Search, X, CheckCircle2, Info, Target, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -69,7 +69,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
             reason = stock === 0 ? "Stock en 0, reponer hasta nivel ideal" : "Stock negativo, reponer hasta nivel ideal";
           } else if (hasWarning) {
             suggestedQty = (Math.abs(stock) + p.warningStock! + 5);
-            reason = stock === 0 ? "Stock en 0, reponer hasta aviso + 5" : "Stock negativo, reponer hasta aviso + 5";
+            reason = stock === 0 ? "Stock en 0, reponer hasta stock aviso + 5" : "Stock negativo, reponer hasta stock aviso + 5";
           } else {
             suggestedQty = 10;
             reason = "Sin metas definidas, reposición básica sugerida";
@@ -258,8 +258,26 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
             </span>
 
             <div className="flex items-center gap-1 bg-slate-50 px-1.5 py-0.5 rounded-md border border-slate-100">
-              <span className="text-[7px] font-black text-slate-400 uppercase">St:</span>
+              <span className="text-[7px] font-black text-slate-400 uppercase">Stock:</span>
               <span className={cn("text-[8px] font-black", p.stock <= 0 ? "text-red-600" : "text-slate-800")}>{p.stock}</span>
+            </div>
+
+            {/* Referencias de Stock Aviso/Ideal */}
+            <div className="flex items-center gap-1.5">
+              {p.warningStock > 0 && (
+                <div className="flex items-center gap-1 bg-amber-50 px-1.5 py-0.5 rounded-md border border-amber-100">
+                  <AlertTriangle className="w-2.5 h-2.5 text-amber-600" />
+                  <span className="text-[7px] font-black text-amber-600 uppercase">Aviso:</span>
+                  <span className="text-[8px] font-black text-amber-700">{p.warningStock}</span>
+                </div>
+              )}
+              {p.idealStock > 0 && (
+                <div className="flex items-center gap-1 bg-primary/5 px-1.5 py-0.5 rounded-md border border-primary/10">
+                  <Target className="w-2.5 h-2.5 text-primary" />
+                  <span className="text-[7px] font-black text-primary uppercase">Ideal:</span>
+                  <span className="text-[8px] font-black text-primary">{p.idealStock}</span>
+                </div>
+              )}
             </div>
 
             {p.priority !== 'OK' && p.suggestedQty > 0 && (
