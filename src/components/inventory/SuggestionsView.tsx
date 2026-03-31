@@ -8,7 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertCircle, ArrowRight, CheckCircle2, Filter, Info, Package, Send, Sparkles, TrendingUp, Truck, ListFilter, Clock, ShoppingCart } from "lucide-react";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { AlertCircle, ArrowRight, CheckCircle2, Filter, Info, Package, Send, Sparkles, TrendingUp, Truck, ListFilter, Clock, ShoppingCart, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -99,7 +100,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
             suggestedQty = Math.max(p.warningStock! * 2, Math.ceil(rotationScore * 14));
           } else if (stock === p.warningStock! + 1 || stock === p.warningStock! + 2) {
             priority = 'Comprar Pronto';
-            reason = "Cerca del umbral de aviso (+1 o +2)";
+            reason = `Cerca del umbral de aviso (+${stock - p.warningStock!})`;
             suggestedQty = Math.ceil(rotationScore * 7);
           } else if (rotationScore > 1.5) {
             priority = 'Vigilar';
@@ -109,7 +110,6 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
         } 
         // Lógica para productos con STOCK IDEAL (y sin aviso)
         else if (hasIdeal) {
-          // Si stock es 0 ya entró en el primer IF. Aquí stock > 0.
           if (stock < p.idealStock! * 0.25 && rotationScore > 0.2) {
             priority = 'Crítico';
             reason = "Stock muy por debajo del ideal con ventas";
@@ -124,7 +124,6 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
             suggestedQty = Math.ceil(rotationScore * 7);
           }
         } 
-        // Lógica para productos sin umbrales definidos
         else {
           if (sales.d30 > 0 && stock < Math.ceil(rotationScore * 3)) {
             priority = 'Comprar Pronto';
@@ -133,7 +132,6 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
           }
         }
 
-        // Si no tiene ventas en 30 días, bajar prioridad a menos que sea crítico por stock 0
         if (sales.d30 === 0 && priority !== 'Crítico') {
           priority = 'Sin Rotación';
           reason = "Sin ventas en los últimos 30 días";
@@ -211,7 +209,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
             {p.priority === 'Crítico' ? <AlertCircle className="w-6 h-6" /> : <Package className="w-6 h-6" />}
           </div>
           <div className="min-w-0">
-            <h4 className="font-bold text-xs uppercase text-slate-800 truncate leading-none">{p.name}</h4>
+            <h4 className="font-bold text-[10px] md:text-xs uppercase text-slate-800 truncate leading-none">{p.name}</h4>
             <div className="flex gap-2 mt-1">
               <span className="text-[8px] font-black text-slate-400 uppercase tracking-tighter bg-slate-50 px-1 rounded">{p.category || 'General'}</span>
               <span className="text-[8px] font-black text-slate-400 uppercase tracking-tighter bg-slate-50 px-1 rounded">{p.distributor || 'Sin Prov.'}</span>
@@ -219,7 +217,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
           </div>
         </div>
 
-        <div className="flex items-center gap-6 shrink-0 text-right">
+        <div className="flex items-center gap-2 md:gap-6 shrink-0 text-right">
           <div className="hidden sm:flex flex-col items-end">
             <p className="text-[7px] font-black text-slate-400 uppercase leading-none mb-1">Stock Actual</p>
             <div className="flex items-center gap-1">
@@ -231,12 +229,12 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
             <p className="text-[7px] font-black text-primary uppercase leading-none mb-1">Pedir</p>
             <span className="font-black text-sm text-primary">+{p.suggestedQty}</span>
           </div>
-          <div className="flex flex-col items-end">
+          <div className="flex flex-col items-end min-w-[80px]">
             <Badge className={cn(
               "text-[8px] font-black uppercase rounded-lg px-1.5 py-0.5 border-none mb-1",
-              p.priority === 'Crítico' ? "bg-red-600" : p.priority === 'Comprar Pronto' ? "bg-amber-600" : "bg-blue-600"
+              p.priority === 'Crítico' ? "bg-red-600 text-white" : p.priority === 'Comprar Pronto' ? "bg-amber-600 text-white" : "bg-blue-600 text-white"
             )}>{p.priority}</Badge>
-            <p className="text-[8px] font-bold text-slate-400 italic max-w-[120px] leading-tight text-right">
+            <p className="text-[7px] md:text-[8px] font-bold text-slate-400 italic max-w-[100px] leading-tight text-right">
               {p.reason}
             </p>
           </div>
@@ -244,6 +242,14 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
       </div>
     </Card>
   );
+
+  const activeDistributors = useMemo(() => {
+    return distributors.filter(d => filtered.some(p => (p.distributor || "General") === d));
+  }, [distributors, filtered]);
+
+  const activeCategories = useMemo(() => {
+    return categories.filter(c => filtered.some(p => (p.category || "General") === c));
+  }, [categories, filtered]);
 
   return (
     <div className="space-y-6">
@@ -339,27 +345,51 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
                 {filtered.map(renderProductItem)}
               </div>
             ) : viewMode === 'distributor' ? (
-              <div className="space-y-6">
-                {distributors.filter(d => filtered.some(p => p.distributor === d)).map(dist => (
-                  <div key={dist} className="space-y-2">
-                    <h4 className="font-black text-[10px] uppercase text-slate-400 flex items-center gap-2 px-2">
-                      <Truck className="w-3 h-3" /> {dist}
-                    </h4>
-                    {filtered.filter(p => p.distributor === dist).map(renderProductItem)}
-                  </div>
+              <Accordion type="multiple" className="space-y-2">
+                {activeDistributors.map(dist => (
+                  <AccordionItem key={dist} value={dist} className="border-none">
+                    <Card className="rounded-2xl border-none shadow-sm bg-white overflow-hidden">
+                      <AccordionTrigger className="px-4 py-3 hover:no-underline font-black text-[10px] uppercase text-slate-600 bg-slate-100/50">
+                        <div className="flex items-center gap-2">
+                          <Truck className="w-4 h-4 text-primary" />
+                          <span>{dist}</span>
+                          <Badge variant="outline" className="ml-2 bg-white text-[8px] border-slate-200">
+                            {filtered.filter(p => (p.distributor || "General") === dist).length} ítems
+                          </Badge>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="p-2 pb-0">
+                        <div className="space-y-1">
+                          {filtered.filter(p => (p.distributor || "General") === dist).map(renderProductItem)}
+                        </div>
+                      </AccordionContent>
+                    </Card>
+                  </AccordionItem>
                 ))}
-              </div>
+              </Accordion>
             ) : (
-              <div className="space-y-6">
-                {categories.filter(c => filtered.some(p => p.category === c)).map(cat => (
-                  <div key={cat} className="space-y-2">
-                    <h4 className="font-black text-[10px] uppercase text-slate-400 flex items-center gap-2 px-2">
-                      <ListFilter className="w-3 h-3" /> {cat}
-                    </h4>
-                    {filtered.filter(p => p.category === cat).map(renderProductItem)}
-                  </div>
+              <Accordion type="multiple" className="space-y-2">
+                {activeCategories.map(cat => (
+                  <AccordionItem key={cat} value={cat} className="border-none">
+                    <Card className="rounded-2xl border-none shadow-sm bg-white overflow-hidden">
+                      <AccordionTrigger className="px-4 py-3 hover:no-underline font-black text-[10px] uppercase text-slate-600 bg-slate-100/50">
+                        <div className="flex items-center gap-2">
+                          <ListFilter className="w-4 h-4 text-primary" />
+                          <span>{cat}</span>
+                          <Badge variant="outline" className="ml-2 bg-white text-[8px] border-slate-200">
+                            {filtered.filter(p => (p.category || "General") === cat).length} ítems
+                          </Badge>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="p-2 pb-0">
+                        <div className="space-y-1">
+                          {filtered.filter(p => (p.category || "General") === cat).map(renderProductItem)}
+                        </div>
+                      </AccordionContent>
+                    </Card>
+                  </AccordionItem>
                 ))}
-              </div>
+              </Accordion>
             )}
           </ScrollArea>
         </CardContent>
@@ -367,3 +397,4 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
     </div>
   );
 }
+
