@@ -4,7 +4,7 @@
 import { useCollection, useFirestore, useMemoFirebase, deleteDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase";
 import { collection, query, orderBy, doc, increment, Timestamp } from "firebase/firestore";
 import { Card } from "@/components/ui/card";
-import { FileSpreadsheet, Calendar, History, ShoppingBag, Loader2, ChevronRight, Trash2, Eraser, AlertCircle, X, ChevronLeft, Check, Banknote, CreditCard, PackagePlus, ArrowDownToLine, FileText, Edit3, Search, PackageMinus, Box, Clock } from "lucide-react";
+import { FileSpreadsheet, Calendar, History, ShoppingBag, Loader2, ChevronRight, Trash2, Eraser, AlertCircle, X, ChevronLeft, Check, Banknote, CreditCard, PackagePlus, ArrowDownToLine, FileText, Edit3, Search, PackageMinus, Box, Clock, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { exportSheetsToExcel } from "@/lib/export";
@@ -22,6 +22,8 @@ type DateFilter = "today" | "yesterday" | "month" | "all" | "custom";
 type BulkDeleteType = 'day' | 'month' | 'all';
 type CleanStep = 'idle' | 'options' | 'confirming';
 
+const DELETE_PASSWORD = "Miler";
+
 export default function HistoryPage() {
   const [isMounted, setIsMounted] = useState(false);
   const [dateFilter, setDateFilter] = useState<DateFilter>("today");
@@ -34,6 +36,7 @@ export default function HistoryPage() {
   const [bulkType, setBulkType] = useState<BulkDeleteType | null>(null);
   const [itemToDelete, setItemToDelete] = useState<any | null>(null);
   const [deleteContext, setDeleteContext] = useState<'sales' | 'inventoryLogs'>('sales');
+  const [securityKey, setSecurityKey] = useState("");
 
   const [editingLog, setEditingLog] = useState<any | null>(null);
   const [editInvoiceNumber, setEditInvoiceNumber] = useState("");
@@ -117,7 +120,6 @@ export default function HistoryPage() {
     });
     
     return Object.entries(groups).map(([invoice, logs]) => {
-      // Usar el tiempo MÍNIMO (el primer ingreso creado) como fecha de la factura
       const minTimestamp = Math.min(...logs.map(l => l.timestamp?.toDate?.()?.getTime() || 0));
       return { invoice, logs, minTime: minTimestamp };
     }).sort((a, b) => b.minTime - a.minTime);
@@ -178,6 +180,10 @@ export default function HistoryPage() {
 
   const handleExecuteBulkDelete = () => {
     if (!bulkType) return;
+    if (securityKey !== DELETE_PASSWORD) {
+      toast({ title: "Clave incorrecta", description: "No tienes permiso para borrar el historial.", variant: "destructive" });
+      return;
+    }
     
     const now = new Date();
     const targets = (deleteContext === 'sales' ? allSales : allLogs)?.filter(s => {
@@ -194,6 +200,7 @@ export default function HistoryPage() {
     if (!targets || targets.length === 0) {
       toast({ title: "Nada que borrar", description: "No hay registros en este periodo." });
       setCleanStep('idle');
+      setSecurityKey("");
       return;
     }
 
@@ -226,6 +233,7 @@ export default function HistoryPage() {
       description: `Se han borrado ${targets.length} registros.` 
     });
     setCleanStep('idle');
+    setSecurityKey("");
   };
 
   const handleSaveInvoice = () => {
@@ -293,7 +301,7 @@ export default function HistoryPage() {
             
             <Button 
               variant="outline" 
-              onClick={() => setCleanStep('options')}
+              onClick={() => { setSecurityKey(""); setCleanStep('options'); }}
               className="h-11 w-11 p-0 rounded-2xl border-destructive/20 text-destructive hover:bg-destructive/5"
             >
               <Eraser className="w-4 h-4" />
@@ -380,6 +388,7 @@ export default function HistoryPage() {
                             onClick={(e) => {
                               e.stopPropagation();
                               setDeleteContext('sales');
+                              setSecurityKey("");
                               setItemToDelete(sale);
                             }}
                           >
@@ -501,6 +510,7 @@ export default function HistoryPage() {
                                         className="h-8 w-8 text-destructive rounded-full hover:bg-destructive/10"
                                         onClick={() => {
                                           setDeleteContext('inventoryLogs');
+                                          setSecurityKey("");
                                           setItemToDelete(log);
                                         }}
                                       >
@@ -523,7 +533,7 @@ export default function HistoryPage() {
         </TabsContent>
       </Tabs>
 
-      {/* DIÁLOGOS DE LIMPIEZA, BORRADO Y EDICIÓN */}
+      {/* DIÁLOGOS DE LIMPIEZA CON CLAVE */}
       <Dialog open={cleanStep !== 'idle'} onOpenChange={(open) => !open && setCleanStep('idle')}>
         <DialogContent className="rounded-3xl p-6 border-none shadow-2xl max-w-[90vw] sm:max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
           {cleanStep === 'options' ? (
@@ -584,27 +594,38 @@ export default function HistoryPage() {
             <div className="space-y-6">
               <div className="flex flex-col items-center text-center gap-3">
                 <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mb-2">
-                  <AlertCircle className="w-8 h-8 text-destructive animate-pulse" />
+                  <Lock className="w-8 h-8 text-destructive animate-pulse" />
                 </div>
-                <h2 className="text-xl font-black text-destructive uppercase">¿Estás seguro?</h2>
+                <h2 className="text-xl font-black text-destructive uppercase">Confirmación de Seguridad</h2>
                 <p className="text-xs font-bold text-slate-500 leading-relaxed px-4">
-                  Se eliminarán permanentemente los registros de: <br/>
-                  <span className="text-slate-800 font-black text-sm uppercase">
-                    {bulkType === 'day' ? 'Hoy' : bulkType === 'month' ? 'Este Mes' : 'Todo el Historial'} ({deleteContext === 'sales' ? 'Ventas' : 'Stock'})
-                  </span>
+                  Para borrar permanentemente los registros de <span className="font-black">{bulkType === 'day' ? 'Hoy' : bulkType === 'month' ? 'Este Mes' : 'Todo el Historial'}</span>, ingresa la clave:
                 </p>
+                
+                <div className="w-full max-w-xs space-y-2">
+                  <Input 
+                    type="password"
+                    placeholder="Clave de seguridad"
+                    className="h-12 rounded-xl text-center font-black text-lg border-2 border-destructive/20 focus-visible:ring-destructive"
+                    value={securityKey}
+                    onChange={(e) => setSecurityKey(e.target.value)}
+                  />
+                  {securityKey !== "" && securityKey !== DELETE_PASSWORD && (
+                    <p className="text-[10px] font-black text-destructive uppercase">Clave Incorrecta</p>
+                  )}
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <Button 
                   variant="outline" 
                   className="h-14 rounded-2xl font-bold flex items-center gap-2"
-                  onClick={() => setCleanStep('options')}
+                  onClick={() => { setSecurityKey(""); setCleanStep('options'); }}
                 >
                   <ChevronLeft className="w-4 h-4" /> Volver
                 </Button>
                 <Button 
                   variant="destructive" 
                   className="h-14 rounded-2xl font-black uppercase tracking-tighter flex items-center gap-2"
+                  disabled={securityKey !== DELETE_PASSWORD}
                   onClick={handleExecuteBulkDelete}
                 >
                   <Check className="w-4 h-4" /> CONFIRMAR
@@ -615,23 +636,41 @@ export default function HistoryPage() {
         </DialogContent>
       </Dialog>
 
-      {/* BORRADO INDIVIDUAL */}
+      {/* BORRADO INDIVIDUAL CON CLAVE */}
       <Dialog open={!!itemToDelete} onOpenChange={(open) => !open && setItemToDelete(null)}>
-        <DialogContent className="rounded-3xl p-8 border-none shadow-2xl max-w-[90vw] sm:max-w-md">
+        <DialogContent className="rounded-3xl p-6 border-none shadow-2xl max-w-[90vw] sm:max-w-md">
           <DialogHeader className="text-center">
             <div className="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center mx-auto mb-4">
-               <Trash2 className="w-6 h-6 text-destructive" />
+               <Lock className="w-6 h-6 text-destructive" />
             </div>
-            <DialogTitle className="text-xl font-black text-destructive uppercase">Eliminar Registro</DialogTitle>
+            <DialogTitle className="text-xl font-black text-destructive uppercase">Clave de Seguridad</DialogTitle>
             <DialogDescription className="text-slate-500 text-xs font-bold py-2">
-              Se borrará este registro de {deleteContext === 'sales' ? 'venta' : 'ingreso de stock'} definitivamente.
+              Ingresa la clave para eliminar este registro definitivamente.
             </DialogDescription>
           </DialogHeader>
+
+          <div className="py-4 space-y-4">
+             <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-[10px] space-y-1">
+                <p className="font-black text-slate-400 uppercase">Registro a eliminar:</p>
+                <p className="font-bold text-slate-700">
+                  {deleteContext === 'sales' ? `Venta #${itemToDelete?.id?.slice(-5)} - $${Math.round(itemToDelete?.totalAmount || 0).toLocaleString('es-CL')}` : `Carga: ${itemToDelete?.productName} (+${itemToDelete?.quantity})`}
+                </p>
+             </div>
+             <Input 
+                type="password"
+                placeholder="Clave: Miler"
+                className="h-12 rounded-xl text-center font-black text-lg border-2 border-destructive/20 focus-visible:ring-destructive"
+                value={securityKey}
+                onChange={(e) => setSecurityKey(e.target.value)}
+              />
+          </div>
+
           <div className="flex gap-2 mt-4">
             <Button variant="ghost" className="rounded-xl h-12 flex-1 font-bold" onClick={() => setItemToDelete(null)}>Cancelar</Button>
             <Button 
               variant="destructive" 
               className="rounded-xl h-12 flex-1 font-black uppercase"
+              disabled={securityKey !== DELETE_PASSWORD}
               onClick={() => {
                 if (deleteContext === 'inventoryLogs' && itemToDelete.productId && itemToDelete.quantity) {
                   const productRef = doc(firestore, "products", String(itemToDelete.productId).trim());
@@ -656,6 +695,7 @@ export default function HistoryPage() {
                 deleteDocumentNonBlocking(doc(firestore, deleteContext, itemToDelete.id));
                 toast({ title: "Registro eliminado" });
                 setItemToDelete(null);
+                setSecurityKey("");
               }}
             >
               ELIMINAR

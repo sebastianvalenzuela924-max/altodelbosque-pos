@@ -4,7 +4,7 @@
 import { useCollection, useFirestore, useMemoFirebase, setDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase";
 import { collection, query, orderBy, doc, serverTimestamp } from "firebase/firestore";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { DollarSign, TrendingUp, Calendar, ShoppingBag, Loader2, Trophy, Banknote, CreditCard, Wallet, UtensilsCrossed, Plus, Edit3, Trash2, Check, PackageX, PackageSearch, Clock, ChevronRight, Send, Copy, X, FileText, Share2, Sun, Cloud, CloudRain, AlertCircle, Sparkles, HelpCircle, Info } from "lucide-react";
+import { DollarSign, TrendingUp, Calendar, ShoppingBag, Loader2, Trophy, Banknote, CreditCard, Wallet, UtensilsCrossed, Plus, Edit3, Trash2, Check, PackageX, PackageSearch, Clock, ChevronRight, Send, Copy, X, FileText, Share2, Sun, Cloud, CloudRain, AlertCircle, Sparkles, HelpCircle, Info, Lock } from "lucide-react";
 import { useMemo, useState, useEffect, useRef } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -23,9 +23,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 type DateFilter = "today" | "yesterday" | "month" | "all" | "custom";
 type ClimaType = "Sol" | "Nubes" | "Lluvia";
 
-/**
- * Helper to get a local date string in YYYY-MM-DD format.
- */
+const DELETE_PASSWORD = "Miler";
+
 function getLocalDateString(date: Date): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -53,6 +52,9 @@ export default function ReportsPage() {
   const [tomorrowWeather, setTomorrowWeather] = useState<ClimaType>("Sol");
   
   const [editingBreadLog, setEditingBreadLog] = useState<any | null>(null);
+  const [breadToDelete, setBreadToDelete] = useState<any | null>(null);
+  const [securityKey, setSecurityKey] = useState("");
+  
   const breadFormRef = useRef<HTMLDivElement>(null);
 
   const [isSummaryOpen, setIsSummaryOpen] = useState(false);
@@ -181,64 +183,50 @@ export default function ReportsPage() {
     };
   }, [filteredSales, allProducts, mounted]);
 
-  // LOGICA RECOMENDACION PAN
   const breadAnalysis = useMemo(() => {
     if (!allBreadLogs || allBreadLogs.length === 0) return null;
 
     const now = new Date();
     const tomorrow = new Date(now);
     tomorrow.setDate(now.getDate() + 1);
-    const tomorrowDay = tomorrow.getDay(); // 0-6
+    const tomorrowDay = tomorrow.getDay();
 
-    // 1. Promedio histórico mismo día de la semana
     const sameDayLogs = allBreadLogs.filter(l => new Date(l.date + 'T12:00:00').getDay() === tomorrowDay);
     const avgConsumoSameDay = sameDayLogs.length > 0 
       ? sameDayLogs.reduce((sum, l) => sum + (l.bought - l.remaining), 0) / sameDayLogs.length 
       : 0;
 
-    // 2. Comportamiento reciente (últimos 7 días)
     const recentLogs = allBreadLogs.slice(0, 7);
     const avgConsumoRecent = recentLogs.reduce((sum, l) => sum + (l.bought - l.remaining), 0) / recentLogs.length;
 
-    // 3. Análisis de sobrantes recientes (últimos 3 días)
     const recentLeftovers = allBreadLogs.slice(0, 3).reduce((sum, l) => sum + l.remaining, 0) / 3;
-    
-    // 4. Quiebres recientes
     const recentQuiebres = allBreadLogs.slice(0, 5).filter(l => l.quiebre).length;
 
-    // 5. Análisis clima histórico
     const weatherLogs = allBreadLogs.filter(l => l.clima === tomorrowWeather);
     const avgConsumoWeather = weatherLogs.length > 0 
       ? weatherLogs.reduce((sum, l) => sum + (l.bought - l.remaining), 0) / weatherLogs.length 
       : 0;
 
-    // CALCULO DE SUGERENCIA
     let base = avgConsumoSameDay > 0 ? (avgConsumoSameDay * 0.7 + avgConsumoRecent * 0.3) : avgConsumoRecent;
     
-    // Ajuste por clima esperado
     if (avgConsumoWeather > 0) {
       base = (base * 0.6) + (avgConsumoWeather * 0.4);
     } else {
-      if (tomorrowWeather === "Lluvia") base *= 0.85; // Menos gente con lluvia
-      if (tomorrowWeather === "Sol") base *= 1.05; // Más gente con sol
+      if (tomorrowWeather === "Lluvia") base *= 0.85;
+      if (tomorrowWeather === "Sol") base *= 1.05;
     }
 
-    // Ajuste por sobrantes excesivos
     if (recentLeftovers > 2) base *= 0.9; 
-    
-    // Ajuste por quiebres frecuentes
     if (recentQuiebres >= 1) base *= 1.15;
 
     const sugerencia = Math.max(2, Math.round(base * 10) / 10);
 
-    // INSIGHTS
     const insights = [];
     if (recentLeftovers > 3) insights.push("Llevas varios días con sobrante alto, sugerimos bajar el pedido.");
     if (recentQuiebres > 0) insights.push("Últimamente faltó pan antes del cierre, se aumenta un poco la sugerencia.");
     if (tomorrowWeather === "Lluvia") insights.push("Con lluvia normalmente se vende menos pan.");
     if (sameDayLogs.length > 0 && avgConsumoSameDay < avgConsumoRecent) insights.push(`Los ${["Domingos","Lunes","Martes","Miércoles","Jueves","Viernes","Sábados"][tomorrowDay]} suele sobrar más pan.`);
 
-    // Razonamiento
     let razon = `Basado en el promedio de los ${["Domingos","Lunes","Martes","Miércoles","Jueves","Viernes","Sábados"][tomorrowDay]} (${avgConsumoSameDay.toFixed(1)}kg) y la tendencia reciente.`;
     if (tomorrowWeather === "Lluvia") razon += " Ajustado a la baja por lluvia esperada.";
     if (recentQuiebres > 0) razon += " Aumentado porque recientemente faltó pan.";
@@ -284,7 +272,6 @@ export default function ReportsPage() {
     
     toast({ title: editingBreadLog ? "Registro actualizado" : "Registro guardado", description: `Fecha: ${targetDateStr}` });
     
-    // Clear form
     setBreadBought(""); 
     setBreadRemaining(""); 
     setBreadObservation(""); 
@@ -300,6 +287,19 @@ export default function ReportsPage() {
     setBreadClima("Sol");
     setBreadQuiebre(false);
     setBreadObservation("");
+  };
+
+  const handleDeleteBreadLog = () => {
+    if (!breadToDelete) return;
+    if (securityKey !== DELETE_PASSWORD) {
+      toast({ title: "Clave incorrecta", variant: "destructive" });
+      return;
+    }
+
+    deleteDocumentNonBlocking(doc(firestore, "breadLogs", breadToDelete.id));
+    toast({ title: "Registro eliminado" });
+    setBreadToDelete(null);
+    setSecurityKey("");
   };
 
   const generateDailySummary = () => {
@@ -425,7 +425,6 @@ export default function ReportsPage() {
         </TabsList>
 
         <TabsContent value="bread" className="mt-6 space-y-8">
-          {/* BLOQUE 1: RECOMENDACIÓN INTELIGENTE */}
           <section className="space-y-4">
             <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 px-2">
               <Sparkles className="w-4 h-4 text-accent" /> Análisis y Recomendación
@@ -481,7 +480,6 @@ export default function ReportsPage() {
             </Card>
           </section>
 
-          {/* BLOQUE 2: REGISTRO DIARIO MEJORADO */}
           <section className="space-y-4" ref={breadFormRef}>
             <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 px-2">
               <Edit3 className="w-4 h-4 text-primary" /> {editingBreadLog ? 'Editando Registro' : 'Registro Diario'}
@@ -493,7 +491,7 @@ export default function ReportsPage() {
                  </Badge>
                  <div className="flex items-center gap-2">
                    <div className="flex items-center gap-1.5">
-                     <Label className="text-[9px] font-black uppercase text-slate-400">¿Pidieron más?</Label>
+                     <Label className="text-[9px] font-black uppercase text-slate-400">Pidieron más?</Label>
                      <TooltipProvider>
                        <Tooltip>
                          <TooltipTrigger asChild>
@@ -555,7 +553,6 @@ export default function ReportsPage() {
             </Card>
           </section>
 
-          {/* BLOQUE 3: INSIGHTS AUTOMÁTICOS */}
           {breadAnalysis && breadAnalysis.insights.length > 0 && (
             <section className="space-y-4">
               <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 px-2">
@@ -572,7 +569,6 @@ export default function ReportsPage() {
             </section>
           )}
 
-          {/* BLOQUE 4: HISTORIAL MEJORADO */}
           <section className="space-y-4">
             <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 px-2">
               <Clock className="w-4 h-4" /> Historial de Control
@@ -624,7 +620,7 @@ export default function ReportsPage() {
                         }}>
                           <Edit3 className="w-3 h-3 md:w-3.5 md:h-3.5" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 md:h-8 md:w-8 rounded-full text-destructive" onClick={() => deleteDocumentNonBlocking(doc(firestore, "breadLogs", log.id))}>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 md:h-8 md:w-8 rounded-full text-destructive" onClick={() => { setSecurityKey(""); setBreadToDelete(log); }}>
                           <Trash2 className="w-3 h-3 md:w-3.5 md:h-3.5" />
                         </Button>
                       </div>
@@ -738,6 +734,41 @@ export default function ReportsPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* DIÁLOGOS DE SEGURIDAD PARA PAN */}
+      <Dialog open={!!breadToDelete} onOpenChange={(open) => !open && setBreadToDelete(null)}>
+        <DialogContent className="rounded-3xl p-6 border-none shadow-2xl max-w-[90vw] sm:max-w-md">
+          <DialogHeader className="text-center">
+            <div className="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center mx-auto mb-4">
+               <Lock className="w-6 h-6 text-destructive" />
+            </div>
+            <DialogTitle className="text-xl font-black text-destructive uppercase">Confirmar Borrado</DialogTitle>
+            <DialogDescription className="text-slate-500 text-xs font-bold py-2">
+              Ingresa la clave para eliminar el registro de pan del día {breadToDelete?.date}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+             <Input 
+                type="password"
+                placeholder="Clave: Miler"
+                className="h-12 rounded-xl text-center font-black text-lg border-2 border-destructive/20 focus-visible:ring-destructive"
+                value={securityKey}
+                onChange={(e) => setSecurityKey(e.target.value)}
+              />
+          </div>
+          <DialogFooter className="grid grid-cols-2 gap-2 mt-4">
+            <Button variant="ghost" className="rounded-xl h-12 font-bold" onClick={() => setBreadToDelete(null)}>Cancelar</Button>
+            <Button 
+              variant="destructive" 
+              className="rounded-xl h-12 font-black uppercase"
+              disabled={securityKey !== DELETE_PASSWORD}
+              onClick={handleDeleteBreadLog}
+            >
+              ELIMINAR
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={isSummaryOpen} onOpenChange={setIsSummaryOpen}>
         <DialogContent className="rounded-3xl border-none shadow-2xl max-w-[90vw] sm:max-w-md p-6">
