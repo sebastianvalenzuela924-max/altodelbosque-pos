@@ -750,7 +750,7 @@ export default function ReportsPage() {
           <div className="py-4 space-y-4">
              <Input 
                 type="password"
-                placeholder="Clave: Miler"
+                placeholder="Clave"
                 className="h-12 rounded-xl text-center font-black text-lg border-2 border-destructive/20 focus-visible:ring-destructive"
                 value={securityKey}
                 onChange={(e) => setSecurityKey(e.target.value)}

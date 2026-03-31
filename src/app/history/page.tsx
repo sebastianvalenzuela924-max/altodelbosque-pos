@@ -604,7 +604,7 @@ export default function HistoryPage() {
                 <div className="w-full max-w-xs space-y-2">
                   <Input 
                     type="password"
-                    placeholder="Clave de seguridad"
+                    placeholder="Clave"
                     className="h-12 rounded-xl text-center font-black text-lg border-2 border-destructive/20 focus-visible:ring-destructive"
                     value={securityKey}
                     onChange={(e) => setSecurityKey(e.target.value)}
@@ -658,7 +658,7 @@ export default function HistoryPage() {
              </div>
              <Input 
                 type="password"
-                placeholder="Clave: Miler"
+                placeholder="Clave"
                 className="h-12 rounded-xl text-center font-black text-lg border-2 border-destructive/20 focus-visible:ring-destructive"
                 value={securityKey}
                 onChange={(e) => setSecurityKey(e.target.value)}
