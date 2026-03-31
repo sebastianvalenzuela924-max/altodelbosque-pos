@@ -98,27 +98,26 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
         const hasIdeal = p.idealStock !== undefined && p.idealStock !== null && p.idealStock > 0;
         const hasWarning = p.warningStock !== undefined && p.warningStock !== null && p.warningStock > 0;
 
-        // LÓGICA DE RECOMENDACIÓN INTELIGENTE
+        // LÓGICA DE RECOMENDACIÓN INTELIGENTE (Versión Simplificada)
         if (stock <= 0 || (hasWarning && stock <= p.warningStock!)) {
           priority = 'Crítico';
           
           if (hasIdeal) {
             suggestedQty = Math.max(0, p.idealStock! - stock);
-            reason = stock <= 0 ? "Stock en 0 (Meta: Ideal)" : "Bajo nivel de aviso (Meta: Ideal)";
+            reason = "Meta: Nivel Ideal";
           } else {
-            // Lógica basada en rotación si no hay Ideal
             if (rotation === 'Alta') {
-              suggestedQty = Math.ceil(dailyAvg * 14); // 2 semanas de stock
-              reason = "Alta rotación (Reponer)";
+              suggestedQty = Math.ceil(dailyAvg * 14);
+              reason = "Urgente: Alta Demanda";
             } else if (rotation === 'Media') {
-              suggestedQty = Math.ceil(dailyAvg * 7) + 2; // 1 semana + seguridad
-              reason = "Rotación media (Reponer)";
+              suggestedQty = Math.ceil(dailyAvg * 7) + 2;
+              reason = "Reponer: Venta Normal";
             } else if (rotation === 'Baja') {
               suggestedQty = 2;
-              reason = "Baja rotación (Mínimo)";
+              reason = "Mínimo: Baja Rotación";
             } else {
               suggestedQty = 1;
-              reason = "Sin ventas (Mínimo)";
+              reason = "Mínimo: Sin Ventas";
             }
           }
         } else if (hasWarning && stock <= p.warningStock! + (rotation === 'Alta' ? 5 : 2)) {
@@ -126,17 +125,17 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
           
           if (hasIdeal) {
             suggestedQty = Math.ceil((p.idealStock! - stock) * 0.5);
-            reason = "Cerca de aviso (Meta: Ideal)";
+            reason = "Prevenir: Meta Ideal";
           } else {
             if (rotation === 'Alta') {
               suggestedQty = Math.ceil(dailyAvg * 7);
-              reason = "Alta rotación (Preventivo)";
+              reason = "Prevenir: Alta Venta";
             } else if (rotation === 'Media') {
               suggestedQty = 3;
-              reason = "Rotación media (Preventivo)";
+              reason = "Prevenir: Venta Media";
             } else {
               suggestedQty = 0;
-              reason = "Baja rotación (Ok)";
+              reason = "Stock OK";
             }
           }
         }
@@ -154,7 +153,6 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
         const order = { 'Crítico': 0, 'Por reponer': 1, 'Sin rotación': 2, 'OK': 3 };
         const pOrder = order[a.priority as Priority] - order[b.priority as Priority];
         if (pOrder !== 0) return pOrder;
-        // Si tienen misma prioridad, poner arriba los de mayor rotación
         const rotOrder = { 'Alta': 0, 'Media': 1, 'Baja': 2, 'Ninguna': 3 };
         return rotOrder[a.rotation as RotationType] - rotOrder[b.rotation as RotationType];
       });
@@ -304,8 +302,8 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
             )}>{p.priority}</Badge>
           </div>
           
-          <p className="text-[9px] font-bold text-slate-500 mb-1 flex items-center gap-1">
-            <Info className="w-3 h-3 text-primary" /> {p.reason}
+          <p className="text-[9px] font-bold text-primary mb-1 flex items-center gap-1">
+            <Sparkles className="w-3 h-3" /> {p.reason}
           </p>
           
           <div className="flex flex-wrap items-center gap-1.5">
@@ -479,7 +477,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
               </Select>
             </div>
           </div>
-        </CardHeader>
+        </Header>
         <CardContent className="p-4 bg-slate-50/30">
           <ScrollArea className="h-[500px] w-full">
             {isLoadingSales ? (
