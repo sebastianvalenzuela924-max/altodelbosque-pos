@@ -5,7 +5,7 @@ import { useCollection, useFirestore, useMemoFirebase, setDocumentNonBlocking, d
 import { collection, query, orderBy, doc, serverTimestamp } from "firebase/firestore";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { DollarSign, TrendingUp, Calendar, ShoppingBag, Loader2, Trophy, Banknote, CreditCard, Wallet, UtensilsCrossed, Plus, Edit3, Trash2, Check, PackageX, PackageSearch, Clock, ChevronRight, Send, Copy, X, FileText, Share2, Sun, Cloud, CloudRain, AlertCircle, Sparkles, HelpCircle, Info } from "lucide-react";
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -52,6 +52,7 @@ export default function ReportsPage() {
   const [tomorrowWeather, setTomorrowWeather] = useState<ClimaType>("Sol");
   
   const [editingBreadLog, setEditingBreadLog] = useState<any | null>(null);
+  const breadFormRef = useRef<HTMLDivElement>(null);
 
   const [isSummaryOpen, setIsSummaryOpen] = useState(false);
   const [summaryText, setSummaryText] = useState("");
@@ -280,8 +281,23 @@ export default function ReportsPage() {
       timestamp: serverTimestamp()
     }, { merge: true });
     
-    toast({ title: "Registro de Pan guardado", description: `Fecha: ${targetDateStr}` });
-    setBreadBought(""); setBreadRemaining(""); setBreadObservation(""); setBreadQuiebre(false); setEditingBreadLog(null);
+    toast({ title: editingBreadLog ? "Registro actualizado" : "Registro guardado", description: `Fecha: ${targetDateStr}` });
+    
+    // Clear form
+    setBreadBought(""); 
+    setBreadRemaining(""); 
+    setBreadObservation(""); 
+    setBreadQuiebre(false); 
+    setEditingBreadLog(null);
+  };
+
+  const cancelEdit = () => {
+    setEditingBreadLog(null);
+    setBreadBought("");
+    setBreadRemaining("");
+    setBreadClima("Sol");
+    setBreadQuiebre(false);
+    setBreadObservation("");
   };
 
   const generateDailySummary = () => {
@@ -459,14 +475,14 @@ export default function ReportsPage() {
           </section>
 
           {/* BLOQUE 2: REGISTRO DIARIO MEJORADO */}
-          <section className="space-y-4">
+          <section className="space-y-4" ref={breadFormRef}>
             <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 px-2">
-              <Edit3 className="w-4 h-4 text-primary" /> Registro Diario
+              <Edit3 className="w-4 h-4 text-primary" /> {editingBreadLog ? 'Editando Registro' : 'Registro Diario'}
             </h3>
             <Card className="border-none shadow-sm rounded-3xl bg-white p-6 space-y-6">
               <div className="flex justify-between items-center pb-2 border-b">
                  <Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest bg-slate-50 text-primary border-slate-200">
-                    Fecha Registro: {dateFilter === 'today' ? 'Hoy' : dateFilter === 'yesterday' ? 'Ayer' : customDate || 'Seleccionada'}
+                    Fecha Registro: {editingBreadLog ? editingBreadLog.date : (dateFilter === 'today' ? 'Hoy' : dateFilter === 'yesterday' ? 'Ayer' : customDate || 'Seleccionada')}
                  </Badge>
                  <div className="flex items-center gap-2">
                    <Label className="text-[9px] font-black uppercase text-slate-400">¿Hubo Quiebre?</Label>
@@ -496,10 +512,15 @@ export default function ReportsPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2 flex flex-col justify-end">
+                <div className="space-y-2 flex flex-col justify-end gap-2">
                   <Button className="h-12 rounded-2xl bg-primary font-black uppercase tracking-widest text-[10px]" onClick={handleSaveBreadLog}>
                     {editingBreadLog ? 'Actualizar' : 'Guardar Registro'}
                   </Button>
+                  {editingBreadLog && (
+                    <Button variant="ghost" className="h-10 rounded-xl text-slate-400 font-bold uppercase text-[9px]" onClick={cancelEdit}>
+                      Cancelar Edición
+                    </Button>
+                  )}
                 </div>
               </div>
 
@@ -573,6 +594,8 @@ export default function ReportsPage() {
                           setBreadClima(log.clima as ClimaType);
                           setBreadQuiebre(!!log.quiebre);
                           setBreadObservation(log.observation || "");
+                          // Scroll to form
+                          breadFormRef.current?.scrollIntoView({ behavior: 'smooth' });
                         }}>
                           <Edit3 className="w-3.5 h-3.5" />
                         </Button>
