@@ -216,22 +216,31 @@ export default function ReportsPage() {
       if (tomorrowWeather === "Sol") base *= 1.05;
     }
 
-    if (recentLeftovers > 2) base *= 0.9; 
-    if (recentQuiebres >= 1) base *= 1.15;
+    // Redondeo inteligente a Kg enteros
+    let sugerencia = base;
+    let explanationSuffix = "Sugerencia redondeada a kg entero.";
 
-    const sugerencia = Math.max(2, Math.round(base * 10) / 10);
+    if (recentQuiebres > 0) {
+      sugerencia = Math.ceil(sugerencia); // Si faltó pan, redondeamos hacia arriba
+      explanationSuffix = "Redondeado hacia arriba por faltantes recientes.";
+    } else if (recentLeftovers > 2) {
+      sugerencia = Math.floor(sugerencia); // Si sobró mucho, redondeamos hacia abajo
+      explanationSuffix = "Redondeado hacia abajo por sobrante alto reciente.";
+    } else {
+      sugerencia = Math.round(sugerencia); // Caso estándar
+    }
+
+    const sugerenciaFinal = Math.max(1, sugerencia);
 
     const insights = [];
     if (recentLeftovers > 3) insights.push("Llevas varios días con sobrante alto, sugerimos bajar el pedido.");
-    if (recentQuiebres > 0) insights.push("Últimamente faltó pan antes del cierre, se aumenta un poco la sugerencia.");
+    if (recentQuiebres > 0) insights.push("Recientemente faltó pan (marcado como Pidieron más), se aumenta la sugerencia.");
     if (tomorrowWeather === "Lluvia") insights.push("Con lluvia normalmente se vende menos pan.");
     if (sameDayLogs.length > 0 && avgConsumoSameDay < avgConsumoRecent) insights.push(`Los ${["Domingos","Lunes","Martes","Miércoles","Jueves","Viernes","Sábados"][tomorrowDay]} suele sobrar más pan.`);
 
-    let razon = `Basado en el promedio de los ${["Domingos","Lunes","Martes","Miércoles","Jueves","Viernes","Sábados"][tomorrowDay]} (${avgConsumoSameDay.toFixed(1)}kg) y la tendencia reciente.`;
-    if (tomorrowWeather === "Lluvia") razon += " Ajustado a la baja por lluvia esperada.";
-    if (recentQuiebres > 0) razon += " Aumentado porque recientemente faltó pan.";
+    let razon = `Basado en el promedio histórico del día (${avgConsumoSameDay.toFixed(1)}kg) y tendencia reciente. ${explanationSuffix}`;
 
-    return { sugerencia, insights, razon };
+    return { sugerencia: sugerenciaFinal, insights, razon };
   }, [allBreadLogs, tomorrowWeather]);
 
   const handleSaveBreadLog = () => {

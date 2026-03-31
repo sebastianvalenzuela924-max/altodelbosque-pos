@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { AlertCircle, Package, Send, Sparkles, Truck, ListFilter, Trash2, CheckSquare, Search, X, CheckCircle2 } from "lucide-react";
+import { AlertCircle, Package, Send, Sparkles, Truck, ListFilter, Trash2, CheckSquare, Search, X, CheckCircle2, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -40,7 +40,6 @@ type ViewMode = 'general' | 'category' | 'distributor';
 export function SuggestionsView({ products, categories, distributors }: SuggestionsViewProps) {
   const firestore = useFirestore();
   const { toast } = useToast();
-  // 'suggestions' es el filtro por defecto que oculta los 'OK'
   const [priorityFilter, setPriorityFilter] = useState<string>("suggestions");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [distributorFilter, setDistributorFilter] = useState<string>("all");
@@ -48,103 +47,65 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
   const [viewMode, setViewMode] = useState<ViewMode>("general");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
-  const salesQuery = useMemoFirebase(() => {
-    return query(collection(firestore, "sales"), orderBy("saleDateTime", "desc"), limit(500));
-  }, [firestore]);
-
-  const { data: allSales } = useCollection(salesQuery);
-
   const analysis = useMemo(() => {
     if (!products) return [];
-
-    const now = new Date().getTime();
-    const dayMs = 24 * 60 * 60 * 1000;
-    
-    const salesMap: Record<string, { d7: number, d14: number, d30: number }> = {};
-    
-    allSales?.forEach(sale => {
-      const saleDate = sale.saleDateTime?.toDate?.()?.getTime() || 0;
-      const diff = now - saleDate;
-      
-      sale.itemsSummary?.forEach((item: any) => {
-        if (!item.id) return;
-        if (!salesMap[item.id]) salesMap[item.id] = { d7: 0, d14: 0, d30: 0 };
-        
-        if (diff <= 7 * dayMs) salesMap[item.id].d7 += item.quantity;
-        if (diff <= 14 * dayMs) salesMap[item.id].d14 += item.quantity;
-        if (diff <= 30 * dayMs) salesMap[item.id].d30 += item.quantity;
-      });
-    });
 
     return products
       .filter(p => p.status !== 'inactive')
       .map(p => {
-        const sales = salesMap[p.id] || { d7: 0, d14: 0, d30: 0 };
-        const rotationScore = (sales.d7 / 7 * 0.5) + (sales.d14 / 14 * 0.3) + (sales.d30 / 30 * 0.2);
-        
         let priority: Priority = 'OK';
-        let refType: 'AVISO' | 'IDEAL' | '' = '';
-        let refValue = 0;
         let suggestedQty = 0;
+        let reason = "Stock en niveles normales";
 
         const stock = p.stock || 0;
         const hasWarning = p.warningStock !== undefined && p.warningStock !== null && p.warningStock > 0;
         const hasIdeal = p.idealStock !== undefined && p.idealStock !== null && p.idealStock > 0;
 
-        // CRÍTICO
+        // Lógica simplificada de Minimarket
         if (stock <= 0) {
           priority = 'Crítico';
-          refType = hasWarning ? 'AVISO' : (hasIdeal ? 'IDEAL' : '');
-          refValue = hasWarning ? p.warningStock! : (hasIdeal ? p.idealStock! : 0);
-          suggestedQty = hasIdeal ? p.idealStock! : (hasWarning ? p.warningStock! * 2 : 5);
+          if (hasIdeal) {
+            suggestedQty = p.idealStock! - stock;
+            reason = stock === 0 ? "Stock en 0, reponer hasta nivel ideal" : "Stock negativo, reponer hasta nivel ideal";
+          } else if (hasWarning) {
+            suggestedQty = (Math.abs(stock) + p.warningStock! + 5);
+            reason = stock === 0 ? "Stock en 0, reponer hasta aviso + 5" : "Stock negativo, reponer hasta aviso + 5";
+          } else {
+            suggestedQty = 10;
+            reason = "Sin metas definidas, reposición básica sugerida";
+          }
         } else if (hasWarning && stock <= p.warningStock!) {
           priority = 'Crítico';
-          refType = 'AVISO';
-          refValue = p.warningStock!;
-          suggestedQty = Math.max(p.warningStock! * 2, Math.ceil(rotationScore * 14));
-        }
-
-        // POR REPONER
-        if (priority === 'OK' && stock > 0) {
-           if (hasWarning) {
-              if (stock <= p.warningStock! + 2) {
-                 priority = 'Por reponer';
-                 refType = 'AVISO';
-                 refValue = p.warningStock!;
-                 suggestedQty = Math.max(5, Math.ceil(rotationScore * 10));
-              }
-           } else if (hasIdeal) {
-              if (stock < p.idealStock! * 0.6) {
-                 priority = 'Por reponer';
-                 refType = 'IDEAL';
-                 refValue = p.idealStock!;
-                 suggestedQty = Math.max(0, p.idealStock! - stock);
-              }
+          if (hasIdeal) {
+            suggestedQty = p.idealStock! - stock;
+            reason = "Bajo nivel de aviso, reponer hasta ideal";
+          } else {
+            suggestedQty = (p.warningStock! - stock) + 5;
+            reason = "Bajo nivel de aviso, reponer hasta aviso + 5";
+          }
+        } else if (hasWarning && stock <= p.warningStock! + 2) {
+           priority = 'Por reponer';
+           if (hasIdeal) {
+             suggestedQty = Math.ceil((p.idealStock! - stock) * 0.5);
+             reason = "Cerca del nivel de aviso, reposición moderada";
+           } else {
+             suggestedQty = 5;
+             reason = "Cerca del nivel de aviso, pedir 5 unidades";
            }
-        }
-
-        // SIN ROTACIÓN (Solo si tiene metas definidas)
-        if (priority === 'OK' && sales.d30 === 0 && (hasWarning || hasIdeal)) {
-          priority = 'Sin rotación';
-          refType = hasWarning ? 'AVISO' : 'IDEAL';
-          refValue = hasWarning ? p.warningStock! : p.idealStock!;
         }
 
         return {
           ...p,
           priority,
-          refType,
-          refValue,
           suggestedQty: Math.max(0, suggestedQty),
-          rotationScore,
-          salesRecent: sales.d7
+          reason
         };
       })
       .sort((a, b) => {
         const order = { 'Crítico': 0, 'Por reponer': 1, 'Sin rotación': 2, 'OK': 3 };
         return order[a.priority as Priority] - order[b.priority as Priority];
       });
-  }, [products, allSales]);
+  }, [products]);
 
   const filtered = useMemo(() => {
     return analysis.filter(p => {
@@ -156,7 +117,6 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
       const matchesDistributor = distributorFilter === 'all' || pDist === distributorFilter;
       
       let matchesPriority = true;
-      // Si hay búsqueda, ignoramos el filtro de "Ocultar OK" (suggestions)
       if (priorityFilter === 'suggestions' && q === "") {
         matchesPriority = p.priority !== 'OK';
       } else if (priorityFilter !== 'all' && priorityFilter !== 'suggestions') {
@@ -210,10 +170,8 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
     Object.entries(grouped).forEach(([dist, items]) => {
       if (!groupName) text += `*📦 Distribuidor: ${dist}*\n`;
       items.forEach(i => {
-        if (i.priority !== 'Sin rotación' && i.priority !== 'OK') {
-          text += `- ${i.suggestedQty}u. x ${i.name} (St: ${i.stock})\n`;
-        } else if (i.priority === 'Sin rotación') {
-          text += `- (REVISAR) ${i.name} [Sin rotación]\n`;
+        if (i.priority !== 'OK') {
+          text += `- ${i.suggestedQty}u. x ${i.name} (St: ${i.stock}) [${i.reason}]\n`;
         } else {
           text += `- (OPCIONAL) ${i.name} (St: ${i.stock})\n`;
         }
@@ -290,6 +248,10 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
             )}>{p.priority}</Badge>
           </div>
           
+          <p className="text-[9px] font-bold text-slate-500 mb-1 flex items-center gap-1">
+            <Info className="w-3 h-3 text-primary" /> {p.reason}
+          </p>
+          
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="text-[8px] font-black text-slate-400 uppercase truncate max-w-[100px]">
               {p.distributor?.trim() || 'Sin Prov. (General)'}
@@ -298,11 +260,6 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
             <div className="flex items-center gap-1 bg-slate-50 px-1.5 py-0.5 rounded-md border border-slate-100">
               <span className="text-[7px] font-black text-slate-400 uppercase">St:</span>
               <span className={cn("text-[8px] font-black", p.stock <= 0 ? "text-red-600" : "text-slate-800")}>{p.stock}</span>
-              {p.refType && (
-                <span className="text-[7px] font-black text-primary/60 uppercase ml-1 px-1 bg-primary/5 rounded border border-primary/10">
-                  {p.refType}: {p.refValue}
-                </span>
-              )}
             </div>
 
             {p.priority !== 'OK' && p.suggestedQty > 0 && (
@@ -328,7 +285,6 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
 
   return (
     <div className="space-y-6">
-      {/* Resumen de prioridades */}
       <section className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         <Card className="border-none shadow-sm bg-red-600 text-white rounded-2xl">
           <CardHeader className="p-3 pb-1">
