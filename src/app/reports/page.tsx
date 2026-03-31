@@ -234,14 +234,14 @@ export default function ReportsPage() {
     // INSIGHTS
     const insights = [];
     if (recentLeftovers > 3) insights.push("Llevas varios días con sobrante alto, sugerimos bajar el pedido.");
-    if (recentQuiebres > 0) insights.push("Hubo quiebre recientemente, se aumenta un poco la sugerencia.");
+    if (recentQuiebres > 0) insights.push("Últimamente faltó pan antes del cierre, se aumenta un poco la sugerencia.");
     if (tomorrowWeather === "Lluvia") insights.push("Con lluvia normalmente se vende menos pan.");
     if (sameDayLogs.length > 0 && avgConsumoSameDay < avgConsumoRecent) insights.push(`Los ${["Domingos","Lunes","Martes","Miércoles","Jueves","Viernes","Sábados"][tomorrowDay]} suele sobrar más pan.`);
 
     // Razonamiento
     let razon = `Basado en el promedio de los ${["Domingos","Lunes","Martes","Miércoles","Jueves","Viernes","Sábados"][tomorrowDay]} (${avgConsumoSameDay.toFixed(1)}kg) y la tendencia reciente.`;
     if (tomorrowWeather === "Lluvia") razon += " Ajustado a la baja por lluvia esperada.";
-    if (recentQuiebres > 0) razon += " Aumentado por quiebres recientes.";
+    if (recentQuiebres > 0) razon += " Aumentado porque recientemente faltó pan.";
 
     return { sugerencia, insights, razon };
   }, [allBreadLogs, tomorrowWeather]);
@@ -488,14 +488,14 @@ export default function ReportsPage() {
                  </Badge>
                  <div className="flex items-center gap-2">
                    <div className="flex items-center gap-1.5">
-                     <Label className="text-[9px] font-black uppercase text-slate-400">¿Hubo Quiebre?</Label>
+                     <Label className="text-[9px] font-black uppercase text-slate-400">¿Pidieron más?</Label>
                      <TooltipProvider>
                        <Tooltip>
                          <TooltipTrigger asChild>
                            <HelpCircle className="w-3.5 h-3.5 text-slate-300 cursor-help" />
                          </TooltipTrigger>
                          <TooltipContent className="max-w-[200px] text-[10px] font-bold p-3">
-                           Marca "SÍ" si el pan se terminó antes del cierre. Ayuda a la IA a pedir más mañana para no perder ventas.
+                           Marca "SÍ" si el pan se terminó antes del cierre y hubo que pedir un refuerzo o se perdió venta. Ayuda a la IA a pedir más mañana.
                          </TooltipContent>
                        </Tooltip>
                      </TooltipProvider>
@@ -588,7 +588,7 @@ export default function ReportsPage() {
                         <div className="flex items-center gap-2">
                           <p className="text-[10px] font-black text-slate-800 uppercase">{date.toLocaleDateString('es-CL', { weekday: 'long' })}</p>
                           <ClimaIcon className="w-3.5 h-3.5 text-slate-400" />
-                          {log.quiebre && <Badge className="bg-destructive text-white text-[7px] font-black uppercase py-0 px-1 rounded">Quiebre</Badge>}
+                          {log.quiebre && <Badge className="bg-destructive text-white text-[7px] font-black uppercase py-0 px-1 rounded">Faltó Pan</Badge>}
                         </div>
                         {log.observation && <p className="text-[8px] text-slate-400 italic mt-1 truncate max-w-[150px]">"{log.observation}"</p>}
                       </div>
