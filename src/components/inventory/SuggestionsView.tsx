@@ -3,13 +3,13 @@
 
 import { useMemo, useState } from "react";
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import { collection, query, orderBy, limit } from "firebase/firestore";
+import { collection, query, where } from "firebase/firestore";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { AlertCircle, Package, Send, Sparkles, Truck, ListFilter, Trash2, CheckSquare, Search, X, CheckCircle2, Info, Target, AlertTriangle } from "lucide-react";
+import { AlertCircle, Package, Send, Sparkles, Truck, ListFilter, Trash2, CheckSquare, Search, X, CheckCircle2, Info, Target, AlertTriangle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -36,6 +36,7 @@ interface SuggestionsViewProps {
 
 type Priority = 'Crítico' | 'Por reponer' | 'Sin rotación' | 'OK';
 type ViewMode = 'general' | 'category' | 'distributor';
+type RotationType = 'Alta' | 'Media' | 'Baja' | 'Ninguna';
 
 export function SuggestionsView({ products, categories, distributors }: SuggestionsViewProps) {
   const firestore = useFirestore();
@@ -47,6 +48,33 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
   const [viewMode, setViewMode] = useState<ViewMode>("general");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
+  // Consulta de ventas de los últimos 30 días para calcular rotación
+  const salesQuery = useMemoFirebase(() => {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    return query(
+      collection(firestore, "sales"),
+      where("saleDateTime", ">=", thirtyDaysAgo)
+    );
+  }, [firestore]);
+
+  const { data: recentSales, isLoading: isLoadingSales } = useCollection(salesQuery);
+
+  const salesMap = useMemo(() => {
+    const map = new Map<string, number>();
+    if (!recentSales) return map;
+
+    recentSales.forEach(sale => {
+      sale.itemsSummary?.forEach((item: any) => {
+        if (item.type === 'product' && item.id) {
+          const current = map.get(String(item.id).trim()) || 0;
+          map.set(String(item.id).trim(), current + (item.quantity || 0));
+        }
+      });
+    });
+    return map;
+  }, [recentSales]);
+
   const analysis = useMemo(() => {
     if (!products) return [];
 
@@ -56,56 +84,80 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
         let priority: Priority = 'OK';
         let suggestedQty = 0;
         let reason = "Stock en niveles normales";
+        let rotation: RotationType = 'Ninguna';
 
         const stock = p.stock || 0;
-        const hasWarning = p.warningStock !== undefined && p.warningStock !== null && p.warningStock > 0;
-        const hasIdeal = p.idealStock !== undefined && p.idealStock !== null && p.idealStock > 0;
+        const totalSold = salesMap.get(String(p.id).trim()) || 0;
+        const dailyAvg = totalSold / 30;
 
-        // Lógica simplificada de Minimarket
-        if (stock <= 0) {
+        if (totalSold >= 15) rotation = 'Alta';
+        else if (totalSold >= 3) rotation = 'Media';
+        else if (totalSold > 0) rotation = 'Baja';
+
+        const hasIdeal = p.idealStock !== undefined && p.idealStock !== null && p.idealStock > 0;
+        const hasWarning = p.warningStock !== undefined && p.warningStock !== null && p.warningStock > 0;
+
+        // LÓGICA DE RECOMENDACIÓN INTELIGENTE
+        if (stock <= 0 || (hasWarning && stock <= p.warningStock!)) {
           priority = 'Crítico';
+          
           if (hasIdeal) {
-            suggestedQty = p.idealStock! - stock;
-            reason = stock === 0 ? "Stock en 0, reponer hasta nivel ideal" : "Stock negativo, reponer hasta nivel ideal";
-          } else if (hasWarning) {
-            suggestedQty = (Math.abs(stock) + p.warningStock! + 5);
-            reason = stock === 0 ? "Stock en 0, reponer hasta stock aviso + 5" : "Stock negativo, reponer hasta stock aviso + 5";
+            suggestedQty = Math.max(0, p.idealStock! - stock);
+            reason = stock <= 0 ? "Stock en 0, reponer hasta nivel ideal" : "Bajo nivel de aviso, reponer hasta ideal";
           } else {
-            suggestedQty = 10;
-            reason = "Sin metas definidas, reposición básica sugerida";
+            // Lógica basada en rotación si no hay Ideal
+            if (rotation === 'Alta') {
+              suggestedQty = Math.ceil(dailyAvg * 14); // 2 semanas de stock
+              reason = "Producto de alta rotación, reposición reforzada";
+            } else if (rotation === 'Media') {
+              suggestedQty = Math.ceil(dailyAvg * 7) + 2; // 1 semana + seguridad
+              reason = "Rotación media, reposición para 1 semana";
+            } else if (rotation === 'Baja') {
+              suggestedQty = 2;
+              reason = "Producto de baja rotación, reposición mínima";
+            } else {
+              suggestedQty = 1;
+              reason = "Sin ventas recientes, reposición de seguridad (1u)";
+            }
           }
-        } else if (hasWarning && stock <= p.warningStock!) {
-          priority = 'Crítico';
+        } else if (hasWarning && stock <= p.warningStock! + (rotation === 'Alta' ? 5 : 2)) {
+          priority = 'Por reponer';
+          
           if (hasIdeal) {
-            suggestedQty = p.idealStock! - stock;
-            reason = "Bajo nivel de aviso, reponer hasta ideal";
+            suggestedQty = Math.ceil((p.idealStock! - stock) * 0.5);
+            reason = "Cerca del nivel de aviso, reposición moderada";
           } else {
-            suggestedQty = (p.warningStock! - stock) + 5;
-            reason = "Bajo nivel de aviso, reponer hasta aviso + 5";
+            if (rotation === 'Alta') {
+              suggestedQty = Math.ceil(dailyAvg * 7);
+              reason = "Alta rotación, pedir stock para 1 semana";
+            } else if (rotation === 'Media') {
+              suggestedQty = 3;
+              reason = "Rotación media, pedido preventivo pequeño";
+            } else {
+              suggestedQty = 0;
+              reason = "Baja rotación, esperar a nivel de aviso";
+            }
           }
-        } else if (hasWarning && stock <= p.warningStock! + 2) {
-           priority = 'Por reponer';
-           if (hasIdeal) {
-             suggestedQty = Math.ceil((p.idealStock! - stock) * 0.5);
-             reason = "Cerca del nivel de aviso, reposición moderada";
-           } else {
-             suggestedQty = 5;
-             reason = "Cerca del nivel de aviso, pedir 5 unidades";
-           }
         }
 
         return {
           ...p,
           priority,
+          rotation,
+          totalSold,
           suggestedQty: Math.max(0, suggestedQty),
           reason
         };
       })
       .sort((a, b) => {
         const order = { 'Crítico': 0, 'Por reponer': 1, 'Sin rotación': 2, 'OK': 3 };
-        return order[a.priority as Priority] - order[b.priority as Priority];
+        const pOrder = order[a.priority as Priority] - order[b.priority as Priority];
+        if (pOrder !== 0) return pOrder;
+        // Si tienen misma prioridad, poner arriba los de mayor rotación
+        const rotOrder = { 'Alta': 0, 'Media': 1, 'Baja': 2, 'Ninguna': 3 };
+        return rotOrder[a.rotation as RotationType] - rotOrder[b.rotation as RotationType];
       });
-  }, [products]);
+  }, [products, salesMap]);
 
   const filtered = useMemo(() => {
     return analysis.filter(p => {
@@ -118,7 +170,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
       
       let matchesPriority = true;
       if (priorityFilter === 'suggestions' && q === "") {
-        matchesPriority = p.priority !== 'OK';
+        matchesPriority = p.priority !== 'OK' && p.suggestedQty > 0;
       } else if (priorityFilter !== 'all' && priorityFilter !== 'suggestions') {
         matchesPriority = p.priority === priorityFilter;
       }
@@ -131,7 +183,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
     return {
       critical: analysis.filter(p => p.priority === 'Crítico').length,
       restock: analysis.filter(p => p.priority === 'Por reponer').length,
-      noRotation: analysis.filter(p => p.priority === 'Sin rotación').length,
+      highRotation: analysis.filter(p => p.rotation === 'Alta').length,
       ok: analysis.filter(p => p.priority === 'OK').length,
       distributors: new Set(analysis.map(p => p.distributor?.trim() || "Sin Prov. (General)")).size
     };
@@ -170,10 +222,8 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
     Object.entries(grouped).forEach(([dist, items]) => {
       if (!groupName) text += `*📦 Distribuidor: ${dist}*\n`;
       items.forEach(i => {
-        if (i.priority !== 'OK') {
+        if (i.suggestedQty > 0) {
           text += `- ${i.suggestedQty}u. x ${i.name} (St: ${i.stock}) [${i.reason}]\n`;
-        } else {
-          text += `- (OPCIONAL) ${i.name} (St: ${i.stock})\n`;
         }
       });
       text += "\n";
@@ -192,15 +242,6 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
       toast({ 
         title: "Selección vacía", 
         description: "Selecciona al menos un producto para enviar.",
-        variant: "destructive" 
-      });
-      return;
-    }
-
-    if (listToShare.length === 0) {
-      toast({ 
-        title: "Sin productos", 
-        description: "No hay productos que coincidan con la selección.",
         variant: "destructive" 
       });
       return;
@@ -237,9 +278,21 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
 
         <div className="min-w-0 flex-1">
           <div className="flex justify-between items-start gap-2 mb-1">
-            <h4 className="font-bold text-[11px] md:text-xs uppercase text-slate-800 leading-tight">
-              {p.name} <span className="text-primary ml-1">${Math.round(p.price).toLocaleString('es-CL')}</span>
-            </h4>
+            <div className="flex flex-col">
+              <h4 className="font-bold text-[11px] md:text-xs uppercase text-slate-800 leading-tight">
+                {p.name}
+              </h4>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <Badge variant="outline" className={cn(
+                  "text-[7px] font-black uppercase py-0 px-1 border-none",
+                  p.rotation === 'Alta' ? "bg-primary/10 text-primary" : 
+                  p.rotation === 'Media' ? "bg-blue-100 text-blue-700" : "bg-slate-100 text-slate-500"
+                )}>
+                  Rotación {p.rotation}
+                </Badge>
+                <span className="text-[10px] font-black text-primary font-mono">${Math.round(p.price).toLocaleString('es-CL')}</span>
+              </div>
+            </div>
             <Badge className={cn(
               "text-[7px] md:text-[8px] font-black uppercase rounded-lg px-1.5 py-0.5 border-none h-4 shrink-0",
               p.priority === 'Crítico' ? "bg-red-600 text-white" : 
@@ -253,16 +306,11 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
           </p>
           
           <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-[8px] font-black text-slate-400 uppercase truncate max-w-[100px]">
-              {p.distributor?.trim() || 'Sin Prov. (General)'}
-            </span>
-
             <div className="flex items-center gap-1 bg-slate-50 px-1.5 py-0.5 rounded-md border border-slate-100">
               <span className="text-[7px] font-black text-slate-400 uppercase">Stock:</span>
               <span className={cn("text-[8px] font-black", p.stock <= 0 ? "text-red-600" : "text-slate-800")}>{p.stock}</span>
             </div>
 
-            {/* Referencias de Stock Aviso/Ideal */}
             <div className="flex items-center gap-1.5">
               {p.warningStock > 0 && (
                 <div className="flex items-center gap-1 bg-amber-50 px-1.5 py-0.5 rounded-md border border-amber-100">
@@ -280,8 +328,8 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
               )}
             </div>
 
-            {p.priority !== 'OK' && p.suggestedQty > 0 && (
-              <div className="flex items-center gap-1 bg-primary/10 px-1.5 py-0.5 rounded-md border border-primary/10">
+            {p.suggestedQty > 0 && (
+              <div className="flex items-center gap-1 bg-primary/10 px-1.5 py-0.5 rounded-md border border-primary/20">
                 <span className="text-[7px] font-black text-primary uppercase">Pedir:</span>
                 <span className="text-[8px] font-black text-primary">+{p.suggestedQty}</span>
               </div>
@@ -316,10 +364,10 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
             <CardTitle className="text-xl font-black">{summary.restock}</CardTitle>
           </CardHeader>
         </Card>
-        <Card className="border-none shadow-sm bg-slate-500 text-white rounded-2xl">
+        <Card className="border-none shadow-sm bg-primary text-white rounded-2xl">
           <CardHeader className="p-3 pb-1">
-            <CardDescription className="text-white/70 font-black text-[8px] uppercase tracking-widest">Sin Rot.</CardDescription>
-            <CardTitle className="text-xl font-black">{summary.noRotation}</CardTitle>
+            <CardDescription className="text-white/70 font-black text-[8px] uppercase tracking-widest">Alta Rot.</CardDescription>
+            <CardTitle className="text-xl font-black">{summary.highRotation}</CardTitle>
           </CardHeader>
         </Card>
         <Card className="border-none shadow-sm bg-green-600/30 text-green-800 rounded-2xl">
@@ -341,7 +389,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div className="flex flex-col gap-1">
               <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-accent" /> Sugerencias de Compra
+                <Sparkles className="w-4 h-4 text-accent" /> Sugerencias Inteligentes
               </h3>
               {selectedIds.length > 0 && (
                 <p className="text-[10px] font-black text-primary uppercase animate-in slide-in-from-left-2">
@@ -357,8 +405,9 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
               <Button 
                 className="flex-1 md:flex-none bg-green-600 hover:bg-green-700 h-10 rounded-xl font-black gap-2 text-[10px] md:text-xs text-white" 
                 onClick={() => handleWhatsApp()}
+                disabled={isLoadingSales}
               >
-                <Send className="w-4 h-4" /> Enviar
+                {isLoadingSales ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />} Enviar
               </Button>
             </div>
           </div>
@@ -398,7 +447,6 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
                   <SelectItem value="all">Ver Todos</SelectItem>
                   <SelectItem value="Crítico">Crítico</SelectItem>
                   <SelectItem value="Por reponer">Por reponer</SelectItem>
-                  <SelectItem value="Sin rotación">Sin rotación</SelectItem>
                   <SelectItem value="OK">Estado OK</SelectItem>
                 </SelectContent>
               </Select>
@@ -412,22 +460,17 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
                   {categories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
                 </SelectContent>
               </Select>
-
-              <Select value={distributorFilter} onValueChange={setDistributorFilter}>
-                <SelectTrigger className="w-fit bg-white border-none h-9 font-bold text-[10px] rounded-xl shadow-sm px-4">
-                  <SelectValue placeholder="Proveedor" />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl">
-                  <SelectItem value="all">Proveedores</SelectItem>
-                  {distributors.concat(["Sin Prov. (General)"]).map(dist => <SelectItem key={dist} value={dist}>{dist}</SelectItem>)}
-                </SelectContent>
-              </Select>
             </div>
           </div>
         </CardHeader>
         <CardContent className="p-4 bg-slate-50/30">
           <ScrollArea className="h-[500px] w-full">
-            {filtered.length === 0 ? (
+            {isLoadingSales ? (
+              <div className="flex flex-col items-center justify-center py-20 opacity-30">
+                <Loader2 className="w-12 h-12 animate-spin mb-4 text-primary" />
+                <p className="text-[10px] font-black uppercase tracking-widest">Analizando ventas...</p>
+              </div>
+            ) : filtered.length === 0 ? (
               <div className="text-center py-20 bg-white rounded-3xl border-2 border-dashed border-slate-100">
                 <Package className="w-16 h-16 mx-auto mb-4 text-slate-100" />
                 <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest">Sin resultados</h3>
