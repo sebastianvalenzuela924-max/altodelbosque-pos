@@ -275,9 +275,9 @@ export default function ReportsPage() {
       date: targetDateStr,
       bought: parseFloat(breadBought),
       remaining: parseFloat(breadRemaining),
-      clima: breadClima,
-      quiebre: breadQuiebre,
-      observation: breadObservation.trim(),
+      clima: breadClima || "Sol",
+      quiebre: !!breadQuiebre,
+      observation: (breadObservation || "").trim(),
       timestamp: serverTimestamp()
     }, { merge: true });
     
@@ -288,6 +288,7 @@ export default function ReportsPage() {
     setBreadRemaining(""); 
     setBreadObservation(""); 
     setBreadQuiebre(false); 
+    setBreadClima("Sol");
     setEditingBreadLog(null);
   };
 
@@ -591,7 +592,7 @@ export default function ReportsPage() {
                           setEditingBreadLog(log); 
                           setBreadBought(log.bought.toString()); 
                           setBreadRemaining(log.remaining.toString()); 
-                          setBreadClima(log.clima as ClimaType);
+                          setBreadClima((log.clima as ClimaType) || "Sol");
                           setBreadQuiebre(!!log.quiebre);
                           setBreadObservation(log.observation || "");
                           // Scroll to form
