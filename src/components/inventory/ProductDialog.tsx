@@ -9,10 +9,10 @@ import { Label } from "@/components/ui/label";
 import { useFirestore, setDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase";
 import { doc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Package, Tag, Target, HelpCircle, AlertTriangle, Truck } from "lucide-react";
+import { Loader2, Package, Tag, Target, HelpCircle, AlertTriangle, Truck, Box } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface ProductDialogProps {
   product?: any | null;
@@ -32,7 +32,9 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
     idealStock: "",
     warningStock: "",
     category: "",
-    distributor: ""
+    distributor: "",
+    buyByCase: false,
+    unitsPerCase: ""
   });
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -47,7 +49,9 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
         idealStock: (product.idealStock !== undefined && product.idealStock !== null) ? product.idealStock.toString() : "",
         warningStock: (product.warningStock !== undefined && product.warningStock !== null) ? product.warningStock.toString() : "",
         category: product.category || "",
-        distributor: product.distributor || ""
+        distributor: product.distributor || "",
+        buyByCase: !!product.buyByCase,
+        unitsPerCase: product.unitsPerCase?.toString() || ""
       });
     } else {
       setFormData({
@@ -58,7 +62,9 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
         idealStock: "10",
         warningStock: "",
         category: "",
-        distributor: ""
+        distributor: "",
+        buyByCase: false,
+        unitsPerCase: ""
       });
     }
   }, [product, open]);
@@ -69,10 +75,14 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
       return;
     }
 
+    if (formData.buyByCase && (!formData.unitsPerCase || parseInt(formData.unitsPerCase) <= 0)) {
+      toast({ title: "Faltan datos de caja", description: "Debes indicar cuántas unidades trae la caja.", variant: "destructive" });
+      return;
+    }
+
     setLoading(true);
     const finalId = formData.id.trim() || `INT-${Date.now().toString().slice(-6)}-${Math.random().toString(36).substring(2, 5).toUpperCase()}`;
     
-    // Si el ID cambió y estamos editando un producto existente, debemos borrar el registro antiguo
     if (product?.id && product.id !== finalId) {
       const oldDocRef = doc(firestore, "products", product.id);
       deleteDocumentNonBlocking(oldDocRef);
@@ -92,13 +102,15 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
       idealStock: formData.idealStock !== "" ? parseInt(formData.idealStock) : null,
       warningStock: formData.warningStock !== "" ? parseInt(formData.warningStock) : null,
       category: finalCategory,
-      distributor: formData.distributor.trim()
+      distributor: formData.distributor.trim(),
+      buyByCase: formData.buyByCase,
+      unitsPerCase: formData.buyByCase ? (parseInt(formData.unitsPerCase) || null) : null
     };
 
     setDocumentNonBlocking(docRef, data, { merge: true });
     toast({ 
       title: product?.id ? (product.id !== finalId ? "Código Actualizado" : "Producto Actualizado") : "Producto Creado", 
-      description: `Se guardó correctamente con el código: ${finalId}` 
+      description: `Se guardó correctamente.` 
     });
     
     setLoading(false);
@@ -122,9 +134,7 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
-              <div className="flex items-center gap-2">
-                <Label htmlFor="id" className="font-bold text-slate-500 text-xs uppercase tracking-widest">Código / Barcode</Label>
-              </div>
+              <Label htmlFor="id" className="font-bold text-slate-500 text-xs uppercase tracking-widest">Código / Barcode</Label>
               <Input 
                 id="id" 
                 value={formData.id} 
@@ -132,14 +142,9 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
                 onChange={e => setFormData({ ...formData, id: e.target.value })} 
                 placeholder="EAN-13 o Manual" 
               />
-              {product?.id && (
-                <p className="text-[8px] text-amber-600 font-bold uppercase tracking-tighter">
-                  Nota: Cambiar el código migrará el producto al nuevo ID.
-                </p>
-              )}
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="price" className="font-bold text-slate-500 text-xs uppercase tracking-widest">Precio ($)</Label>
+              <Label htmlFor="price" className="font-bold text-slate-500 text-xs uppercase tracking-widest">Precio Venta ($)</Label>
               <Input id="price" type="number" className="h-12 rounded-xl bg-slate-50 border-none font-black" value={formData.price} onChange={e => setFormData({ ...formData, price: e.target.value })} placeholder="0" />
             </div>
           </div>
@@ -158,7 +163,6 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
               
               {categories.length > 0 && (
                 <div className="grid gap-2 mt-1">
-                  <Label className="font-bold text-[9px] uppercase text-slate-400">Sugerencias</Label>
                   <ScrollArea className="w-full whitespace-nowrap pb-2">
                     <div className="flex gap-1.5">
                       {categories.map((cat) => (
@@ -181,23 +185,54 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
               <Label htmlFor="distributor" className="font-bold text-slate-500 text-xs uppercase tracking-widest flex items-center gap-2">
                 <Truck className="w-3 h-3" /> Distribuidora
               </Label>
-              <Input id="distributor" value={formData.distributor} className="h-12 rounded-xl bg-slate-50 border-none font-bold" onChange={e => setFormData({ ...formData, distributor: e.target.value })} placeholder="Ej: Coca Cola Embonor" />
+              <Input id="distributor" value={formData.distributor} className="h-12 rounded-xl bg-slate-50 border-none font-bold" onChange={e => setFormData({ ...formData, distributor: e.target.value })} placeholder="Ej: Coca Cola" />
             </div>
+          </div>
+
+          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-4">
+            <p className="text-[10px] font-black uppercase text-slate-400 text-center tracking-widest">Formato de Reposición</p>
+            <div className="flex items-center space-x-3 bg-white p-3 rounded-xl border">
+              <Checkbox 
+                id="buyByCase" 
+                checked={formData.buyByCase} 
+                onCheckedChange={(checked) => setFormData({ ...formData, buyByCase: !!checked })}
+                className="w-5 h-5"
+              />
+              <div className="grid gap-1.5 leading-none">
+                <label htmlFor="buyByCase" className="text-sm font-bold leading-none cursor-pointer">Se compra por caja</label>
+                <p className="text-[9px] text-muted-foreground font-medium uppercase">La reposición se calcula en cajas cerradas.</p>
+              </div>
+            </div>
+
+            {formData.buyByCase && (
+              <div className="grid gap-2 animate-in slide-in-from-top-2 duration-300">
+                <Label htmlFor="unitsPerCase" className="font-bold text-slate-500 text-[10px] uppercase tracking-widest flex items-center gap-1">
+                  <Box className="w-3 h-3" /> Unidades por caja
+                </Label>
+                <Input 
+                  id="unitsPerCase" 
+                  type="number" 
+                  className="h-12 rounded-xl bg-white border-none font-black text-primary text-center" 
+                  value={formData.unitsPerCase} 
+                  onChange={e => setFormData({ ...formData, unitsPerCase: e.target.value })} 
+                  placeholder="Ej: 6, 12, 24" 
+                />
+              </div>
+            )}
           </div>
 
           <div className="grid gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="stock" className="font-bold text-slate-500 text-xs uppercase tracking-widest">Stock Actual</Label>
+              <Label htmlFor="stock" className="font-bold text-slate-500 text-xs uppercase tracking-widest">Stock Actual (Unidades)</Label>
               <Input id="stock" type="number" className="h-12 rounded-xl bg-slate-50 border-none font-black" value={formData.stock} onChange={e => setFormData({ ...formData, stock: e.target.value })} placeholder="0" />
             </div>
 
             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-4">
-               <p className="text-[10px] font-black uppercase text-slate-400 text-center tracking-widest">Configuración de Alerta (Elige una)</p>
-               
+               <p className="text-[10px] font-black uppercase text-slate-400 text-center tracking-widest">Niveles de Alerta</p>
                <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
                   <Label htmlFor="idealStock" className="font-bold text-slate-500 text-[9px] uppercase tracking-widest flex items-center gap-1">
-                    <Target className="w-3 h-3" /> Por % (Ideal)
+                    <Target className="w-3 h-3" /> Ideal (Meta)
                   </Label>
                   <Input 
                     id="idealStock" 
@@ -210,7 +245,7 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="warningStock" className="font-bold text-slate-500 text-[9px] uppercase tracking-widest flex items-center gap-1">
-                    <AlertTriangle className="w-3 h-3" /> Fijo (Aviso)
+                    <AlertTriangle className="w-3 h-3" /> Aviso (Gatillo)
                   </Label>
                   <Input 
                     id="warningStock" 
@@ -222,12 +257,8 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
                   />
                 </div>
                </div>
-               <p className="text-[8px] text-center text-slate-400 font-bold italic">
-                 {formData.warningStock === "0" || formData.idealStock === "0" ? "Desactivado: El stock 0 marcará como OK." : (formData.warningStock ? "Peligro si el stock baja de este número." : "Peligro si el stock baja del 25% del ideal.")}
-               </p>
             </div>
           </div>
-          
           <div className="h-4" />
         </div>
 
@@ -235,7 +266,7 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
           <Button variant="ghost" onClick={onClose} disabled={loading} className="rounded-xl flex-1 h-12 font-bold">Cancelar</Button>
           <Button onClick={handleSave} disabled={loading} className="bg-primary hover:bg-primary/90 rounded-xl flex-1 h-12 font-black shadow-lg shadow-primary/20">
             {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            GUARDAR PRODUCTO
+            GUARDAR
           </Button>
         </DialogFooter>
       </DialogContent>

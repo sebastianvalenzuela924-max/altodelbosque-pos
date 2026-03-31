@@ -7,12 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { quickProductRegistration } from "@/ai/flows/quick-product-registration";
-import { Sparkles, Loader2, Barcode, Target, AlertTriangle, Truck } from "lucide-react";
+import { Sparkles, Loader2, Barcode, Target, AlertTriangle, Truck, Box } from "lucide-react";
 import { useFirestore, setDocumentNonBlocking, useCollection, useMemoFirebase } from "@/firebase";
 import { doc, collection } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export function QuickAddDialog({ 
   barcode, 
@@ -33,6 +34,8 @@ export function QuickAddDialog({
   const [warningStock, setWarningStock] = useState("");
   const [category, setCategory] = useState("");
   const [distributor, setDistributor] = useState("");
+  const [buyByCase, setBuyByCase] = useState(false);
+  const [unitsPerCase, setUnitsPerCase] = useState("");
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
@@ -74,6 +77,11 @@ export function QuickAddDialog({
       toast({ title: "Faltan datos", variant: "destructive" });
       return;
     }
+
+    if (buyByCase && (!unitsPerCase || parseInt(unitsPerCase) <= 0)) {
+      toast({ title: "Faltan datos de caja", variant: "destructive" });
+      return;
+    }
     
     const enteredCat = category.trim();
     const existingMatch = existingCategories.find(c => c.toLowerCase() === enteredCat.toLowerCase());
@@ -88,7 +96,9 @@ export function QuickAddDialog({
       idealStock: idealStock ? parseInt(idealStock) : null,
       warningStock: warningStock ? parseInt(warningStock) : null,
       category: finalCategory,
-      distributor: distributor.trim()
+      distributor: distributor.trim(),
+      buyByCase,
+      unitsPerCase: buyByCase ? (parseInt(unitsPerCase) || null) : null
     };
 
     setDocumentNonBlocking(docRef, data, { merge: true });
@@ -130,20 +140,33 @@ export function QuickAddDialog({
                 </div>
             </div>
 
+            <div className="bg-slate-50 p-3 rounded-xl border space-y-3">
+              <div className="flex items-center space-x-2">
+                <Checkbox id="q-buyByCase" checked={buyByCase} onCheckedChange={(c) => setBuyByCase(!!c)} />
+                <label htmlFor="q-buyByCase" className="text-xs font-bold uppercase text-slate-600 cursor-pointer">Se compra por caja</label>
+              </div>
+              {buyByCase && (
+                <div className="grid gap-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                  <Label className="text-[9px] font-black uppercase text-slate-400">Unidades por caja</Label>
+                  <Input type="number" className="h-10 rounded-lg bg-white border-none text-center font-black" value={unitsPerCase} onChange={e => setUnitsPerCase(e.target.value)} placeholder="Ej: 12" />
+                </div>
+              )}
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
-                  <Label className="font-bold text-xs uppercase text-slate-500">Precio ($)</Label>
+                  <Label className="font-bold text-xs uppercase text-slate-500">Precio Venta ($)</Label>
                   <Input type="number" className="h-12 rounded-xl bg-slate-50 border-none font-black" value={price} onChange={e => setPrice(e.target.value)} />
                 </div>
                 <div className="grid gap-2">
-                  <Label className="font-bold text-xs uppercase text-slate-500">Stock Inicial</Label>
+                  <Label className="font-bold text-xs uppercase text-slate-500">Stock Inicial (u.)</Label>
                   <Input type="number" className="h-12 rounded-xl bg-slate-50 border-none font-black" value={stock} onChange={e => setStock(e.target.value)} placeholder="0" />
                 </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4 pt-2 border-t">
                 <div className="grid gap-2">
-                  <Label className="font-bold text-[9px] uppercase text-slate-400 flex items-center gap-1"><Target className="w-3 h-3"/> Ideal (%)</Label>
+                  <Label className="font-bold text-[9px] uppercase text-slate-400 flex items-center gap-1"><Target className="w-3 h-3"/> Ideal</Label>
                   <Input 
                     type="number" 
                     className="h-12 rounded-xl bg-primary/5 border-none font-black text-primary text-center" 
@@ -152,7 +175,7 @@ export function QuickAddDialog({
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label className="font-bold text-[9px] uppercase text-slate-400 flex items-center gap-1"><AlertTriangle className="w-3 h-3"/> Aviso (Fijo)</Label>
+                  <Label className="font-bold text-[9px] uppercase text-slate-400 flex items-center gap-1"><AlertTriangle className="w-3 h-3"/> Aviso</Label>
                   <Input 
                     type="number" 
                     className="h-12 rounded-xl bg-destructive/5 border-none font-black text-destructive text-center" 
@@ -162,7 +185,6 @@ export function QuickAddDialog({
                 </div>
             </div>
           </div>
-          
           <div className="h-4" />
         </div>
 

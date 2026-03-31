@@ -38,6 +38,14 @@
         "distributor": {
           "type": "string",
           "description": "The name of the company or distributor providing the product."
+        },
+        "buyByCase": {
+          "type": "boolean",
+          "description": "Whether this product is typically restocked by buying a full case."
+        },
+        "unitsPerCase": {
+          "type": "number",
+          "description": "Number of individual units contained in a single case."
         }
       },
       "required": [
