@@ -4,12 +4,12 @@
 import { useMemo, useState } from "react";
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import { collection, query, where } from "firebase/firestore";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { AlertCircle, Package, Send, Sparkles, Truck, ListFilter, Trash2, CheckSquare, Search, X, CheckCircle2, Info, Target, AlertTriangle, Loader2, ArrowUpDown, Box } from "lucide-react";
+import { Package, Send, Sparkles, Truck, Loader2, Box, ChevronRight, ListFilter, LayoutGrid } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -82,7 +82,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
     return products
       .map(p => {
         let priority: Priority = 'OK';
-        let suggestedQty = 0; // En unidades o cajas según p.buyByCase
+        let suggestedQty = 0;
         let reason = "Stock OK";
         let rotation: RotationType = 'Ninguna';
 
@@ -97,21 +97,17 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
         const hasIdeal = p.idealStock !== undefined && p.idealStock !== null && p.idealStock > 0;
         const hasWarning = p.warningStock !== undefined && p.warningStock !== null && p.warningStock > 0;
 
-        // Gatillo de alerta
         if (stock <= 0 || (hasWarning && stock <= p.warningStock!)) {
           priority = 'Crítico';
         } else if (hasWarning && stock <= p.warningStock! + 2) {
           priority = 'Por reponer';
         }
 
-        // Lógica de cálculo de cantidad
         if (priority !== 'OK') {
           if (p.buyByCase && p.unitsPerCase && p.unitsPerCase > 0) {
-            // SI COMPRA POR CAJA: Sugerir máximo 1 caja siempre que necesite reponer
             suggestedQty = 1;
-            reason = hasIdeal ? "Meta: Nivel Ideal" : "Reponer Stock Seguro";
+            reason = hasIdeal ? "Meta: Nivel Ideal" : "Reponer Stock";
           } else {
-            // REPOSICIÓN NORMAL (Por Unidades)
             if (hasIdeal) {
               suggestedQty = Math.max(0, p.idealStock! - stock);
               reason = "Meta: Nivel Ideal";
@@ -150,7 +146,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
       const q = searchTerm.toLowerCase().trim();
       const matchesSearch = q === "" || p.name.toLowerCase().includes(q) || String(p.id).includes(q);
       const matchesCategory = categoryFilter === 'all' || (p.category || "General") === categoryFilter;
-      const matchesDistributor = distributorFilter === 'all' || (p.distributor || "Sin Distribuidor") === distributorFilter;
+      const matchesDistributor = distributorFilter === 'all' || (p.distributor || "Sin Distribuidora") === distributorFilter;
       
       let matchesPriority = true;
       if (priorityFilter === 'suggestions') {
@@ -163,6 +159,21 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
       return matchesSearch && matchesCategory && matchesDistributor && matchesPriority && matchesRotation;
     });
   }, [analysis, categoryFilter, distributorFilter, searchTerm, priorityFilter, rotationFilter]);
+
+  const groupedData = useMemo(() => {
+    if (viewMode === 'general') return { "General": filtered };
+    
+    const groups: Record<string, any[]> = {};
+    filtered.forEach(p => {
+      const key = viewMode === 'category' ? (p.category || "General") : (p.distributor || "Sin Distribuidora");
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(p);
+    });
+    
+    return Object.fromEntries(
+      Object.entries(groups).sort(([a], [b]) => a.localeCompare(b))
+    );
+  }, [filtered, viewMode]);
 
   const generateSummaryText = (itemsToShare: any[], groupName?: string) => {
     if (itemsToShare.length === 0) return "";
@@ -241,11 +252,30 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
               <Send className="w-4 h-4" /> Enviar WhatsApp
             </Button>
           </div>
+
+          <div className="bg-slate-100 p-1 rounded-xl grid grid-cols-3 gap-1">
+            <Button 
+              variant={viewMode === 'general' ? 'default' : 'ghost'} 
+              className="h-8 rounded-lg text-[9px] font-black uppercase"
+              onClick={() => setViewMode('general')}
+            ><LayoutGrid className="w-3 h-3 mr-1" /> General</Button>
+            <Button 
+              variant={viewMode === 'category' ? 'default' : 'ghost'} 
+              className="h-8 rounded-lg text-[9px] font-black uppercase"
+              onClick={() => setViewMode('category')}
+            ><ListFilter className="w-3 h-3 mr-1" /> Rubro</Button>
+            <Button 
+              variant={viewMode === 'distributor' ? 'default' : 'ghost'} 
+              className="h-8 rounded-lg text-[9px] font-black uppercase"
+              onClick={() => setViewMode('distributor')}
+            ><Truck className="w-3 h-3 mr-1" /> Distribuidora</Button>
+          </div>
+
           <div className="space-y-3">
             <Input className="h-11 bg-white rounded-xl font-bold border-none shadow-sm" placeholder="Buscar producto..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
             <div className="flex flex-wrap gap-2">
               <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-                <SelectTrigger className="w-fit bg-white border-none h-8 font-black text-[9px] rounded-lg shadow-sm uppercase"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-fit bg-white border-none h-8 font-black text-[9px] rounded-lg shadow-sm uppercase px-3"><SelectValue /></SelectTrigger>
                 <SelectContent className="rounded-xl">
                   <SelectItem value="suggestions">Sugerencias</SelectItem>
                   <SelectItem value="all">Ver Todo</SelectItem>
@@ -254,7 +284,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
                 </SelectContent>
               </Select>
               <Select value={rotationFilter} onValueChange={setRotationFilter}>
-                <SelectTrigger className="w-fit bg-white border-none h-8 font-black text-[9px] rounded-lg shadow-sm uppercase"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-fit bg-white border-none h-8 font-black text-[9px] rounded-lg shadow-sm uppercase px-3"><SelectValue /></SelectTrigger>
                 <SelectContent className="rounded-xl">
                   <SelectItem value="all">Rotación: Todo</SelectItem>
                   <SelectItem value="Alta">Alta</SelectItem>
@@ -262,14 +292,74 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
                   <SelectItem value="Baja">Baja</SelectItem>
                 </SelectContent>
               </Select>
-              <Button variant="ghost" className="h-8 text-[9px] font-black uppercase text-primary" onClick={() => setSelectedIds(filtered.map(f => f.id))}>Sel. Todo</Button>
-              <Button variant="ghost" className="h-8 text-[9px] font-black uppercase text-destructive" onClick={() => setSelectedIds([])}>Limpiar</Button>
+              {viewMode === 'category' && (
+                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                  <SelectTrigger className="w-fit bg-white border-none h-8 font-black text-[9px] rounded-lg shadow-sm uppercase px-3"><SelectValue placeholder="Categoría" /></SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    <SelectItem value="all">Todas las Categorías</SelectItem>
+                    {categories.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              )}
+              {viewMode === 'distributor' && (
+                <Select value={distributorFilter} onValueChange={setDistributorFilter}>
+                  <SelectTrigger className="w-fit bg-white border-none h-8 font-black text-[9px] rounded-lg shadow-sm uppercase px-3"><SelectValue placeholder="Distribuidora" /></SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    <SelectItem value="all">Todas las Distribuidoras</SelectItem>
+                    {distributors.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              )}
+              <div className="flex gap-1 ml-auto">
+                <Button variant="ghost" className="h-8 text-[9px] font-black uppercase text-primary px-2" onClick={() => setSelectedIds(filtered.map(f => f.id))}>Sel. Todo</Button>
+                <Button variant="ghost" className="h-8 text-[9px] font-black uppercase text-destructive px-2" onClick={() => setSelectedIds([])}>Limpiar</Button>
+              </div>
             </div>
           </div>
         </CardHeader>
         <CardContent className="p-4 bg-slate-50/30">
-          <ScrollArea className="h-[500px]">
-            {isLoadingSales ? <div className="p-10 text-center"><Loader2 className="animate-spin mx-auto w-8 h-8 opacity-20" /></div> : filtered.map(renderProductItem)}
+          <ScrollArea className="h-[500px] w-full">
+            {isLoadingSales ? (
+              <div className="flex flex-col items-center justify-center py-20 opacity-30">
+                <Loader2 className="animate-spin mx-auto w-8 h-8" />
+              </div>
+            ) : filtered.length === 0 ? (
+              <div className="text-center py-20 text-slate-400 font-bold uppercase text-[10px]">Sin coincidencias</div>
+            ) : viewMode === 'general' ? (
+              <div className="space-y-1">
+                {filtered.map(renderProductItem)}
+              </div>
+            ) : (
+              <Accordion type="multiple" className="space-y-3">
+                {Object.entries(groupedData).map(([groupName, items]) => (
+                  <AccordionItem key={groupName} value={groupName} className="border-none">
+                    <Card className="border-none shadow-sm rounded-2xl overflow-hidden bg-white">
+                      <div className="flex items-center px-4 py-3 bg-slate-50/50 justify-between">
+                         <div className="flex items-center gap-3">
+                           <Checkbox 
+                              checked={items.every(i => selectedIds.includes(i.id))} 
+                              onCheckedChange={(checked) => {
+                                const groupIds = items.map(i => i.id);
+                                if (checked) setSelectedIds(prev => [...new Set([...prev, ...groupIds])]);
+                                else setSelectedIds(prev => prev.filter(id => !groupIds.includes(id)));
+                              }}
+                           />
+                           <AccordionTrigger className="p-0 hover:no-underline font-black text-xs uppercase text-slate-700 tracking-tighter">
+                             {groupName} <Badge variant="outline" className="ml-2 text-[8px] bg-white">{items.length}</Badge>
+                           </AccordionTrigger>
+                         </div>
+                         <Button variant="ghost" size="sm" className="h-7 text-[8px] font-black uppercase text-green-600 gap-1" onClick={() => handleWhatsApp(items, groupName)}>
+                           <Send className="w-3 h-3" /> WhatsApp
+                         </Button>
+                      </div>
+                      <AccordionContent className="p-2 space-y-1">
+                        {items.map(renderProductItem)}
+                      </AccordionContent>
+                    </Card>
+                  </AccordionItem>
+                ))}
+              </Accordion>
+            )}
           </ScrollArea>
         </CardContent>
       </Card>
