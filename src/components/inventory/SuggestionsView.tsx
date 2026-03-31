@@ -200,7 +200,6 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
           <div className="min-w-0">
             <h4 className="font-bold text-[10px] md:text-xs uppercase text-slate-800 truncate leading-none">{p.name}</h4>
             <div className="flex gap-2 mt-1">
-              <span className="text-[8px] font-black text-slate-400 uppercase tracking-tighter bg-slate-50 px-1 rounded">{p.category || 'General'}</span>
               <span className="text-[8px] font-black text-slate-400 uppercase tracking-tighter bg-slate-50 px-1 rounded">{p.distributor || 'Sin Prov.'}</span>
             </div>
           </div>
