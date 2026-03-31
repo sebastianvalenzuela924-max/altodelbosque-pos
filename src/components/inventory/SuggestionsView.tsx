@@ -76,7 +76,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
         const sales = salesMap[p.id] || { d7: 0, d14: 0, d30: 0 };
         const rotationScore = (sales.d7 / 7 * 0.5) + (sales.d14 / 14 * 0.3) + (sales.d30 / 30 * 0.2);
         
-        let priority: Priority = 'Sin rotación';
+        let priority: Priority | 'Ignore' = 'Ignore';
         let reason = "";
         let suggestedQty = 0;
 
@@ -93,14 +93,10 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
           priority = 'Crítico';
           reason = "Bajo nivel de aviso";
           suggestedQty = Math.max(p.warningStock! * 2, Math.ceil(rotationScore * 14));
-        } else if (!hasWarning && hasIdeal && stock < p.idealStock! * 0.25 && rotationScore > 0.1) {
-          priority = 'Crítico';
-          reason = "Riesgo inminente: muy por debajo del ideal";
-          suggestedQty = p.idealStock! - stock;
         }
 
         // 2. LÓGICA PARA POR REPONER (si no es crítico)
-        if (priority === 'Sin rotación' && stock > 0) {
+        if (priority === 'Ignore' && stock > 0) {
            if (hasWarning) {
               if (stock <= p.warningStock! + 2) {
                  priority = 'Por reponer';
@@ -113,15 +109,12 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
                  reason = "Nivel bajo respecto al ideal";
                  suggestedQty = p.idealStock! - stock;
               }
-           } else if (rotationScore > 1.5 && stock < Math.ceil(rotationScore * 5)) {
-              priority = 'Por reponer';
-              reason = "Alta rotación: requiere reposición pronto";
-              suggestedQty = Math.ceil(rotationScore * 10);
            }
         }
 
         // 3. LÓGICA PARA SIN ROTACIÓN
-        if (sales.d30 === 0 && priority !== 'Crítico') {
+        // Solo incluimos en sin rotación si tiene alertas configuradas
+        if (priority === 'Ignore' && sales.d30 === 0 && (hasWarning || hasIdeal)) {
           priority = 'Sin rotación';
           reason = "Sin ventas en los últimos 30 días";
         }
@@ -135,10 +128,11 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
           salesRecent: sales.d7
         };
       })
+      .filter(p => p.priority !== 'Ignore')
       .filter(p => priorityFilter === 'all' || p.priority === priorityFilter)
       .sort((a, b) => {
         const order = { 'Crítico': 0, 'Por reponer': 1, 'Sin rotación': 2 };
-        return order[a.priority] - order[b.priority];
+        return order[a.priority as Priority] - order[b.priority as Priority];
       });
   }, [products, allSales, priorityFilter]);
 
