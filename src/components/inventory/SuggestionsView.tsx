@@ -9,9 +9,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { AlertCircle, ArrowRight, CheckCircle2, Filter, Info, Package, Send, Sparkles, TrendingUp, Truck, ListFilter, Clock, ShoppingCart, ChevronRight } from "lucide-react";
+import { AlertCircle, ArrowRight, CheckCircle2, Filter, Info, Package, Send, Sparkles, TrendingUp, Truck, ListFilter, Clock, ShoppingCart, ChevronRight, CheckSquare, Square, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useToast } from "@/hooks/use-toast";
 
 interface Product {
   id: string;
@@ -36,10 +38,12 @@ type ViewMode = 'general' | 'category' | 'distributor';
 
 export function SuggestionsView({ products, categories, distributors }: SuggestionsViewProps) {
   const firestore = useFirestore();
+  const { toast } = useToast();
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [distributorFilter, setDistributorFilter] = useState<string>("all");
   const [viewMode, setViewMode] = useState<ViewMode>("general");
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const salesQuery = useMemoFirebase(() => {
     return query(collection(firestore, "sales"), orderBy("saleDateTime", "desc"), limit(500));
@@ -148,6 +152,21 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
     };
   }, [analysis]);
 
+  const toggleSelection = (id: string) => {
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
+  const handleSelectAll = () => {
+    const allIds = filtered.map(p => p.id);
+    setSelectedIds(allIds);
+  };
+
+  const handleClearSelection = () => {
+    setSelectedIds([]);
+  };
+
   const generateSummaryText = (itemsToShare: any[], groupName?: string) => {
     if (itemsToShare.length === 0) return "";
 
@@ -180,16 +199,48 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
   };
 
   const handleWhatsApp = (itemsToShare?: any[], groupName?: string) => {
-    const list = itemsToShare || filtered;
-    const text = encodeURIComponent(generateSummaryText(list, groupName));
-    if (!text) return;
+    // Si se pasan items (desde un grupo del acordeón), primero filtramos esos por los seleccionados
+    // Si no se pasan, usamos la lista filtrada global y la filtramos por los seleccionados
+    const baseList = itemsToShare || filtered;
+    
+    let listToShare = baseList;
+    if (selectedIds.length > 0) {
+      listToShare = baseList.filter(item => selectedIds.includes(item.id));
+    } else if (!itemsToShare) {
+      // Si no hay nada seleccionado y es el botón general, avisar
+      toast({ 
+        title: "Selección vacía", 
+        description: "Selecciona al menos un producto para enviar.",
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    if (listToShare.length === 0) {
+      toast({ 
+        title: "Sin productos", 
+        description: "No hay productos seleccionados en este grupo.",
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    const text = encodeURIComponent(generateSummaryText(listToShare, groupName));
     window.open(`https://wa.me/?text=${text}`, '_blank');
   };
 
   const renderProductItem = (p: any) => (
-    <Card key={p.id} className="border-none shadow-sm hover:shadow-md transition-all overflow-hidden rounded-2xl bg-white mb-2">
+    <Card key={p.id} className={cn(
+      "border-none shadow-sm hover:shadow-md transition-all overflow-hidden rounded-2xl mb-2",
+      selectedIds.includes(p.id) ? "bg-primary/5 ring-1 ring-primary/20" : "bg-white"
+    )}>
       <div className="p-3 flex items-center justify-between gap-2 md:gap-4">
         <div className="flex items-center gap-3 min-w-0 flex-1">
+          <Checkbox 
+            checked={selectedIds.includes(p.id)} 
+            onCheckedChange={() => toggleSelection(p.id)}
+            className="w-5 h-5 rounded-lg border-slate-300 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+          />
           <div className={cn(
             "w-9 h-9 md:w-10 md:h-10 rounded-xl flex items-center justify-center shrink-0",
             p.priority === 'Crítico' ? "bg-red-100 text-red-600" : 
@@ -270,21 +321,40 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
       <Card className="border-none shadow-xl rounded-2xl bg-white overflow-hidden">
         <CardHeader className="bg-slate-50/50 p-4 border-b space-y-4">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-accent" /> Sugerencias de Compra
-            </h3>
+            <div className="flex flex-col gap-1">
+              <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-accent" /> Sugerencias de Compra
+              </h3>
+              {selectedIds.length > 0 && (
+                <p className="text-[10px] font-black text-primary uppercase animate-in slide-in-from-left-2">
+                  {selectedIds.length} productos seleccionados
+                </p>
+              )}
+            </div>
             <div className="flex gap-2 w-full md:w-auto">
               <Button variant="outline" className="flex-1 md:flex-none h-10 rounded-xl font-bold gap-2 text-[10px] md:text-xs" onClick={() => setViewMode(viewMode === 'general' ? 'distributor' : viewMode === 'distributor' ? 'category' : 'general')}>
                 <ListFilter className="w-4 h-4" /> 
                 {viewMode === 'general' ? 'Vista Lista' : viewMode === 'distributor' ? 'Por Distribuidor' : 'Por Categoría'}
               </Button>
-              <Button className="flex-1 md:flex-none bg-green-600 hover:bg-green-700 h-10 rounded-xl font-black gap-2 text-[10px] md:text-xs text-white" onClick={() => handleWhatsApp()}>
-                <Send className="w-4 h-4" /> Enviar Todo
+              <Button 
+                className="flex-1 md:flex-none bg-green-600 hover:bg-green-700 h-10 rounded-xl font-black gap-2 text-[10px] md:text-xs text-white" 
+                onClick={() => handleWhatsApp()}
+              >
+                <Send className="w-4 h-4" /> {selectedIds.length > 0 ? `Enviar ${selectedIds.length}` : 'Enviar Todo'}
               </Button>
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 items-center">
+            <div className="flex gap-1 bg-white p-1 rounded-xl shadow-sm border mr-2">
+              <Button variant="ghost" size="sm" className="h-8 rounded-lg text-[9px] font-black uppercase px-2 hover:bg-primary/5 hover:text-primary" onClick={handleSelectAll}>
+                <CheckSquare className="w-3.5 h-3.5 mr-1" /> Todo
+              </Button>
+              <Button variant="ghost" size="sm" className="h-8 rounded-lg text-[9px] font-black uppercase px-2 hover:bg-destructive/5 hover:text-destructive" onClick={handleClearSelection}>
+                <Trash2 className="w-3.5 h-3.5 mr-1" /> Limpiar
+              </Button>
+            </div>
+
             <Select value={priorityFilter} onValueChange={setPriorityFilter}>
               <SelectTrigger className="w-fit bg-white border-none h-9 font-bold text-[10px] rounded-xl shadow-sm px-4">
                 <SelectValue placeholder="Prioridad" />
@@ -334,6 +404,8 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
               <Accordion type="multiple" className="space-y-2">
                 {activeGroups.map(group => {
                    const groupItems = filtered.filter(p => (viewMode === 'distributor' ? (p.distributor || "General") : (p.category || "General")) === group);
+                   const selectedInGroup = groupItems.filter(p => selectedIds.includes(p.id));
+                   
                    return (
                     <AccordionItem key={group} value={group} className="border-none">
                       <Card className="rounded-2xl border-none shadow-sm bg-white overflow-hidden">
@@ -343,14 +415,17 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
                               {viewMode === 'distributor' ? <Truck className="w-4 h-4 text-primary" /> : <ListFilter className="w-4 h-4 text-primary" />}
                               <span>{group}</span>
                               <Badge variant="outline" className="ml-2 bg-white text-[8px] border-slate-200">
-                                {groupItems.length}
+                                {selectedInGroup.length > 0 ? `${selectedInGroup.length} / ${groupItems.length}` : groupItems.length}
                               </Badge>
                             </div>
                           </AccordionTrigger>
                           <Button 
                             variant="ghost" 
                             size="icon" 
-                            className="h-8 w-8 text-green-600 hover:bg-green-50 rounded-full"
+                            className={cn(
+                              "h-8 w-8 rounded-full",
+                              selectedInGroup.length > 0 ? "text-green-600 bg-green-50" : "text-slate-400 hover:text-green-600"
+                            )}
                             onClick={(e) => {
                               e.stopPropagation();
                               handleWhatsApp(groupItems, group);
