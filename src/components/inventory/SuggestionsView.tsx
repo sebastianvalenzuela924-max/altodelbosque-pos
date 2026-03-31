@@ -83,6 +83,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
         
         let priority: Priority | 'Ignore' = 'Ignore';
         let refType: 'Aviso' | 'Ideal' | '' = '';
+        let refValue = 0;
         let suggestedQty = 0;
 
         const stock = p.stock || 0;
@@ -93,10 +94,12 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
         if (stock <= 0) {
           priority = 'Crítico';
           refType = hasWarning ? 'Aviso' : (hasIdeal ? 'Ideal' : '');
+          refValue = hasWarning ? p.warningStock! : (hasIdeal ? p.idealStock! : 0);
           suggestedQty = hasIdeal ? p.idealStock! : (hasWarning ? p.warningStock! * 2 : 5);
         } else if (hasWarning && stock <= p.warningStock!) {
           priority = 'Crítico';
           refType = 'Aviso';
+          refValue = p.warningStock!;
           suggestedQty = Math.max(p.warningStock! * 2, Math.ceil(rotationScore * 14));
         }
 
@@ -106,12 +109,14 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
               if (stock <= p.warningStock! + 2) {
                  priority = 'Por reponer';
                  refType = 'Aviso';
+                 refValue = p.warningStock!;
                  suggestedQty = Math.max(5, Math.ceil(rotationScore * 10));
               }
            } else if (hasIdeal) {
               if (stock < p.idealStock! * 0.6) {
                  priority = 'Por reponer';
                  refType = 'Ideal';
+                 refValue = p.idealStock!;
                  suggestedQty = Math.max(0, p.idealStock! - stock);
               }
            }
@@ -121,19 +126,25 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
         if (priority === 'Ignore' && sales.d30 === 0 && (hasWarning || hasIdeal)) {
           priority = 'Sin rotación';
           refType = hasWarning ? 'Aviso' : 'Ideal';
+          refValue = hasWarning ? p.warningStock! : p.idealStock!;
         }
 
         return {
           ...p,
           priority,
           refType,
+          refValue,
           suggestedQty: Math.max(0, suggestedQty),
           rotationScore,
           salesRecent: sales.d7
         };
       })
       .filter(p => p.priority !== 'Ignore')
-      .filter(p => priorityFilter === 'all' || p.priority === priorityFilter)
+      .filter(p => {
+        // No incluir en sin rotación los que no tienen aviso ni ideal
+        if (p.priority === 'Sin rotación' && !p.warningStock && !p.idealStock) return false;
+        return priorityFilter === 'all' || p.priority === priorityFilter;
+      })
       .sort((a, b) => {
         const order = { 'Crítico': 0, 'Por reponer': 1, 'Sin rotación': 2 };
         return order[a.priority as Priority] - order[b.priority as Priority];
@@ -211,6 +222,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
   const handleWhatsApp = (itemsToShare?: any[], groupName?: string) => {
     let listToShare = itemsToShare || filtered;
     
+    // Si hay selección manual, priorizarla
     if (selectedIds.length > 0 && !itemsToShare) {
       listToShare = filtered.filter(item => selectedIds.includes(item.id));
     } else if (!itemsToShare && selectedIds.length === 0) {
@@ -259,7 +271,9 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
 
         <div className="min-w-0 flex-1">
           <div className="flex justify-between items-start gap-2 mb-1">
-            <h4 className="font-bold text-[11px] md:text-xs uppercase text-slate-800 truncate leading-none">{p.name}</h4>
+            <h4 className="font-bold text-[11px] md:text-xs uppercase text-slate-800 leading-tight">
+              {p.name} <span className="text-primary ml-1">${Math.round(p.price).toLocaleString('es-CL')}</span>
+            </h4>
             <Badge className={cn(
               "text-[7px] md:text-[8px] font-black uppercase rounded-lg px-1.5 py-0.5 border-none h-4 shrink-0",
               p.priority === 'Crítico' ? "bg-red-600 text-white" : p.priority === 'Por reponer' ? "bg-amber-600 text-white" : "bg-slate-400 text-white"
@@ -267,14 +281,18 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
           </div>
           
           <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-[8px] font-black text-slate-400 uppercase truncate max-w-[80px]">
+            <span className="text-[8px] font-black text-slate-400 uppercase truncate max-w-[100px]">
               {p.distributor?.trim() || 'Sin Prov. (General)'}
             </span>
 
             <div className="flex items-center gap-1 bg-slate-50 px-1.5 py-0.5 rounded-md border border-slate-100">
               <span className="text-[7px] font-black text-slate-400 uppercase">St:</span>
               <span className={cn("text-[8px] font-black", p.stock <= 0 ? "text-red-600" : "text-slate-800")}>{p.stock}</span>
-              <span className="text-[7px] font-black text-primary/60 uppercase ml-1 px-1 bg-primary/5 rounded">{p.refType}</span>
+              {p.refType && (
+                <span className="text-[7px] font-black text-primary/60 uppercase ml-1 px-1 bg-primary/5 rounded border border-primary/10">
+                  {p.refType}: {p.refValue}
+                </span>
+              )}
             </div>
 
             <div className="flex items-center gap-1 bg-primary/10 px-1.5 py-0.5 rounded-md border border-primary/10">
@@ -303,6 +321,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
 
   return (
     <div className="space-y-6">
+      {/* Resumen de prioridades */}
       <section className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <Card className="border-none shadow-sm bg-red-600 text-white rounded-2xl">
           <CardHeader className="p-4 pb-1">
