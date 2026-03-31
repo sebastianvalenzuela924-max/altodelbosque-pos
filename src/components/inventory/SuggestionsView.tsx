@@ -100,30 +100,29 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
            if (hasWarning) {
               if (stock <= p.warningStock! + 2) {
                  priority = 'Por reponer';
-                 reason = `Agotándose: a solo +${stock - p.warningStock!} del aviso`;
+                 reason = `Cerca del umbral de aviso (+${stock - p.warningStock!})`;
                  suggestedQty = Math.max(5, Math.ceil(rotationScore * 10));
               }
            } else if (hasIdeal) {
               if (stock < p.idealStock! * 0.6) {
                  priority = 'Por reponer';
-                 reason = "Nivel bajo respecto al ideal";
+                 reason = "Bajo nivel respecto al ideal";
                  suggestedQty = p.idealStock! - stock;
               }
            }
         }
 
         // 3. LÓGICA PARA SIN ROTACIÓN
-        // Solo incluimos en sin rotación si tiene alertas configuradas
         if (priority === 'Ignore' && sales.d30 === 0 && (hasWarning || hasIdeal)) {
           priority = 'Sin rotación';
-          reason = "Sin ventas en los últimos 30 días";
+          reason = "Sin ventas en 30 días";
         }
 
         return {
           ...p,
           priority,
           reason,
-          suggestedQty: suggestedQty > 0 ? suggestedQty : 0,
+          suggestedQty: Math.max(0, suggestedQty),
           rotationScore,
           salesRecent: sales.d7
         };
@@ -154,6 +153,14 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
   }, [analysis]);
 
   const generateSummaryText = () => {
+    if (filtered.length === 0) return "No hay sugerencias con los filtros actuales.";
+
+    let header = "*RESUMEN DE COMPRA SUGERIDA*\n";
+    if (categoryFilter !== 'all') header += `Categoría: ${categoryFilter}\n`;
+    if (distributorFilter !== 'all') header += `Proveedor: ${distributorFilter}\n`;
+    if (priorityFilter !== 'all') header += `Prioridad: ${priorityFilter}\n`;
+    header += "\n";
+
     const grouped: Record<string, any[]> = {};
     filtered.forEach(p => {
       const dist = p.distributor || "General";
@@ -161,17 +168,20 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
       grouped[dist].push(p);
     });
 
-    let text = "*RESUMEN DE COMPRA SUGERIDA*\n\n";
+    let text = header;
     Object.entries(grouped).forEach(([dist, items]) => {
-      text += `*Distribuidor: ${dist}*\n`;
+      text += `*📦 Distribuidor: ${dist}*\n`;
       items.forEach(i => {
         if (i.priority !== 'Sin rotación') {
-          text += `- ${i.suggestedQty} x ${i.name}\n`;
+          text += `- ${i.suggestedQty}u. x ${i.name}\n`;
+        } else {
+          text += `- (REVISAR) ${i.name} [Sin rotación]\n`;
         }
       });
       text += "\n";
     });
-    text += `Total productos sugeridos: ${filtered.filter(p => p.priority !== 'Sin rotación').length}`;
+    
+    text += `Total productos filtrados: ${filtered.length}`;
     return text;
   };
 
@@ -182,14 +192,14 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
 
   const renderProductItem = (p: any) => (
     <Card key={p.id} className="border-none shadow-sm hover:shadow-md transition-all overflow-hidden rounded-2xl bg-white mb-2">
-      <div className="p-3 flex items-center justify-between gap-4">
+      <div className="p-3 flex items-center justify-between gap-2 md:gap-4">
         <div className="flex items-center gap-3 min-w-0 flex-1">
           <div className={cn(
-            "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
+            "w-9 h-9 md:w-10 md:h-10 rounded-xl flex items-center justify-center shrink-0",
             p.priority === 'Crítico' ? "bg-red-100 text-red-600" : 
             p.priority === 'Por reponer' ? "bg-amber-100 text-amber-600" : "bg-slate-100 text-slate-400"
           )}>
-            {p.priority === 'Crítico' ? <AlertCircle className="w-6 h-6" /> : <Package className="w-6 h-6" />}
+            {p.priority === 'Crítico' ? <AlertCircle className="w-5 h-5 md:w-6 md:h-6" /> : <Package className="w-5 h-5 md:w-6 md:h-6" />}
           </div>
           <div className="min-w-0">
             <h4 className="font-bold text-[10px] md:text-xs uppercase text-slate-800 truncate leading-none">{p.name}</h4>
@@ -201,23 +211,25 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
         </div>
 
         <div className="flex items-center gap-2 md:gap-6 shrink-0 text-right">
-          <div className="hidden sm:flex flex-col items-end">
+          <div className="flex flex-col items-end">
             <p className="text-[7px] font-black text-slate-400 uppercase leading-none mb-1">Stock</p>
             <div className="flex items-center gap-1">
-              <span className={cn("font-black text-xs", p.stock <= 0 ? "text-red-600" : "text-slate-800")}>{p.stock}</span>
+              <span className={cn("font-black text-[10px] md:text-xs", p.stock <= 0 ? "text-red-600" : "text-slate-800")}>{p.stock}</span>
               <span className="text-[8px] text-slate-400">/ {p.warningStock || p.idealStock || 0}</span>
             </div>
           </div>
+          
           <div className="flex flex-col items-end bg-primary/5 px-2 py-1 rounded-lg border border-primary/10">
             <p className="text-[7px] font-black text-primary uppercase leading-none mb-1">Pedir</p>
-            <span className="font-black text-sm text-primary">+{p.suggestedQty}</span>
+            <span className="font-black text-xs md:text-sm text-primary">+{p.suggestedQty}</span>
           </div>
-          <div className="flex flex-col items-end min-w-[90px]">
+
+          <div className="flex flex-col items-end min-w-[70px] md:min-w-[90px]">
             <Badge className={cn(
-              "text-[8px] font-black uppercase rounded-lg px-1.5 py-0.5 border-none mb-1",
+              "text-[7px] md:text-[8px] font-black uppercase rounded-lg px-1.5 py-0.5 border-none mb-1",
               p.priority === 'Crítico' ? "bg-red-600 text-white" : p.priority === 'Por reponer' ? "bg-amber-600 text-white" : "bg-slate-400 text-white"
             )}>{p.priority}</Badge>
-            <p className="text-[7px] md:text-[8px] font-bold text-slate-400 italic max-w-[110px] leading-tight text-right">
+            <p className="text-[7px] font-bold text-slate-400 italic max-w-[80px] md:max-w-[110px] leading-tight text-right truncate">
               {p.reason}
             </p>
           </div>
@@ -267,11 +279,11 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
               <Sparkles className="w-4 h-4 text-accent" /> Sugerencias de Compra
             </h3>
             <div className="flex gap-2 w-full md:w-auto">
-              <Button variant="outline" className="flex-1 md:flex-none h-10 rounded-xl font-bold gap-2 text-xs" onClick={() => setViewMode(viewMode === 'general' ? 'distributor' : viewMode === 'distributor' ? 'category' : 'general')}>
+              <Button variant="outline" className="flex-1 md:flex-none h-10 rounded-xl font-bold gap-2 text-[10px] md:text-xs" onClick={() => setViewMode(viewMode === 'general' ? 'distributor' : viewMode === 'distributor' ? 'category' : 'general')}>
                 <ListFilter className="w-4 h-4" /> 
                 {viewMode === 'general' ? 'Vista Lista' : viewMode === 'distributor' ? 'Por Distribuidor' : 'Por Categoría'}
               </Button>
-              <Button className="flex-1 md:flex-none bg-green-600 hover:bg-green-700 h-10 rounded-xl font-black gap-2 text-xs text-white" onClick={handleWhatsApp}>
+              <Button className="flex-1 md:flex-none bg-green-600 hover:bg-green-700 h-10 rounded-xl font-black gap-2 text-[10px] md:text-xs text-white" onClick={handleWhatsApp}>
                 <Send className="w-4 h-4" /> Enviar WhatsApp
               </Button>
             </div>
@@ -317,7 +329,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
               <div className="text-center py-20 bg-white rounded-3xl border-2 border-dashed border-slate-100">
                 <CheckCircle2 className="w-16 h-16 mx-auto mb-4 text-green-100" />
                 <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest">Nada que reponer</h3>
-                <p className="text-xs text-slate-400">Todo el inventario está en niveles seguros.</p>
+                <p className="text-xs text-slate-400">Prueba cambiando los filtros.</p>
               </div>
             ) : viewMode === 'general' ? (
               <div className="space-y-1">
