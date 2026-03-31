@@ -187,6 +187,26 @@ export default function ReportsPage() {
     text += `💳 *Tarjeta:* $${Math.round(stats.card).toLocaleString('es-CL')}\n`;
     text += `📦 *Valor inventario:* $${Math.round(stats.inventoryValue).toLocaleString('es-CL')}\n\n`;
 
+    // Buscar información de pan para el resumen si corresponde a un día específico
+    let targetDateStr = "";
+    const today = new Date();
+    if (dateFilter === "today") targetDateStr = today.toISOString().split('T')[0];
+    else if (dateFilter === "yesterday") {
+      const yest = new Date(today);
+      yest.setDate(today.getDate() - 1);
+      targetDateStr = yest.toISOString().split('T')[0];
+    } else if (dateFilter === "custom" && customDate) {
+      targetDateStr = customDate;
+    }
+
+    const breadLog = allBreadLogs?.find(l => l.id === targetDateStr);
+    if (breadLog) {
+      text += `🥖 *Control de Pan:*\n`;
+      text += `- Comprado: ${breadLog.bought} u.\n`;
+      text += `- Quedó: ${breadLog.remaining} u.\n`;
+      text += `- Vendido: ${breadLog.bought - breadLog.remaining} u.\n\n`;
+    }
+
     if (stats.transactions > 0) {
       text += `🧾 *Transacciones:* ${stats.transactions}\n`;
     }
