@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { AlertCircle, Package, Send, Sparkles, Truck, ListFilter, Trash2, CheckSquare, Search, X, CheckCircle2, Info, Target, AlertTriangle, Loader2 } from "lucide-react";
+import { AlertCircle, Package, Send, Sparkles, Truck, ListFilter, Trash2, CheckSquare, Search, X, CheckCircle2, Info, Target, AlertTriangle, Loader2, ArrowUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -42,6 +42,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
   const firestore = useFirestore();
   const { toast } = useToast();
   const [priorityFilter, setPriorityFilter] = useState<string>("suggestions");
+  const [rotationFilter, setRotationFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [distributorFilter, setDistributorFilter] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
@@ -174,10 +175,12 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
       } else if (priorityFilter !== 'all' && priorityFilter !== 'suggestions') {
         matchesPriority = p.priority === priorityFilter;
       }
+
+      const matchesRotation = rotationFilter === 'all' || p.rotation === rotationFilter;
       
-      return matchesSearch && matchesCategory && matchesDistributor && matchesPriority;
+      return matchesSearch && matchesCategory && matchesDistributor && matchesPriority && matchesRotation;
     });
-  }, [analysis, categoryFilter, distributorFilter, searchTerm, priorityFilter]);
+  }, [analysis, categoryFilter, distributorFilter, searchTerm, priorityFilter, rotationFilter]);
 
   const summary = useMemo(() => {
     return {
@@ -448,6 +451,20 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
                   <SelectItem value="Crítico">Crítico</SelectItem>
                   <SelectItem value="Por reponer">Por reponer</SelectItem>
                   <SelectItem value="OK">Estado OK</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={rotationFilter} onValueChange={setRotationFilter}>
+                <SelectTrigger className="w-fit bg-white border-none h-9 font-bold text-[10px] rounded-xl shadow-sm px-4">
+                  <ArrowUpDown className="w-3.5 h-3.5 mr-2 text-primary" />
+                  <SelectValue placeholder="Rotación" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  <SelectItem value="all">Todas las Rot.</SelectItem>
+                  <SelectItem value="Alta">Alta Rotación</SelectItem>
+                  <SelectItem value="Media">Rotación Media</SelectItem>
+                  <SelectItem value="Baja">Baja Rotación</SelectItem>
+                  <SelectItem value="Ninguna">Sin Rotación</SelectItem>
                 </SelectContent>
               </Select>
 
