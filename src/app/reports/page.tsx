@@ -18,6 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 type DateFilter = "today" | "yesterday" | "month" | "all" | "custom";
 type ClimaType = "Sol" | "Nubes" | "Lluvia";
@@ -486,7 +487,19 @@ export default function ReportsPage() {
                     Fecha Registro: {editingBreadLog ? editingBreadLog.date : (dateFilter === 'today' ? 'Hoy' : dateFilter === 'yesterday' ? 'Ayer' : customDate || 'Seleccionada')}
                  </Badge>
                  <div className="flex items-center gap-2">
-                   <Label className="text-[9px] font-black uppercase text-slate-400">¿Hubo Quiebre?</Label>
+                   <div className="flex items-center gap-1.5">
+                     <Label className="text-[9px] font-black uppercase text-slate-400">¿Hubo Quiebre?</Label>
+                     <TooltipProvider>
+                       <Tooltip>
+                         <TooltipTrigger asChild>
+                           <HelpCircle className="w-3.5 h-3.5 text-slate-300 cursor-help" />
+                         </TooltipTrigger>
+                         <TooltipContent className="max-w-[200px] text-[10px] font-bold p-3">
+                           Marca "SÍ" si el pan se terminó antes del cierre. Ayuda a la IA a pedir más mañana para no perder ventas.
+                         </TooltipContent>
+                       </Tooltip>
+                     </TooltipProvider>
+                   </div>
                    <Switch checked={breadQuiebre} onCheckedChange={setBreadQuiebre} />
                  </div>
               </div>
