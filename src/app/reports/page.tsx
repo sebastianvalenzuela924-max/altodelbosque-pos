@@ -19,6 +19,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 
 type DateFilter = "today" | "yesterday" | "month" | "all" | "custom";
 
+/**
+ * Helper to get a local date string in YYYY-MM-DD format.
+ * Prevents UTC timezone shift issues.
+ */
+function getLocalDateString(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 export default function ReportsPage() {
   const [mounted, setMounted] = useState(false);
   const [dateFilter, setDateFilter] = useState<DateFilter>("today");
@@ -160,21 +171,20 @@ export default function ReportsPage() {
       return;
     }
 
-    // Determinar la fecha objetivo basándonos en el filtro actual
     let targetDateStr = "";
     if (editingBreadLog) {
       targetDateStr = editingBreadLog.date;
     } else {
       const now = new Date();
-      if (dateFilter === "today") targetDateStr = now.toISOString().split('T')[0];
+      if (dateFilter === "today") targetDateStr = getLocalDateString(now);
       else if (dateFilter === "yesterday") {
         const yesterday = new Date(now);
         yesterday.setDate(now.getDate() - 1);
-        targetDateStr = yesterday.toISOString().split('T')[0];
+        targetDateStr = getLocalDateString(yesterday);
       } else if (dateFilter === "custom" && customDate) {
         targetDateStr = customDate;
       } else {
-        targetDateStr = now.toISOString().split('T')[0];
+        targetDateStr = getLocalDateString(now);
       }
     }
 
@@ -204,24 +214,26 @@ export default function ReportsPage() {
     text += `💳 *Tarjeta:* $${Math.round(stats.card).toLocaleString('es-CL')}\n`;
     text += `📦 *Valor inventario:* $${Math.round(stats.inventoryValue).toLocaleString('es-CL')}\n\n`;
 
-    // Buscar información de pan para el resumen
+    // Buscar información de pan para el resumen usando la fecha local
     let targetDateStr = "";
     const today = new Date();
-    if (dateFilter === "today") targetDateStr = today.toISOString().split('T')[0];
+    if (dateFilter === "today") targetDateStr = getLocalDateString(today);
     else if (dateFilter === "yesterday") {
       const yest = new Date(today);
       yest.setDate(today.getDate() - 1);
-      targetDateStr = yest.toISOString().split('T')[0];
+      targetDateStr = getLocalDateString(yest);
     } else if (dateFilter === "custom" && customDate) {
       targetDateStr = customDate;
     }
 
-    const breadLog = allBreadLogs?.find(l => l.id === targetDateStr);
-    if (breadLog) {
-      text += `🥖 *Control de Pan:*\n`;
-      text += `- Comprado: ${breadLog.bought} kg\n`;
-      text += `- Quedó: ${breadLog.remaining} kg\n`;
-      text += `- Vendido: ${(breadLog.bought - breadLog.remaining).toFixed(2)} kg\n\n`;
+    if (targetDateStr) {
+      const breadLog = allBreadLogs?.find(l => l.id === targetDateStr);
+      if (breadLog) {
+        text += `🥖 *Control de Pan (kg):*\n`;
+        text += `- Comprado: ${breadLog.bought} kg\n`;
+        text += `- Quedó: ${breadLog.remaining} kg\n`;
+        text += `- Vendido: ${(breadLog.bought - breadLog.remaining).toFixed(2)} kg\n\n`;
+      }
     }
 
     if (stats.transactions > 0) {
@@ -232,8 +244,7 @@ export default function ReportsPage() {
     }
 
     if (topProducts.length > 0) {
-      text += `🏆 *Top productos:*\n`;
-      // Solo el Top 3 según la solicitud
+      text += `🏆 *Top productos (Top 3):*\n`;
       topProducts.slice(0, 3).forEach((p: any) => {
         text += `- ${p.name}: ${p.quantity} u.\n`;
       });
