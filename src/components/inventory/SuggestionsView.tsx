@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
+import { Separator } from "@/components/ui/separator";
 
 interface Product {
   id: string;
@@ -199,15 +200,12 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
   };
 
   const handleWhatsApp = (itemsToShare?: any[], groupName?: string) => {
-    // Si se pasan items (desde un grupo del acordeón), primero filtramos esos por los seleccionados
-    // Si no se pasan, usamos la lista filtrada global y la filtramos por los seleccionados
     const baseList = itemsToShare || filtered;
     
     let listToShare = baseList;
     if (selectedIds.length > 0) {
       listToShare = baseList.filter(item => selectedIds.includes(item.id));
     } else if (!itemsToShare) {
-      // Si no hay nada seleccionado y es el botón general, avisar
       toast({ 
         title: "Selección vacía", 
         description: "Selecciona al menos un producto para enviar.",
@@ -234,48 +232,53 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
       "border-none shadow-sm hover:shadow-md transition-all overflow-hidden rounded-2xl mb-2",
       selectedIds.includes(p.id) ? "bg-primary/5 ring-1 ring-primary/20" : "bg-white"
     )}>
-      <div className="p-3 flex items-center justify-between gap-2 md:gap-4">
-        <div className="flex items-center gap-3 min-w-0 flex-1">
+      <div className="p-3 flex items-center gap-2 md:gap-4">
+        <div className="shrink-0">
           <Checkbox 
             checked={selectedIds.includes(p.id)} 
             onCheckedChange={() => toggleSelection(p.id)}
             className="w-5 h-5 rounded-lg border-slate-300 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
           />
-          <div className={cn(
-            "w-9 h-9 md:w-10 md:h-10 rounded-xl flex items-center justify-center shrink-0",
-            p.priority === 'Crítico' ? "bg-red-100 text-red-600" : 
-            p.priority === 'Por reponer' ? "bg-amber-100 text-amber-600" : "bg-slate-100 text-slate-400"
-          )}>
-            {p.priority === 'Crítico' ? <AlertCircle className="w-5 h-5 md:w-6 md:h-6" /> : <Package className="w-5 h-5 md:w-6 md:h-6" />}
-          </div>
-          <div className="min-w-0">
-            <h4 className="font-bold text-[10px] md:text-xs uppercase text-slate-800 truncate leading-none">{p.name}</h4>
-            <div className="flex gap-2 mt-1">
-              <span className="text-[8px] font-black text-slate-400 uppercase tracking-tighter bg-slate-50 px-1 rounded">{p.distributor || 'Sin Prov.'}</span>
-            </div>
-          </div>
         </div>
 
-        <div className="flex items-center gap-2 md:gap-6 shrink-0 text-right">
-          <div className="flex flex-col items-end">
-            <p className="text-[7px] font-black text-slate-400 uppercase leading-none mb-1">Stock</p>
-            <div className="flex items-center gap-1">
-              <span className={cn("font-black text-[10px] md:text-xs", p.stock <= 0 ? "text-red-600" : "text-slate-800")}>{p.stock}</span>
-              <span className="text-[8px] text-slate-400">/ {p.warningStock || p.idealStock || 0}</span>
+        <div className={cn(
+          "w-9 h-9 md:w-10 md:h-10 rounded-xl flex items-center justify-center shrink-0",
+          p.priority === 'Crítico' ? "bg-red-100 text-red-600" : 
+          p.priority === 'Por reponer' ? "bg-amber-100 text-amber-600" : "bg-slate-100 text-slate-400"
+        )}>
+          {p.priority === 'Crítico' ? <AlertCircle className="w-5 h-5 md:w-6 md:h-6" /> : <Package className="w-5 h-5 md:w-6 md:h-6" />}
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-1 mb-1">
+            <h4 className="font-bold text-[10px] md:text-xs uppercase text-slate-800 truncate leading-none">{p.name}</h4>
+            <div className="flex items-center gap-2 shrink-0">
+               <Badge className={cn(
+                "text-[7px] md:text-[8px] font-black uppercase rounded-lg px-1.5 py-0.5 border-none h-4 shadow-sm",
+                p.priority === 'Crítico' ? "bg-red-600 text-white" : p.priority === 'Por reponer' ? "bg-amber-600 text-white" : "bg-slate-400 text-white"
+              )}>{p.priority}</Badge>
             </div>
           </div>
           
-          <div className="flex flex-col items-end bg-primary/5 px-2 py-1 rounded-lg border border-primary/10">
-            <p className="text-[7px] font-black text-primary uppercase leading-none mb-1">Pedir</p>
-            <span className="font-black text-xs md:text-sm text-primary">+{p.suggestedQty}</span>
-          </div>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Badge variant="outline" className="text-[8px] font-black text-slate-400 uppercase tracking-tighter bg-slate-50 border-none px-1 h-4">
+              {p.distributor || 'Sin Prov.'}
+            </Badge>
 
-          <div className="flex flex-col items-end min-w-[70px] md:min-w-[90px]">
-            <Badge className={cn(
-              "text-[7px] md:text-[8px] font-black uppercase rounded-lg px-1.5 py-0.5 border-none mb-1",
-              p.priority === 'Crítico' ? "bg-red-600 text-white" : p.priority === 'Por reponer' ? "bg-amber-600 text-white" : "bg-slate-400 text-white"
-            )}>{p.priority}</Badge>
-            <p className="text-[7px] font-bold text-slate-400 italic max-w-[80px] md:max-w-[110px] leading-tight text-right truncate">
+            <Separator orientation="vertical" className="h-3 mx-0.5 hidden sm:block" />
+            
+            <div className="flex items-center gap-1 bg-slate-50 px-1.5 py-0.5 rounded-md border border-slate-100">
+              <span className="text-[7px] font-black text-slate-400 uppercase">Stock:</span>
+              <span className={cn("text-[8px] font-black", p.stock <= 0 ? "text-red-600" : "text-slate-800")}>{p.stock}</span>
+              <span className="text-[7px] text-slate-400">/{p.warningStock || p.idealStock || 0}</span>
+            </div>
+
+            <div className="flex items-center gap-1 bg-primary/10 px-1.5 py-0.5 rounded-md border border-primary/10">
+              <span className="text-[7px] font-black text-primary uppercase">Pedir:</span>
+              <span className="text-[8px] font-black text-primary">+{p.suggestedQty}</span>
+            </div>
+
+            <p className="text-[7px] font-bold text-slate-400 italic leading-tight truncate max-w-[120px] md:max-w-none">
               {p.reason}
             </p>
           </div>
