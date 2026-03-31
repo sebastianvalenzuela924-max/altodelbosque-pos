@@ -6,7 +6,7 @@ import { collection, query, orderBy, doc, serverTimestamp } from "firebase/fires
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { DollarSign, TrendingUp, Calendar, ShoppingBag, Loader2, Trophy, Banknote, CreditCard, Wallet, UtensilsCrossed, Plus, Edit3, Trash2, Check, PackageX, PackageSearch, Clock, ChevronRight, Send, Copy, X, FileText, Share2 } from "lucide-react";
 import { useMemo, useState, useEffect } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -28,7 +28,6 @@ export default function ReportsPage() {
   const [breadRemaining, setBreadRemaining] = useState("");
   const [editingBreadLog, setEditingBreadLog] = useState<any | null>(null);
 
-  // Estados para el Resumen de WhatsApp
   const [isSummaryOpen, setIsSummaryOpen] = useState(false);
   const [summaryText, setSummaryText] = useState("");
   
@@ -447,7 +446,7 @@ export default function ReportsPage() {
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-bold text-slate-700 truncate">{p.name}</p>
                     <div className="w-full h-1 bg-slate-100 rounded-full mt-1.5 overflow-hidden">
-                      <div className="h-full bg-primary" style={{ width: `${(p.quantity / topProducts[0].quantity) * 100}%` }} />
+                      <div className="h-full bg-primary" style={{ width: `${(p.quantity / (topProducts[0]?.quantity || 1)) * 100}%` }} />
                     </div>
                   </div>
                   <div className="text-right shrink-0 min-w-[80px]">
