@@ -4,9 +4,9 @@
 import { useCollection, useFirestore, useMemoFirebase, setDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase";
 import { collection, query, orderBy, doc, serverTimestamp } from "firebase/firestore";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { DollarSign, TrendingUp, Calendar, ShoppingBag, Loader2, Trophy, Banknote, CreditCard, Wallet, UtensilsCrossed, Plus, Edit3, Trash2, Check, PackageX, PackageSearch, Clock, ChevronRight } from "lucide-react";
+import { DollarSign, TrendingUp, Calendar, ShoppingBag, Loader2, Trophy, Banknote, CreditCard, Wallet, UtensilsCrossed, Plus, Edit3, Trash2, Check, PackageX, PackageSearch, Clock, ChevronRight, Send, Copy, X, FileText, Share2 } from "lucide-react";
 import { useMemo, useState, useEffect } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/tabs";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 
 type DateFilter = "today" | "yesterday" | "month" | "all" | "custom";
 
@@ -26,6 +27,10 @@ export default function ReportsPage() {
   const [breadBought, setBreadBought] = useState("");
   const [breadRemaining, setBreadRemaining] = useState("");
   const [editingBreadLog, setEditingBreadLog] = useState<any | null>(null);
+
+  // Estados para el Resumen de WhatsApp
+  const [isSummaryOpen, setIsSummaryOpen] = useState(false);
+  const [summaryText, setSummaryText] = useState("");
   
   const firestore = useFirestore();
   const { toast } = useToast();
@@ -80,8 +85,10 @@ export default function ReportsPage() {
     const cash = filteredSales.filter(s => s.paymentMethod === 'cash').reduce((sum, s) => sum + (s.totalAmount || 0), 0);
     const card = filteredSales.filter(s => s.paymentMethod === 'card').reduce((sum, s) => sum + (s.totalAmount || 0), 0);
     const inventoryValue = allProducts?.reduce((sum, p) => (p.warningStock === 0 || p.idealStock === 0) ? sum : sum + (Math.round(p.price) * (p.stock || 0)), 0) || 0;
+    const transactions = filteredSales.length;
+    const totalUnits = filteredSales.reduce((sum, s) => sum + (s.itemsSummary?.reduce((iSum: number, item: any) => iSum + (item.quantity || 0), 0) || 0), 0);
     
-    return { revenue, cash, card, inventoryValue };
+    return { revenue, cash, card, inventoryValue, transactions, totalUnits };
   }, [filteredSales, allProducts]);
 
   const salesAnalysis = useMemo(() => {
@@ -169,6 +176,51 @@ export default function ReportsPage() {
     setBreadBought(""); setBreadRemaining(""); setEditingBreadLog(null);
   };
 
+  const generateDailySummary = () => {
+    const dateLabel = dateFilter === "today" ? "Hoy" : dateFilter === "yesterday" ? "Ayer" : dateFilter === "month" ? "Este Mes" : customDate || "Periodo Seleccionado";
+    const nowLabel = new Date().toLocaleDateString('es-CL');
+    
+    let text = `📊 *Resumen del día - ${nowLabel}*\n`;
+    text += `📅 Rango: ${dateLabel}\n\n`;
+    
+    text += `💰 *Ingresos totales:* $${Math.round(stats.revenue).toLocaleString('es-CL')}\n`;
+    text += `💵 *Efectivo:* $${Math.round(stats.cash).toLocaleString('es-CL')}\n`;
+    text += `💳 *Tarjeta:* $${Math.round(stats.card).toLocaleString('es-CL')}\n`;
+    text += `📦 *Valor inventario:* $${Math.round(stats.inventoryValue).toLocaleString('es-CL')}\n\n`;
+
+    if (stats.transactions > 0) {
+      text += `🧾 *Transacciones:* ${stats.transactions}\n`;
+    }
+    if (stats.totalUnits > 0) {
+      text += `📚 *Unidades vendidas:* ${stats.totalUnits}\n\n`;
+    }
+
+    if (topProducts.length > 0) {
+      text += `🏆 *Top productos:*\n`;
+      topProducts.slice(0, 5).forEach((p: any) => {
+        text += `- ${p.name}: ${p.quantity} u.\n`;
+      });
+      text += `\n`;
+    } else if (stats.revenue === 0) {
+      text += `⚠️ No se registraron ventas en el período seleccionado.\n\n`;
+    }
+
+    text += `✅ Resumen generado desde la app`;
+
+    setSummaryText(text);
+    setIsSummaryOpen(true);
+  };
+
+  const handleCopySummary = () => {
+    navigator.clipboard.writeText(summaryText);
+    toast({ title: "Copiado al portapapeles", description: "Ya puedes pegarlo en WhatsApp." });
+  };
+
+  const handleSendWhatsApp = () => {
+    const encodedText = encodeURIComponent(summaryText);
+    window.open(`https://wa.me/?text=${encodedText}`, '_blank');
+  };
+
   if (!mounted || isLoadingSales || isLoadingProducts) {
     return (
       <div className="flex flex-col items-center justify-center py-32 opacity-30">
@@ -189,6 +241,13 @@ export default function ReportsPage() {
         </div>
         
         <div className="flex flex-wrap gap-2 w-full md:w-auto">
+          <Button 
+            onClick={generateDailySummary}
+            className="rounded-2xl h-11 px-6 font-black uppercase text-[10px] tracking-widest bg-accent hover:bg-accent/90 shadow-lg shadow-accent/20"
+          >
+            <Share2 className="w-4 h-4 mr-2" /> Generar Resumen
+          </Button>
+
           <Select value={dateFilter} onValueChange={(v: DateFilter) => setDateFilter(v)}>
             <SelectTrigger className="w-full md:w-[160px] rounded-2xl h-11 border-none bg-slate-100 font-bold">
               <Calendar className="w-4 h-4 mr-2 text-primary" />
@@ -401,6 +460,40 @@ export default function ReportsPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* DIÁLOGO DE RESUMEN WHATSAPP */}
+      <Dialog open={isSummaryOpen} onOpenChange={setIsSummaryOpen}>
+        <DialogContent className="rounded-3xl border-none shadow-2xl max-w-[90vw] sm:max-w-md p-6">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl font-black text-primary uppercase">
+              <Share2 className="w-6 h-6" /> Vista Previa Resumen
+            </DialogTitle>
+            <DialogDescription className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+              Este es el mensaje ejecutivo que se compartirá.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="mt-4 bg-slate-50 rounded-2xl p-4 border border-slate-100 whitespace-pre-wrap font-mono text-[10px] md:text-xs leading-relaxed max-h-[40vh] overflow-y-auto">
+            {summaryText}
+          </div>
+
+          <DialogFooter className="grid grid-cols-2 gap-2 mt-6">
+            <Button 
+              variant="outline" 
+              className="rounded-xl h-12 font-bold gap-2 border-slate-200" 
+              onClick={handleCopySummary}
+            >
+              <Copy className="w-4 h-4" /> Copiar
+            </Button>
+            <Button 
+              className="rounded-xl h-12 font-black uppercase text-[10px] tracking-widest bg-green-600 hover:bg-green-700 shadow-lg shadow-green-200 gap-2" 
+              onClick={handleSendWhatsApp}
+            >
+              <Send className="w-4 h-4" /> WhatsApp
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
