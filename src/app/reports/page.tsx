@@ -274,8 +274,8 @@ export default function ReportsPage() {
     setDocumentNonBlocking(docRef, {
       id: targetDateStr,
       date: targetDateStr,
-      bought: parseFloat(breadBought),
-      remaining: parseFloat(breadRemaining),
+      bought: parseFloat(breadBought) || 0,
+      remaining: parseFloat(breadRemaining) || 0,
       clima: breadClima || "Sol",
       quiebre: !!breadQuiebre,
       observation: (breadObservation || "").trim(),
@@ -303,32 +303,37 @@ export default function ReportsPage() {
   };
 
   const generateDailySummary = () => {
-    const dateLabel = dateFilter === "today" ? "Hoy" : dateFilter === "yesterday" ? "Ayer" : dateFilter === "month" ? "Este Mes" : customDate || "Periodo Seleccionado";
-    const nowLabel = new Date().toLocaleDateString('es-CL');
+    const today = new Date();
+    let targetDateStr = "";
+    let dateLabel = "";
+
+    if (dateFilter === "today") {
+      targetDateStr = getLocalDateString(today);
+      dateLabel = today.toLocaleDateString('es-CL');
+    } else if (dateFilter === "yesterday") {
+      const yest = new Date(today);
+      yest.setDate(today.getDate() - 1);
+      targetDateStr = getLocalDateString(yest);
+      dateLabel = yest.toLocaleDateString('es-CL');
+    } else if (dateFilter === "custom" && customDate) {
+      targetDateStr = customDate;
+      const [y, m, d] = customDate.split('-').map(Number);
+      dateLabel = new Date(y, m - 1, d).toLocaleDateString('es-CL');
+    } else {
+      dateLabel = "Mes Seleccionado";
+    }
     
-    let text = `📊 *Resumen del día - ${nowLabel}*\n`;
-    text += `📅 Rango: ${dateLabel}\n\n`;
+    let text = `📊 *Resumen del día - ${dateLabel}*\n\n`;
     
     text += `💰 *Ingresos totales:* $${Math.round(stats.revenue).toLocaleString('es-CL')}\n`;
     text += `💵 *Efectivo:* $${Math.round(stats.cash).toLocaleString('es-CL')}\n`;
     text += `💳 *Tarjeta:* $${Math.round(stats.card).toLocaleString('es-CL')}\n`;
     text += `📦 *Valor inventario:* $${Math.round(stats.inventoryValue).toLocaleString('es-CL')}\n\n`;
 
-    let targetDateStr = "";
-    const today = new Date();
-    if (dateFilter === "today") targetDateStr = getLocalDateString(today);
-    else if (dateFilter === "yesterday") {
-      const yest = new Date(today);
-      yest.setDate(today.getDate() - 1);
-      targetDateStr = getLocalDateString(yest);
-    } else if (dateFilter === "custom" && customDate) {
-      targetDateStr = customDate;
-    }
-
     if (targetDateStr) {
       const breadLog = allBreadLogs?.find(l => l.id === targetDateStr);
       if (breadLog) {
-        text += `🥖 *Control de Pan (kg):*\n`;
+        text += `🥖 *Control de Pan:*\n`;
         text += `- Comprado: ${breadLog.bought} kg\n`;
         text += `- Quedó: ${breadLog.remaining} kg\n`;
         text += `- Vendido: ${(breadLog.bought - breadLog.remaining).toFixed(2)} kg\n\n`;
@@ -578,47 +583,49 @@ export default function ReportsPage() {
                 const ClimaIcon = ClimaIcons[log.clima as ClimaType] || Sun;
                 
                 return (
-                  <Card key={log.id} className="border-none shadow-sm rounded-2xl bg-white p-4 flex items-center justify-between group">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-slate-50 border flex flex-col items-center justify-center text-slate-800">
-                        <span className="text-[7px] font-black uppercase text-slate-400 leading-none">{date.toLocaleDateString('es-CL', { month: 'short' })}</span>
-                        <span className="text-xl font-black leading-none">{date.getDate()}</span>
+                  <Card key={log.id} className="border-none shadow-sm rounded-2xl bg-white p-3 md:p-4 flex items-center justify-between group">
+                    <div className="flex items-center gap-3 md:gap-4 min-w-0">
+                      <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-slate-50 border flex flex-col items-center justify-center text-slate-800 shrink-0">
+                        <span className="text-[6px] md:text-[7px] font-black uppercase text-slate-400 leading-none">{date.toLocaleDateString('es-CL', { month: 'short' })}</span>
+                        <span className="text-lg md:text-xl font-black leading-none">{date.getDate()}</span>
                       </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <p className="text-[10px] font-black text-slate-800 uppercase">{date.toLocaleDateString('es-CL', { weekday: 'long' })}</p>
-                          <ClimaIcon className="w-3.5 h-3.5 text-slate-400" />
-                          {log.quiebre && <Badge className="bg-destructive text-white text-[7px] font-black uppercase py-0 px-1 rounded">Faltó Pan</Badge>}
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-1.5 md:gap-2">
+                          <p className="text-[9px] md:text-[10px] font-black text-slate-800 uppercase truncate">{date.toLocaleDateString('es-CL', { weekday: 'long' })}</p>
+                          <ClimaIcon className="w-3 h-3 text-slate-400" />
+                          {log.quiebre && <Badge className="bg-destructive text-white text-[6px] md:text-[7px] font-black uppercase py-0 px-1 rounded whitespace-nowrap">Pidieron más?</Badge>}
                         </div>
-                        {log.observation && <p className="text-[8px] text-slate-400 italic mt-1 truncate max-w-[150px]">"{log.observation}"</p>}
+                        {log.observation && <p className="text-[8px] text-slate-400 italic mt-0.5 truncate max-w-[120px] md:max-w-[200px]">"{log.observation}"</p>}
                       </div>
                     </div>
-                    <div className="flex items-center gap-6">
+                    
+                    <div className="flex items-center gap-3 md:gap-6 shrink-0">
                       <div className="flex flex-col text-right">
-                        <div className="flex items-center justify-end gap-2">
-                           <span className="text-[8px] font-black text-slate-400 uppercase">Comprado:</span>
-                           <span className="text-sm font-black text-primary">{log.bought} kg</span>
+                        <div className="flex items-center justify-end gap-1 whitespace-nowrap">
+                           <span className="text-[7px] font-bold text-slate-400 uppercase hidden sm:inline">Comprado:</span>
+                           <span className="text-[7px] font-bold text-slate-400 uppercase sm:hidden">C:</span>
+                           <span className="text-[11px] md:text-sm font-black text-primary">{log.bought}kg</span>
                         </div>
-                        <div className="flex items-center justify-end gap-2">
-                           <span className="text-[8px] font-black text-slate-400 uppercase">Quedó:</span>
-                           <span className="text-sm font-black text-destructive">{log.remaining} kg</span>
+                        <div className="flex items-center justify-end gap-1 whitespace-nowrap">
+                           <span className="text-[7px] font-bold text-slate-400 uppercase hidden sm:inline">Quedó:</span>
+                           <span className="text-[7px] font-bold text-slate-400 uppercase sm:hidden">Q:</span>
+                           <span className="text-[11px] md:text-sm font-black text-destructive">{log.remaining}kg</span>
                         </div>
                       </div>
-                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => { 
+                      <div className="flex gap-0.5 md:gap-1">
+                        <Button variant="ghost" size="icon" className="h-7 w-7 md:h-8 md:w-8 rounded-full" onClick={() => { 
                           setEditingBreadLog(log); 
                           setBreadBought(log.bought.toString()); 
                           setBreadRemaining(log.remaining.toString()); 
                           setBreadClima((log.clima as ClimaType) || "Sol");
                           setBreadQuiebre(!!log.quiebre);
                           setBreadObservation(log.observation || "");
-                          // Scroll to form
                           breadFormRef.current?.scrollIntoView({ behavior: 'smooth' });
                         }}>
-                          <Edit3 className="w-3.5 h-3.5" />
+                          <Edit3 className="w-3 h-3 md:w-3.5 md:h-3.5" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-destructive" onClick={() => deleteDocumentNonBlocking(doc(firestore, "breadLogs", log.id))}>
-                          <Trash2 className="w-3.5 h-3.5" />
+                        <Button variant="ghost" size="icon" className="h-7 w-7 md:h-8 md:w-8 rounded-full text-destructive" onClick={() => deleteDocumentNonBlocking(doc(firestore, "breadLogs", log.id))}>
+                          <Trash2 className="w-3 h-3 md:w-3.5 md:h-3.5" />
                         </Button>
                       </div>
                     </div>
