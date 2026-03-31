@@ -284,6 +284,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
                   <SelectItem value="all">Ver Todo</SelectItem>
                   <SelectItem value="Crítico">Crítico</SelectItem>
                   <SelectItem value="Por reponer">Por reponer</SelectItem>
+                  <SelectItem value="OK">Productos OK</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={rotationFilter} onValueChange={setRotationFilter}>
