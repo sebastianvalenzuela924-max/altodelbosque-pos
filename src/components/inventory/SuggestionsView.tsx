@@ -81,35 +81,54 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
         let reason = "";
         let suggestedQty = 0;
 
+        const stock = p.stock || 0;
         const hasWarning = p.warningStock !== undefined && p.warningStock !== null && p.warningStock > 0;
         const hasIdeal = p.idealStock !== undefined && p.idealStock !== null && p.idealStock > 0;
 
-        if (hasWarning) {
-          if (p.stock <= p.warningStock) {
-            priority = rotationScore > 0.5 ? 'Crítico' : 'Comprar Pronto';
-            reason = rotationScore > 0.5 ? "Bajo stock y alta rotación" : "Bajo stock de aviso";
-            suggestedQty = Math.max(5, Math.ceil(rotationScore * 14)); // Sugerir 2 semanas de venta o min 5
+        // REGLA DE ORO: Stock 0 o negativo siempre es Crítico
+        if (stock <= 0) {
+          priority = 'Crítico';
+          reason = "Stock agotado o negativo";
+          suggestedQty = hasIdeal ? p.idealStock! : (hasWarning ? p.warningStock! * 2 : Math.max(5, Math.ceil(rotationScore * 14)));
+        } 
+        // Lógica para productos con STOCK AVISO
+        else if (hasWarning) {
+          if (stock <= p.warningStock!) {
+            priority = 'Crítico';
+            reason = "Stock igual o menor al nivel de aviso";
+            suggestedQty = Math.max(p.warningStock! * 2, Math.ceil(rotationScore * 14));
+          } else if (stock === p.warningStock! + 1 || stock === p.warningStock! + 2) {
+            priority = 'Comprar Pronto';
+            reason = "Cerca del umbral de aviso (+1 o +2)";
+            suggestedQty = Math.ceil(rotationScore * 7);
           } else if (rotationScore > 1.5) {
             priority = 'Vigilar';
             reason = "Alta velocidad de venta";
             suggestedQty = Math.ceil(rotationScore * 7);
           }
-        } else if (hasIdeal) {
-          if (p.stock < p.idealStock) {
-            const gap = p.idealStock - p.stock;
-            priority = (p.stock < p.idealStock * 0.25) ? 'Crítico' : 'Comprar Pronto';
-            reason = p.stock < p.idealStock * 0.25 ? "Stock muy por debajo del ideal" : "Bajo stock ideal";
-            suggestedQty = gap;
+        } 
+        // Lógica para productos con STOCK IDEAL (y sin aviso)
+        else if (hasIdeal) {
+          // Si stock es 0 ya entró en el primer IF. Aquí stock > 0.
+          if (stock < p.idealStock! * 0.25 && rotationScore > 0.2) {
+            priority = 'Crítico';
+            reason = "Stock muy por debajo del ideal con ventas";
+            suggestedQty = p.idealStock! - stock;
+          } else if (stock < p.idealStock! * 0.5) {
+            priority = 'Comprar Pronto';
+            reason = "Bajo nivel respecto al stock ideal";
+            suggestedQty = p.idealStock! - stock;
           } else if (rotationScore > 2) {
             priority = 'Vigilar';
             reason = "Rotación acelerada";
             suggestedQty = Math.ceil(rotationScore * 7);
           }
-        } else {
-          // Sin referencias
-          if (p.stock === 0 && sales.d30 > 0) {
-            priority = 'Crítico';
-            reason = "Sin stock y con ventas recientes";
+        } 
+        // Lógica para productos sin umbrales definidos
+        else {
+          if (sales.d30 > 0 && stock < Math.ceil(rotationScore * 3)) {
+            priority = 'Comprar Pronto';
+            reason = "Riesgo de quiebre por rotación (sin umbrales)";
             suggestedQty = Math.max(5, Math.ceil(rotationScore * 14));
           }
         }
@@ -204,20 +223,22 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
           <div className="hidden sm:flex flex-col items-end">
             <p className="text-[7px] font-black text-slate-400 uppercase leading-none mb-1">Stock Actual</p>
             <div className="flex items-center gap-1">
-              <span className="font-black text-xs">{p.stock}</span>
+              <span className={cn("font-black text-xs", p.stock <= 0 ? "text-red-600" : "text-slate-800")}>{p.stock}</span>
               <span className="text-[8px] text-slate-400">/ {p.warningStock || p.idealStock || 0}</span>
             </div>
           </div>
           <div className="flex flex-col items-end bg-primary/5 px-2 py-1 rounded-lg border border-primary/10">
-            <p className="text-[7px] font-black text-primary uppercase leading-none mb-1">Sugerido</p>
+            <p className="text-[7px] font-black text-primary uppercase leading-none mb-1">Pedir</p>
             <span className="font-black text-sm text-primary">+{p.suggestedQty}</span>
           </div>
           <div className="flex flex-col items-end">
             <Badge className={cn(
               "text-[8px] font-black uppercase rounded-lg px-1.5 py-0.5 border-none mb-1",
-              p.priority === 'Crítico' ? "bg-red-500" : p.priority === 'Comprar Pronto' ? "bg-amber-500" : "bg-blue-500"
+              p.priority === 'Crítico' ? "bg-red-600" : p.priority === 'Comprar Pronto' ? "bg-amber-600" : "bg-blue-600"
             )}>{p.priority}</Badge>
-            <p className="text-[8px] font-bold text-slate-400 italic max-w-[100px] leading-tight truncate">{p.reason}</p>
+            <p className="text-[8px] font-bold text-slate-400 italic max-w-[120px] leading-tight text-right">
+              {p.reason}
+            </p>
           </div>
         </div>
       </div>
@@ -227,19 +248,19 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
   return (
     <div className="space-y-6">
       <section className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <Card className="border-none shadow-sm bg-red-500 text-white rounded-2xl">
+        <Card className="border-none shadow-sm bg-red-600 text-white rounded-2xl">
           <CardHeader className="p-4 pb-1">
             <CardDescription className="text-white/70 font-black text-[9px] uppercase tracking-widest">Críticos</CardDescription>
             <CardTitle className="text-2xl font-black">{summary.critical}</CardTitle>
           </CardHeader>
         </Card>
-        <Card className="border-none shadow-sm bg-amber-500 text-white rounded-2xl">
+        <Card className="border-none shadow-sm bg-amber-600 text-white rounded-2xl">
           <CardHeader className="p-4 pb-1">
             <CardDescription className="text-white/70 font-black text-[9px] uppercase tracking-widest">Comprar Pronto</CardDescription>
             <CardTitle className="text-2xl font-black">{summary.buySoon}</CardTitle>
           </CardHeader>
         </Card>
-        <Card className="border-none shadow-sm bg-blue-500 text-white rounded-2xl">
+        <Card className="border-none shadow-sm bg-blue-600 text-white rounded-2xl">
           <CardHeader className="p-4 pb-1">
             <CardDescription className="text-white/70 font-black text-[9px] uppercase tracking-widest">Vigilar</CardDescription>
             <CardTitle className="text-2xl font-black">{summary.watch}</CardTitle>
