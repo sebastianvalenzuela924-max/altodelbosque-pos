@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Package, Send, Sparkles, Truck, Loader2, Box, ChevronRight, ListFilter, LayoutGrid } from "lucide-react";
+import { Package, Send, Sparkles, Truck, Loader2, Box, ChevronRight, ListFilter, LayoutGrid, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -263,7 +263,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
               variant={viewMode === 'category' ? 'default' : 'ghost'} 
               className="h-8 rounded-lg text-[9px] font-black uppercase"
               onClick={() => setViewMode('category')}
-            ><ListFilter className="w-3 h-3 mr-1" /> Rubro</Button>
+            ><ListFilter className="w-3 h-3 mr-1" /> Categoría</Button>
             <Button 
               variant={viewMode === 'distributor' ? 'default' : 'ghost'} 
               className="h-8 rounded-lg text-[9px] font-black uppercase"
@@ -272,7 +272,10 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
           </div>
 
           <div className="space-y-3">
-            <Input className="h-11 bg-white rounded-xl font-bold border-none shadow-sm" placeholder="Buscar producto..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+            <div className="relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Input className="pl-11 h-11 bg-white rounded-xl font-bold border-none shadow-sm" placeholder="Buscar producto..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+            </div>
             <div className="flex flex-wrap gap-2">
               <Select value={priorityFilter} onValueChange={setPriorityFilter}>
                 <SelectTrigger className="w-fit bg-white border-none h-8 font-black text-[9px] rounded-lg shadow-sm uppercase px-3"><SelectValue /></SelectTrigger>
