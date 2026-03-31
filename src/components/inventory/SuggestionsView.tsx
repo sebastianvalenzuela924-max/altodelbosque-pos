@@ -49,7 +49,6 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
   const [viewMode, setViewMode] = useState<ViewMode>("general");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
-  // Consulta de ventas de los últimos 30 días para calcular rotación
   const salesQuery = useMemoFirebase(() => {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -98,7 +97,6 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
         const hasIdeal = p.idealStock !== undefined && p.idealStock !== null && p.idealStock > 0;
         const hasWarning = p.warningStock !== undefined && p.warningStock !== null && p.warningStock > 0;
 
-        // LÓGICA DE RECOMENDACIÓN INTELIGENTE (Versión Simplificada)
         if (stock <= 0 || (hasWarning && stock <= p.warningStock!)) {
           priority = 'Crítico';
           
@@ -110,7 +108,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
               suggestedQty = Math.ceil(dailyAvg * 14);
               reason = "Urgente: Alta Demanda";
             } else if (rotation === 'Media') {
-              suggestedQty = Math.ceil(dailyAvg * 7) + 2;
+              suggestedQty = 4;
               reason = "Reponer: Venta Normal";
             } else if (rotation === 'Baja') {
               suggestedQty = 2;
@@ -125,14 +123,14 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
           
           if (hasIdeal) {
             suggestedQty = Math.ceil((p.idealStock! - stock) * 0.5);
-            reason = "Prevenir: Meta Ideal";
+            reason = "Prevenir Agotamiento";
           } else {
             if (rotation === 'Alta') {
               suggestedQty = Math.ceil(dailyAvg * 7);
-              reason = "Prevenir: Alta Venta";
+              reason = "Urgente: Alta Demanda";
             } else if (rotation === 'Media') {
               suggestedQty = 3;
-              reason = "Prevenir: Venta Media";
+              reason = "Reponer: Venta Normal";
             } else {
               suggestedQty = 0;
               reason = "Stock OK";
@@ -477,7 +475,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
               </Select>
             </div>
           </div>
-        </Header>
+        </CardHeader>
         <CardContent className="p-4 bg-slate-50/30">
           <ScrollArea className="h-[500px] w-full">
             {isLoadingSales ? (
@@ -538,3 +536,4 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
     </div>
   );
 }
+
