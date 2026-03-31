@@ -41,7 +41,6 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
   const [distributorFilter, setDistributorFilter] = useState<string>("all");
   const [viewMode, setViewMode] = useState<ViewMode>("general");
 
-  // Obtener ventas recientes para calcular rotación
   const salesQuery = useMemoFirebase(() => {
     return query(collection(firestore, "sales"), orderBy("saleDateTime", "desc"), limit(500));
   }, [firestore]);
@@ -84,7 +83,6 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
         const hasWarning = p.warningStock !== undefined && p.warningStock !== null && p.warningStock > 0;
         const hasIdeal = p.idealStock !== undefined && p.idealStock !== null && p.idealStock > 0;
 
-        // 1. LÓGICA PARA CRÍTICO
         if (stock <= 0) {
           priority = 'Crítico';
           reason = "Sin stock o negativo";
@@ -95,7 +93,6 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
           suggestedQty = Math.max(p.warningStock! * 2, Math.ceil(rotationScore * 14));
         }
 
-        // 2. LÓGICA PARA POR REPONER (si no es crítico)
         if (priority === 'Ignore' && stock > 0) {
            if (hasWarning) {
               if (stock <= p.warningStock! + 2) {
@@ -107,12 +104,11 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
               if (stock < p.idealStock! * 0.6) {
                  priority = 'Por reponer';
                  reason = "Bajo nivel respecto al ideal";
-                 suggestedQty = p.idealStock! - stock;
+                 suggestedQty = Math.max(0, p.idealStock! - stock);
               }
            }
         }
 
-        // 3. LÓGICA PARA SIN ROTACIÓN
         if (priority === 'Ignore' && sales.d30 === 0 && (hasWarning || hasIdeal)) {
           priority = 'Sin rotación';
           reason = "Sin ventas en 30 días";
@@ -152,17 +148,15 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
     };
   }, [analysis]);
 
-  const generateSummaryText = () => {
-    if (filtered.length === 0) return "No hay sugerencias con los filtros actuales.";
+  const generateSummaryText = (itemsToShare: any[], groupName?: string) => {
+    if (itemsToShare.length === 0) return "";
 
-    let header = "*RESUMEN DE COMPRA SUGERIDA*\n";
-    if (categoryFilter !== 'all') header += `Categoría: ${categoryFilter}\n`;
-    if (distributorFilter !== 'all') header += `Proveedor: ${distributorFilter}\n`;
-    if (priorityFilter !== 'all') header += `Prioridad: ${priorityFilter}\n`;
-    header += "\n";
+    let header = `*RESUMEN DE COMPRA SUGERIDA*\n`;
+    if (groupName) header += `*${groupName}*\n`;
+    header += `----------------------------\n`;
 
     const grouped: Record<string, any[]> = {};
-    filtered.forEach(p => {
+    itemsToShare.forEach(p => {
       const dist = p.distributor || "General";
       if (!grouped[dist]) grouped[dist] = [];
       grouped[dist].push(p);
@@ -170,10 +164,10 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
 
     let text = header;
     Object.entries(grouped).forEach(([dist, items]) => {
-      text += `*📦 Distribuidor: ${dist}*\n`;
+      if (!groupName) text += `*📦 Distribuidor: ${dist}*\n`;
       items.forEach(i => {
         if (i.priority !== 'Sin rotación') {
-          text += `- ${i.suggestedQty}u. x ${i.name}\n`;
+          text += `- ${i.suggestedQty}u. x ${i.name} (St: ${i.stock})\n`;
         } else {
           text += `- (REVISAR) ${i.name} [Sin rotación]\n`;
         }
@@ -181,12 +175,14 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
       text += "\n";
     });
     
-    text += `Total productos filtrados: ${filtered.length}`;
+    text += `Total productos: ${itemsToShare.length}`;
     return text;
   };
 
-  const handleWhatsApp = () => {
-    const text = encodeURIComponent(generateSummaryText());
+  const handleWhatsApp = (itemsToShare?: any[], groupName?: string) => {
+    const list = itemsToShare || filtered;
+    const text = encodeURIComponent(generateSummaryText(list, groupName));
+    if (!text) return;
     window.open(`https://wa.me/?text=${text}`, '_blank');
   };
 
@@ -283,8 +279,8 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
                 <ListFilter className="w-4 h-4" /> 
                 {viewMode === 'general' ? 'Vista Lista' : viewMode === 'distributor' ? 'Por Distribuidor' : 'Por Categoría'}
               </Button>
-              <Button className="flex-1 md:flex-none bg-green-600 hover:bg-green-700 h-10 rounded-xl font-black gap-2 text-[10px] md:text-xs text-white" onClick={handleWhatsApp}>
-                <Send className="w-4 h-4" /> Enviar WhatsApp
+              <Button className="flex-1 md:flex-none bg-green-600 hover:bg-green-700 h-10 rounded-xl font-black gap-2 text-[10px] md:text-xs text-white" onClick={() => handleWhatsApp()}>
+                <Send className="w-4 h-4" /> Enviar Todo
               </Button>
             </div>
           </div>
@@ -337,26 +333,42 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
               </div>
             ) : (
               <Accordion type="multiple" className="space-y-2">
-                {activeGroups.map(group => (
-                  <AccordionItem key={group} value={group} className="border-none">
-                    <Card className="rounded-2xl border-none shadow-sm bg-white overflow-hidden">
-                      <AccordionTrigger className="px-4 py-3 hover:no-underline font-black text-[10px] uppercase text-slate-600 bg-slate-100/50">
-                        <div className="flex items-center gap-2">
-                          {viewMode === 'distributor' ? <Truck className="w-4 h-4 text-primary" /> : <ListFilter className="w-4 h-4 text-primary" />}
-                          <span>{group}</span>
-                          <Badge variant="outline" className="ml-2 bg-white text-[8px] border-slate-200">
-                            {filtered.filter(p => (viewMode === 'distributor' ? (p.distributor || "General") : (p.category || "General")) === group).length}
-                          </Badge>
+                {activeGroups.map(group => {
+                   const groupItems = filtered.filter(p => (viewMode === 'distributor' ? (p.distributor || "General") : (p.category || "General")) === group);
+                   return (
+                    <AccordionItem key={group} value={group} className="border-none">
+                      <Card className="rounded-2xl border-none shadow-sm bg-white overflow-hidden">
+                        <div className="flex items-center justify-between bg-slate-100/50 pr-4">
+                          <AccordionTrigger className="px-4 py-3 hover:no-underline font-black text-[10px] uppercase text-slate-600 flex-1 justify-start">
+                            <div className="flex items-center gap-2">
+                              {viewMode === 'distributor' ? <Truck className="w-4 h-4 text-primary" /> : <ListFilter className="w-4 h-4 text-primary" />}
+                              <span>{group}</span>
+                              <Badge variant="outline" className="ml-2 bg-white text-[8px] border-slate-200">
+                                {groupItems.length}
+                              </Badge>
+                            </div>
+                          </AccordionTrigger>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8 text-green-600 hover:bg-green-50 rounded-full"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleWhatsApp(groupItems, group);
+                            }}
+                          >
+                            <Send className="w-4 h-4" />
+                          </Button>
                         </div>
-                      </AccordionTrigger>
-                      <AccordionContent className="p-2 pb-0">
-                        <div className="space-y-1">
-                          {filtered.filter(p => (viewMode === 'distributor' ? (p.distributor || "General") : (p.category || "General")) === group).map(renderProductItem)}
-                        </div>
-                      </AccordionContent>
-                    </Card>
-                  </AccordionItem>
-                ))}
+                        <AccordionContent className="p-2 pb-0">
+                          <div className="space-y-1">
+                            {groupItems.map(renderProductItem)}
+                          </div>
+                        </AccordionContent>
+                      </Card>
+                    </AccordionItem>
+                   );
+                })}
               </Accordion>
             )}
           </ScrollArea>
