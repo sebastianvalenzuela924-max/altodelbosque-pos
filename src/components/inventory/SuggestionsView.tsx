@@ -14,7 +14,6 @@ import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 
 interface Product {
@@ -146,7 +145,10 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
       const q = searchTerm.toLowerCase().trim();
       const matchesSearch = q === "" || p.name.toLowerCase().includes(q) || String(p.id).includes(q);
       const matchesCategory = categoryFilter === 'all' || (p.category || "General") === categoryFilter;
-      const matchesDistributor = distributorFilter === 'all' || (p.distributor || "General") === distributorFilter;
+      
+      const pDist = p.distributor?.trim() || "Sin Prov. (General)";
+      const matchesDistributor = distributorFilter === 'all' || pDist === distributorFilter;
+      
       return matchesSearch && matchesCategory && matchesDistributor;
     });
   }, [analysis, categoryFilter, distributorFilter, searchTerm]);
@@ -156,7 +158,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
       critical: analysis.filter(p => p.priority === 'Crítico').length,
       restock: analysis.filter(p => p.priority === 'Por reponer').length,
       noRotation: analysis.filter(p => p.priority === 'Sin rotación').length,
-      distributors: new Set(analysis.filter(p => p.priority !== 'Sin rotación').map(p => p.distributor || "General")).size
+      distributors: new Set(analysis.map(p => p.distributor?.trim() || "Sin Prov. (General)")).size
     };
   }, [analysis]);
 
@@ -184,7 +186,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
 
     const grouped: Record<string, any[]> = {};
     itemsToShare.forEach(p => {
-      const dist = p.distributor || "General";
+      const dist = p.distributor?.trim() || "Sin Prov. (General)";
       if (!grouped[dist]) grouped[dist] = [];
       grouped[dist].push(p);
     });
@@ -207,11 +209,10 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
   };
 
   const handleWhatsApp = (itemsToShare?: any[], groupName?: string) => {
-    const baseList = itemsToShare || filtered;
+    let listToShare = itemsToShare || filtered;
     
-    let listToShare = baseList;
     if (selectedIds.length > 0 && !itemsToShare) {
-      listToShare = baseList.filter(item => selectedIds.includes(item.id));
+      listToShare = filtered.filter(item => selectedIds.includes(item.id));
     } else if (!itemsToShare && selectedIds.length === 0) {
       toast({ 
         title: "Selección vacía", 
@@ -267,7 +268,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
           
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="text-[8px] font-black text-slate-400 uppercase truncate max-w-[80px]">
-              {p.distributor || 'General'}
+              {p.distributor?.trim() || 'Sin Prov. (General)'}
             </span>
 
             <div className="flex items-center gap-1 bg-slate-50 px-1.5 py-0.5 rounded-md border border-slate-100">
@@ -287,15 +288,18 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
   );
 
   const activeGroups = useMemo(() => {
-    // Obtenemos los grupos únicos directamente de los productos filtrados para asegurar que 'General' aparezca si hay productos sin distribuidor
     const currentGroups = new Set(filtered.map(p => {
-      if (viewMode === 'distributor') return p.distributor || "General";
+      if (viewMode === 'distributor') return p.distributor?.trim() || "Sin Prov. (General)";
       if (viewMode === 'category') return p.category || "General";
       return "";
     }));
-    
     return Array.from(currentGroups).filter(g => g !== "").sort();
   }, [filtered, viewMode]);
+
+  const allDistributorsList = useMemo(() => {
+    const dists = new Set(analysis.map(p => p.distributor?.trim() || "Sin Prov. (General)"));
+    return Array.from(dists).sort();
+  }, [analysis]);
 
   return (
     <div className="space-y-6">
@@ -410,7 +414,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
                 </SelectTrigger>
                 <SelectContent className="rounded-xl">
                   <SelectItem value="all">Proveedores</SelectItem>
-                  {distributors.map(dist => <SelectItem key={dist} value={dist}>{dist}</SelectItem>)}
+                  {allDistributorsList.map(dist => <SelectItem key={dist} value={dist}>{dist}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -432,7 +436,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
               <Accordion type="multiple" className="space-y-2">
                 {activeGroups.map(group => {
                    const groupItems = filtered.filter(p => {
-                      const pGroup = viewMode === 'distributor' ? (p.distributor || "General") : (p.category || "General");
+                      const pGroup = viewMode === 'distributor' ? (p.distributor?.trim() || "Sin Prov. (General)") : (p.category || "General");
                       return pGroup === group;
                    });
                    const selectedInGroup = groupItems.filter(p => selectedIds.includes(p.id));
