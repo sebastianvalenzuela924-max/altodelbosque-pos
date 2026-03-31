@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { AlertCircle, ArrowRight, CheckCircle2, Filter, Info, Package, Send, Sparkles, TrendingUp, Truck, ListFilter, Clock, ShoppingCart, ChevronRight, CheckSquare, Square, Trash2 } from "lucide-react";
+import { AlertCircle, Package, Send, Sparkles, Truck, ListFilter, Trash2, CheckSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -81,7 +81,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
         const rotationScore = (sales.d7 / 7 * 0.5) + (sales.d14 / 14 * 0.3) + (sales.d30 / 30 * 0.2);
         
         let priority: Priority | 'Ignore' = 'Ignore';
-        let reason = "";
+        let refType: 'Aviso' | 'Ideal' | '' = '';
         let suggestedQty = 0;
 
         const stock = p.stock || 0;
@@ -90,11 +90,11 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
 
         if (stock <= 0) {
           priority = 'Crítico';
-          reason = "Sin stock o negativo";
+          refType = hasWarning ? 'Aviso' : (hasIdeal ? 'Ideal' : '');
           suggestedQty = hasIdeal ? p.idealStock! : (hasWarning ? p.warningStock! * 2 : 5);
         } else if (hasWarning && stock <= p.warningStock!) {
           priority = 'Crítico';
-          reason = "Bajo nivel de aviso";
+          refType = 'Aviso';
           suggestedQty = Math.max(p.warningStock! * 2, Math.ceil(rotationScore * 14));
         }
 
@@ -102,13 +102,13 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
            if (hasWarning) {
               if (stock <= p.warningStock! + 2) {
                  priority = 'Por reponer';
-                 reason = `Cerca del umbral de aviso (+${stock - p.warningStock!})`;
+                 refType = 'Aviso';
                  suggestedQty = Math.max(5, Math.ceil(rotationScore * 10));
               }
            } else if (hasIdeal) {
               if (stock < p.idealStock! * 0.6) {
                  priority = 'Por reponer';
-                 reason = "Bajo nivel respecto al ideal";
+                 refType = 'Ideal';
                  suggestedQty = Math.max(0, p.idealStock! - stock);
               }
            }
@@ -116,13 +116,13 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
 
         if (priority === 'Ignore' && sales.d30 === 0 && (hasWarning || hasIdeal)) {
           priority = 'Sin rotación';
-          reason = "Sin ventas en 30 días";
+          refType = hasWarning ? 'Aviso' : 'Ideal';
         }
 
         return {
           ...p,
           priority,
-          reason,
+          refType,
           suggestedQty: Math.max(0, suggestedQty),
           rotationScore,
           salesRecent: sales.d7
@@ -271,16 +271,15 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
               <span className="text-[7px] font-black text-slate-400 uppercase">Stock:</span>
               <span className={cn("text-[8px] font-black", p.stock <= 0 ? "text-red-600" : "text-slate-800")}>{p.stock}</span>
               <span className="text-[7px] text-slate-400">/{p.warningStock || p.idealStock || 0}</span>
+              {p.refType && (
+                <span className="text-[6px] font-black text-primary/60 uppercase ml-1 px-1 bg-primary/5 rounded">Ref: {p.refType}</span>
+              )}
             </div>
 
             <div className="flex items-center gap-1 bg-primary/10 px-1.5 py-0.5 rounded-md border border-primary/10">
               <span className="text-[7px] font-black text-primary uppercase">Pedir:</span>
               <span className="text-[8px] font-black text-primary">+{p.suggestedQty}</span>
             </div>
-
-            <p className="text-[7px] font-bold text-slate-400 italic leading-tight truncate max-w-[120px] md:max-w-none">
-              {p.reason}
-            </p>
           </div>
         </div>
       </div>
@@ -395,7 +394,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
           <ScrollArea className="h-[500px] w-full pr-4">
             {filtered.length === 0 ? (
               <div className="text-center py-20 bg-white rounded-3xl border-2 border-dashed border-slate-100">
-                <CheckCircle2 className="w-16 h-16 mx-auto mb-4 text-green-100" />
+                <Package className="w-16 h-16 mx-auto mb-4 text-slate-100" />
                 <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest">Nada que reponer</h3>
                 <p className="text-xs text-slate-400">Prueba cambiando los filtros.</p>
               </div>
