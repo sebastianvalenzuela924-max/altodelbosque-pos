@@ -9,12 +9,11 @@ import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Search, FileSpreadsheet, Edit3, Plus, Trash2, Package, Scan, Loader2, MousePointer2, Filter, X, Truck, FileText, Sparkles, ShoppingCart, ArrowUpDown } from "lucide-react";
+import { Search, FileSpreadsheet, Edit3, Plus, Trash2, Package, Scan, Loader2, MousePointer2, Filter, X, Truck, FileText, Sparkles, ShoppingCart, ArrowUpDown, Lock } from "lucide-react";
 import { exportToExcel } from "@/lib/export";
 import { useToast } from "@/hooks/use-toast";
 import { ProductDialog } from "@/components/inventory/ProductDialog";
 import { ScannerComponent } from "@/components/pos/ScannerComponent";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
@@ -24,6 +23,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SuggestionsView } from "@/components/inventory/SuggestionsView";
 
 type SortOption = "name" | "stock-asc" | "stock-desc" | "status-critical" | "price-asc" | "price-desc" | "category-asc" | "category-desc" | "distributor-asc";
+
+const DELETE_PASSWORD = "Miler";
 
 function InventoryContent() {
   const firestore = useFirestore();
@@ -38,6 +39,7 @@ function InventoryContent() {
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   
   const [productToDelete, setProductToDelete] = useState<any | null>(null);
+  const [securityKey, setSecurityKey] = useState("");
   const [quickStockProduct, setQuickStockProduct] = useState<any | null>(null);
   const [quickAddValue, setQuickAddValue] = useState("");
   const [quickInvoiceNumber, setQuickInvoiceNumber] = useState("");
@@ -146,6 +148,19 @@ function InventoryContent() {
       clearTimeout(longPressTimer.current);
       longPressTimer.current = null;
     }
+  };
+
+  const handleDeleteProduct = () => {
+    if (!productToDelete) return;
+    if (securityKey !== DELETE_PASSWORD) {
+      toast({ title: "Clave incorrecta", variant: "destructive" });
+      return;
+    }
+
+    deleteDocumentNonBlocking(doc(firestore, "products", productToDelete.id));
+    toast({ title: "Producto eliminado" });
+    setProductToDelete(null);
+    setSecurityKey("");
   };
 
   return (
@@ -293,7 +308,7 @@ function InventoryContent() {
                             )}>{status === "peligro" ? "Peligro" : status === "precaución" ? "Bajo" : "OK"}</Badge>
                           </TableCell>
                           <TableCell className="px-4 py-2 text-right">
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 rounded-full" onClick={(e) => { e.stopPropagation(); setProductToDelete(p); }}>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 rounded-full" onClick={(e) => { e.stopPropagation(); setProductToDelete(p); setSecurityKey(""); }}>
                               <Trash2 className="w-4 h-4" />
                             </Button>
                           </TableCell>
@@ -382,18 +397,42 @@ function InventoryContent() {
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={!!productToDelete} onOpenChange={(open) => !open && setProductToDelete(null)}>
-        <AlertDialogContent className="rounded-3xl border-none shadow-2xl">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="font-black text-destructive uppercase">¿Eliminar producto?</AlertDialogTitle>
-            <AlertDialogDescription className="text-sm font-bold">Esta acción borrará permanentemente el producto y todos sus registros. No se puede deshacer.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="gap-2">
-            <AlertDialogCancel className="rounded-xl font-bold">Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { deleteDocumentNonBlocking(doc(firestore, "products", productToDelete.id)); setProductToDelete(null); }} className="rounded-xl bg-destructive font-black">ELIMINAR DEFINITIVAMENTE</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* BORRADO DE PRODUCTO CON CLAVE */}
+      <Dialog open={!!productToDelete} onOpenChange={(open) => !open && setProductToDelete(null)}>
+        <DialogContent className="rounded-3xl p-6 border-none shadow-2xl max-w-[90vw] sm:max-w-md">
+          <DialogHeader className="text-center">
+            <div className="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center mx-auto mb-4">
+               <Lock className="w-6 h-6 text-destructive" />
+            </div>
+            <DialogTitle className="text-xl font-black text-destructive uppercase">Confirmar Eliminación</DialogTitle>
+            <DialogDescription className="text-slate-500 text-xs font-bold py-2">
+              Esta acción borrará permanentemente <span className="font-black">"{productToDelete?.name}"</span>. Ingresa la clave para continuar.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4 space-y-4">
+             <Input 
+                type="password"
+                placeholder="Clave"
+                className="h-12 rounded-xl text-center font-black text-lg border-2 border-destructive/20 focus-visible:ring-destructive"
+                value={securityKey}
+                onChange={(e) => setSecurityKey(e.target.value)}
+              />
+          </div>
+
+          <DialogFooter className="grid grid-cols-2 gap-2 mt-4">
+            <Button variant="ghost" className="rounded-xl h-12 font-bold" onClick={() => { setProductToDelete(null); setSecurityKey(""); }}>Cancelar</Button>
+            <Button 
+              variant="destructive" 
+              className="rounded-xl h-12 font-black uppercase"
+              disabled={securityKey !== DELETE_PASSWORD}
+              onClick={handleDeleteProduct}
+            >
+              ELIMINAR
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
