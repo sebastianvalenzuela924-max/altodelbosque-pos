@@ -103,12 +103,12 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "BreadLog",
       "type": "object",
-      "description": "Daily record of bread purchases and remaining stock to control sales/waste.",
+      "description": "Daily record of bread purchases and remaining stock (measured in kg) to control sales/waste.",
       "properties": {
         "id": { "type": "string" },
         "date": { "type": "string", "format": "date-time" },
-        "bought": { "type": "number", "description": "Amount of bread bought today." },
-        "remaining": { "type": "number", "description": "Amount of bread left today." },
+        "bought": { "type": "number", "description": "Amount of bread bought today in kg." },
+        "remaining": { "type": "number", "description": "Amount of bread left today in kg." },
         "timestamp": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "date", "bought", "remaining"]
@@ -166,7 +166,7 @@
         "path": "/breadLogs/{logId}",
         "definition": {
           "entityName": "BreadLog",
-          "description": "Daily bread control logs."
+          "description": "Daily bread control logs (in kg)."
         }
       },
       {

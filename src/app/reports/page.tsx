@@ -166,8 +166,8 @@ export default function ReportsPage() {
     setDocumentNonBlocking(docRef, {
       id: todayStr,
       date: todayStr,
-      bought: parseInt(breadBought),
-      remaining: parseInt(breadRemaining),
+      bought: parseFloat(breadBought),
+      remaining: parseFloat(breadRemaining),
       timestamp: serverTimestamp()
     }, { merge: true });
     
@@ -202,9 +202,9 @@ export default function ReportsPage() {
     const breadLog = allBreadLogs?.find(l => l.id === targetDateStr);
     if (breadLog) {
       text += `🥖 *Control de Pan:*\n`;
-      text += `- Comprado: ${breadLog.bought} u.\n`;
-      text += `- Quedó: ${breadLog.remaining} u.\n`;
-      text += `- Vendido: ${breadLog.bought - breadLog.remaining} u.\n\n`;
+      text += `- Comprado: ${breadLog.bought} kg\n`;
+      text += `- Quedó: ${breadLog.remaining} kg\n`;
+      text += `- Vendido: ${breadLog.bought - breadLog.remaining} kg\n\n`;
     }
 
     if (stats.transactions > 0) {
@@ -400,12 +400,12 @@ export default function ReportsPage() {
           <Card className="border-none shadow-sm rounded-3xl bg-white p-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
               <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase text-slate-400">¿Cuánto Pan Compré?</Label>
-                <Input type="number" className="h-12 rounded-2xl bg-slate-50 border-none font-black text-lg text-center" placeholder="0" value={breadBought} onChange={(e) => setBreadBought(e.target.value)} />
+                <Label className="text-[10px] font-black uppercase text-slate-400">¿Cuántos kg de Pan Compré?</Label>
+                <Input type="number" step="0.01" className="h-12 rounded-2xl bg-slate-50 border-none font-black text-lg text-center" placeholder="0.00" value={breadBought} onChange={(e) => setBreadBought(e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase text-slate-400">¿Cuánto Pan Quedó?</Label>
-                <Input type="number" className="h-12 rounded-2xl bg-slate-50 border-none font-black text-lg text-center" placeholder="0" value={breadRemaining} onChange={(e) => setBreadRemaining(e.target.value)} />
+                <Label className="text-[10px] font-black uppercase text-slate-400">¿Cuántos kg de Pan Quedaron?</Label>
+                <Input type="number" step="0.01" className="h-12 rounded-2xl bg-slate-50 border-none font-black text-lg text-center" placeholder="0.00" value={breadRemaining} onChange={(e) => setBreadRemaining(e.target.value)} />
               </div>
               <Button className="h-12 rounded-2xl bg-amber-600 hover:bg-amber-700 font-black uppercase tracking-widest text-xs" onClick={handleSaveBreadLog}>
                 {editingBreadLog ? 'Guardar Cambios' : 'Registrar Hoy'}
@@ -415,11 +415,11 @@ export default function ReportsPage() {
 
           <div className="space-y-2">
             <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 flex items-center gap-2">
-              <Clock className="w-3 h-3" /> Historial Reciente
+              <Clock className="w-3 h-3" /> Historial Reciente (kg)
             </h3>
             {allBreadLogs?.map((log) => {
               const date = new Date(log.date + 'T12:00:00');
-              const sold = log.bought - log.remaining;
+              const sold = (log.bought || 0) - (log.remaining || 0);
               return (
                 <Card key={log.id} className="border-none shadow-sm rounded-2xl bg-white p-4 flex items-center justify-between group">
                   <div className="flex items-center gap-4">
@@ -429,16 +429,16 @@ export default function ReportsPage() {
                     </div>
                     <div>
                       <p className="text-[10px] font-black text-slate-800 uppercase">{date.toLocaleDateString('es-CL', { weekday: 'long' })}</p>
-                      <p className="text-[8px] font-bold text-slate-400">Cerca de {log.bought} u. compradas</p>
+                      <p className="text-[8px] font-bold text-slate-400">{log.bought} kg comprados</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-6">
                     <div className="text-right">
                       <p className="text-[8px] font-black text-slate-400 uppercase">Consumo/Venta</p>
-                      <p className="text-xl font-black text-amber-600">{sold} u.</p>
+                      <p className="text-xl font-black text-amber-600">{sold.toFixed(2)} kg</p>
                     </div>
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => { setEditingBreadLog(log); setBreadBought(log.bought); setBreadRemaining(log.remaining); }}>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => { setEditingBreadLog(log); setBreadBought(log.bought.toString()); setBreadRemaining(log.remaining.toString()); }}>
                         <Edit3 className="w-3.5 h-3.5" />
                       </Button>
                       <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-destructive" onClick={() => deleteDocumentNonBlocking(doc(firestore, "breadLogs", log.id))}>
@@ -480,7 +480,7 @@ export default function ReportsPage() {
         </TabsContent>
       </Tabs>
 
-      {/* DIÁLOGO DE RESUMEN WHATSAPP */}
+      {/* DIÁLOGOS DE RESUMEN WHATSAPP */}
       <Dialog open={isSummaryOpen} onOpenChange={setIsSummaryOpen}>
         <DialogContent className="rounded-3xl border-none shadow-2xl max-w-[90vw] sm:max-w-md p-6">
           <DialogHeader>
