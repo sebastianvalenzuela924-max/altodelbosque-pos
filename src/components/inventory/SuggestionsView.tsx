@@ -90,7 +90,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
         const hasWarning = p.warningStock !== undefined && p.warningStock !== null && p.warningStock > 0;
         const hasIdeal = p.idealStock !== undefined && p.idealStock !== null && p.idealStock > 0;
 
-        // PRIORIDAD CRÍTICA
+        // CRÍTICO
         if (stock <= 0) {
           priority = 'Crítico';
           refType = hasWarning ? 'Aviso' : (hasIdeal ? 'Ideal' : '');
@@ -101,7 +101,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
           suggestedQty = Math.max(p.warningStock! * 2, Math.ceil(rotationScore * 14));
         }
 
-        // PRIORIDAD POR REPONER (No incluye productos sin stock)
+        // POR REPONER
         if (priority === 'Ignore' && stock > 0) {
            if (hasWarning) {
               if (stock <= p.warningStock! + 2) {
@@ -118,7 +118,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
            }
         }
 
-        // PRIORIDAD SIN ROTACIÓN (Solo si tiene metas definidas)
+        // SIN ROTACIÓN (Solo si tiene metas)
         if (priority === 'Ignore' && sales.d30 === 0 && (hasWarning || hasIdeal)) {
           priority = 'Sin rotación';
           refType = hasWarning ? 'Aviso' : 'Ideal';
@@ -145,8 +145,8 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
     return analysis.filter(p => {
       const q = searchTerm.toLowerCase().trim();
       const matchesSearch = q === "" || p.name.toLowerCase().includes(q) || String(p.id).includes(q);
-      const matchesCategory = categoryFilter === 'all' || p.category === categoryFilter;
-      const matchesDistributor = distributorFilter === 'all' || p.distributor === distributorFilter;
+      const matchesCategory = categoryFilter === 'all' || (p.category || "General") === categoryFilter;
+      const matchesDistributor = distributorFilter === 'all' || (p.distributor || "General") === distributorFilter;
       return matchesSearch && matchesCategory && matchesDistributor;
     });
   }, [analysis, categoryFilter, distributorFilter, searchTerm]);
@@ -156,7 +156,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
       critical: analysis.filter(p => p.priority === 'Crítico').length,
       restock: analysis.filter(p => p.priority === 'Por reponer').length,
       noRotation: analysis.filter(p => p.priority === 'Sin rotación').length,
-      distributors: new Set(analysis.filter(p => p.priority !== 'Sin rotación').map(p => p.distributor)).size
+      distributors: new Set(analysis.filter(p => p.priority !== 'Sin rotación').map(p => p.distributor || "General")).size
     };
   }, [analysis]);
 
@@ -210,7 +210,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
     const baseList = itemsToShare || filtered;
     
     let listToShare = baseList;
-    if (selectedIds.length > 0) {
+    if (selectedIds.length > 0 && !itemsToShare) {
       listToShare = baseList.filter(item => selectedIds.includes(item.id));
     } else if (!itemsToShare && selectedIds.length === 0) {
       toast({ 
@@ -267,7 +267,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
           
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="text-[8px] font-black text-slate-400 uppercase truncate max-w-[80px]">
-              {p.distributor || 'Sin Prov.'}
+              {p.distributor || 'General'}
             </span>
 
             <div className="flex items-center gap-1 bg-slate-50 px-1.5 py-0.5 rounded-md border border-slate-100">
@@ -287,9 +287,15 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
   );
 
   const activeGroups = useMemo(() => {
-    const groups = viewMode === 'distributor' ? distributors : categories;
-    return groups.filter(g => filtered.some(p => (viewMode === 'distributor' ? (p.distributor || "General") : (p.category || "General")) === g));
-  }, [distributors, categories, filtered, viewMode]);
+    // Obtenemos los grupos únicos directamente de los productos filtrados para asegurar que 'General' aparezca si hay productos sin distribuidor
+    const currentGroups = new Set(filtered.map(p => {
+      if (viewMode === 'distributor') return p.distributor || "General";
+      if (viewMode === 'category') return p.category || "General";
+      return "";
+    }));
+    
+    return Array.from(currentGroups).filter(g => g !== "").sort();
+  }, [filtered, viewMode]);
 
   return (
     <div className="space-y-6">
@@ -425,7 +431,10 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
             ) : (
               <Accordion type="multiple" className="space-y-2">
                 {activeGroups.map(group => {
-                   const groupItems = filtered.filter(p => (viewMode === 'distributor' ? (p.distributor || "General") : (p.category || "General")) === group);
+                   const groupItems = filtered.filter(p => {
+                      const pGroup = viewMode === 'distributor' ? (p.distributor || "General") : (p.category || "General");
+                      return pGroup === group;
+                   });
                    const selectedInGroup = groupItems.filter(p => selectedIds.includes(p.id));
                    
                    return (
