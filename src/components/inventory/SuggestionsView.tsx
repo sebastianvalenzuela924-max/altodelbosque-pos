@@ -84,7 +84,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
       .map(p => {
         let priority: Priority = 'OK';
         let suggestedQty = 0;
-        let reason = "Stock en niveles normales";
+        let reason = "Stock normal";
         let rotation: RotationType = 'Ninguna';
 
         const stock = p.stock || 0;
@@ -104,21 +104,21 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
           
           if (hasIdeal) {
             suggestedQty = Math.max(0, p.idealStock! - stock);
-            reason = stock <= 0 ? "Stock en 0, reponer hasta nivel ideal" : "Bajo nivel de aviso, reponer hasta ideal";
+            reason = stock <= 0 ? "Stock en 0 (Meta: Ideal)" : "Bajo nivel de aviso (Meta: Ideal)";
           } else {
             // Lógica basada en rotación si no hay Ideal
             if (rotation === 'Alta') {
               suggestedQty = Math.ceil(dailyAvg * 14); // 2 semanas de stock
-              reason = "Producto de alta rotación, reposición reforzada";
+              reason = "Alta rotación (Reponer)";
             } else if (rotation === 'Media') {
               suggestedQty = Math.ceil(dailyAvg * 7) + 2; // 1 semana + seguridad
-              reason = "Rotación media, reposición para 1 semana";
+              reason = "Rotación media (Reponer)";
             } else if (rotation === 'Baja') {
               suggestedQty = 2;
-              reason = "Producto de baja rotación, reposición mínima";
+              reason = "Baja rotación (Mínimo)";
             } else {
               suggestedQty = 1;
-              reason = "Sin ventas recientes, reposición de seguridad (1u)";
+              reason = "Sin ventas (Mínimo)";
             }
           }
         } else if (hasWarning && stock <= p.warningStock! + (rotation === 'Alta' ? 5 : 2)) {
@@ -126,17 +126,17 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
           
           if (hasIdeal) {
             suggestedQty = Math.ceil((p.idealStock! - stock) * 0.5);
-            reason = "Cerca del nivel de aviso, reposición moderada";
+            reason = "Cerca de aviso (Meta: Ideal)";
           } else {
             if (rotation === 'Alta') {
               suggestedQty = Math.ceil(dailyAvg * 7);
-              reason = "Alta rotación, pedir stock para 1 semana";
+              reason = "Alta rotación (Preventivo)";
             } else if (rotation === 'Media') {
               suggestedQty = 3;
-              reason = "Rotación media, pedido preventivo pequeño";
+              reason = "Rotación media (Preventivo)";
             } else {
               suggestedQty = 0;
-              reason = "Baja rotación, esperar a nivel de aviso";
+              reason = "Baja rotación (Ok)";
             }
           }
         }
