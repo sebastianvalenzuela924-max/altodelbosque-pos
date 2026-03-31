@@ -9,12 +9,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { AlertCircle, Package, Send, Sparkles, Truck, ListFilter, Trash2, CheckSquare } from "lucide-react";
+import { AlertCircle, Package, Send, Sparkles, Truck, ListFilter, Trash2, CheckSquare, Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
 
 interface Product {
   id: string;
@@ -43,6 +44,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [distributorFilter, setDistributorFilter] = useState<string>("all");
+  const [searchTerm, setSearchTerm] = useState("");
   const [viewMode, setViewMode] = useState<ViewMode>("general");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
@@ -88,6 +90,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
         const hasWarning = p.warningStock !== undefined && p.warningStock !== null && p.warningStock > 0;
         const hasIdeal = p.idealStock !== undefined && p.idealStock !== null && p.idealStock > 0;
 
+        // PRIORIDAD CRÍTICA
         if (stock <= 0) {
           priority = 'Crítico';
           refType = hasWarning ? 'Aviso' : (hasIdeal ? 'Ideal' : '');
@@ -98,6 +101,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
           suggestedQty = Math.max(p.warningStock! * 2, Math.ceil(rotationScore * 14));
         }
 
+        // PRIORIDAD POR REPONER (No incluye productos sin stock)
         if (priority === 'Ignore' && stock > 0) {
            if (hasWarning) {
               if (stock <= p.warningStock! + 2) {
@@ -114,6 +118,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
            }
         }
 
+        // PRIORIDAD SIN ROTACIÓN (Solo si tiene metas definidas)
         if (priority === 'Ignore' && sales.d30 === 0 && (hasWarning || hasIdeal)) {
           priority = 'Sin rotación';
           refType = hasWarning ? 'Aviso' : 'Ideal';
@@ -138,11 +143,13 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
 
   const filtered = useMemo(() => {
     return analysis.filter(p => {
+      const q = searchTerm.toLowerCase().trim();
+      const matchesSearch = q === "" || p.name.toLowerCase().includes(q) || String(p.id).includes(q);
       const matchesCategory = categoryFilter === 'all' || p.category === categoryFilter;
       const matchesDistributor = distributorFilter === 'all' || p.distributor === distributorFilter;
-      return matchesCategory && matchesDistributor;
+      return matchesSearch && matchesCategory && matchesDistributor;
     });
-  }, [analysis, categoryFilter, distributorFilter]);
+  }, [analysis, categoryFilter, distributorFilter, searchTerm]);
 
   const summary = useMemo(() => {
     return {
@@ -205,7 +212,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
     let listToShare = baseList;
     if (selectedIds.length > 0) {
       listToShare = baseList.filter(item => selectedIds.includes(item.id));
-    } else if (!itemsToShare) {
+    } else if (!itemsToShare && selectedIds.length === 0) {
       toast({ 
         title: "Selección vacía", 
         description: "Selecciona al menos un producto para enviar.",
@@ -217,7 +224,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
     if (listToShare.length === 0) {
       toast({ 
         title: "Sin productos", 
-        description: "No hay productos seleccionados en este grupo.",
+        description: "No hay productos que coincidan con la selección.",
         variant: "destructive" 
       });
       return;
@@ -232,7 +239,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
       "border-none shadow-sm hover:shadow-md transition-all overflow-hidden rounded-2xl mb-2",
       selectedIds.includes(p.id) ? "bg-primary/5 ring-1 ring-primary/20" : "bg-white"
     )}>
-      <div className="p-3 flex items-center gap-2 md:gap-4">
+      <div className="p-3 flex items-center gap-3">
         <div className="shrink-0">
           <Checkbox 
             checked={selectedIds.includes(p.id)} 
@@ -250,30 +257,23 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
         </div>
 
         <div className="min-w-0 flex-1">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-1 mb-1">
-            <h4 className="font-bold text-[10px] md:text-xs uppercase text-slate-800 truncate leading-none">{p.name}</h4>
-            <div className="flex items-center gap-2 shrink-0">
-               <Badge className={cn(
-                "text-[7px] md:text-[8px] font-black uppercase rounded-lg px-1.5 py-0.5 border-none h-4 shadow-sm",
-                p.priority === 'Crítico' ? "bg-red-600 text-white" : p.priority === 'Por reponer' ? "bg-amber-600 text-white" : "bg-slate-400 text-white"
-              )}>{p.priority}</Badge>
-            </div>
+          <div className="flex justify-between items-start gap-2 mb-1">
+            <h4 className="font-bold text-[11px] md:text-xs uppercase text-slate-800 truncate leading-none">{p.name}</h4>
+            <Badge className={cn(
+              "text-[7px] md:text-[8px] font-black uppercase rounded-lg px-1.5 py-0.5 border-none h-4 shrink-0",
+              p.priority === 'Crítico' ? "bg-red-600 text-white" : p.priority === 'Por reponer' ? "bg-amber-600 text-white" : "bg-slate-400 text-white"
+            )}>{p.priority}</Badge>
           </div>
           
           <div className="flex flex-wrap items-center gap-1.5">
-            <Badge variant="outline" className="text-[8px] font-black text-slate-400 uppercase tracking-tighter bg-slate-50 border-none px-1 h-4">
+            <span className="text-[8px] font-black text-slate-400 uppercase truncate max-w-[80px]">
               {p.distributor || 'Sin Prov.'}
-            </Badge>
+            </span>
 
-            <Separator orientation="vertical" className="h-3 mx-0.5 hidden sm:block" />
-            
             <div className="flex items-center gap-1 bg-slate-50 px-1.5 py-0.5 rounded-md border border-slate-100">
-              <span className="text-[7px] font-black text-slate-400 uppercase">Stock:</span>
+              <span className="text-[7px] font-black text-slate-400 uppercase">St:</span>
               <span className={cn("text-[8px] font-black", p.stock <= 0 ? "text-red-600" : "text-slate-800")}>{p.stock}</span>
-              <span className="text-[7px] text-slate-400">/{p.warningStock || p.idealStock || 0}</span>
-              {p.refType && (
-                <span className="text-[6px] font-black text-primary/60 uppercase ml-1 px-1 bg-primary/5 rounded">Ref: {p.refType}</span>
-              )}
+              <span className="text-[7px] font-black text-primary/60 uppercase ml-1 px-1 bg-primary/5 rounded">{p.refType}</span>
             </div>
 
             <div className="flex items-center gap-1 bg-primary/10 px-1.5 py-0.5 rounded-md border border-primary/10">
@@ -347,47 +347,67 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2 items-center">
-            <div className="flex gap-1 bg-white p-1 rounded-xl shadow-sm border mr-2">
-              <Button variant="ghost" size="sm" className="h-8 rounded-lg text-[9px] font-black uppercase px-2 hover:bg-primary/5 hover:text-primary" onClick={handleSelectAll}>
-                <CheckSquare className="w-3.5 h-3.5 mr-1" /> Todo
-              </Button>
-              <Button variant="ghost" size="sm" className="h-8 rounded-lg text-[9px] font-black uppercase px-2 hover:bg-destructive/5 hover:text-destructive" onClick={handleClearSelection}>
-                <Trash2 className="w-3.5 h-3.5 mr-1" /> Limpiar
-              </Button>
+          <div className="space-y-4">
+            <div className="relative w-full">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Input 
+                className="pl-11 h-12 bg-white rounded-2xl border-none shadow-sm font-bold text-sm" 
+                placeholder="Buscar en sugerencias..." 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              {searchTerm && (
+                <button 
+                  onClick={() => setSearchTerm("")}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
             </div>
 
-            <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-              <SelectTrigger className="w-fit bg-white border-none h-9 font-bold text-[10px] rounded-xl shadow-sm px-4">
-                <SelectValue placeholder="Prioridad" />
-              </SelectTrigger>
-              <SelectContent className="rounded-xl">
-                <SelectItem value="all">Todas</SelectItem>
-                <SelectItem value="Crítico">Crítico</SelectItem>
-                <SelectItem value="Por reponer">Por reponer</SelectItem>
-                <SelectItem value="Sin rotación">Sin rotación</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex flex-wrap gap-2 items-center">
+              <div className="flex gap-1 bg-white p-1 rounded-xl shadow-sm border mr-2">
+                <Button variant="ghost" size="sm" className="h-8 rounded-lg text-[9px] font-black uppercase px-2 hover:bg-primary/5 hover:text-primary" onClick={handleSelectAll}>
+                  <CheckSquare className="w-3.5 h-3.5 mr-1" /> Todo
+                </Button>
+                <Button variant="ghost" size="sm" className="h-8 rounded-lg text-[9px] font-black uppercase px-2 hover:bg-destructive/5 hover:text-destructive" onClick={handleClearSelection}>
+                  <Trash2 className="w-3.5 h-3.5 mr-1" /> Limpiar
+                </Button>
+              </div>
 
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="w-fit bg-white border-none h-9 font-bold text-[10px] rounded-xl shadow-sm px-4">
-                <SelectValue placeholder="Categoría" />
-              </SelectTrigger>
-              <SelectContent className="rounded-xl">
-                <SelectItem value="all">Categorías</SelectItem>
-                {categories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
-              </SelectContent>
-            </Select>
+              <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+                <SelectTrigger className="w-fit bg-white border-none h-9 font-bold text-[10px] rounded-xl shadow-sm px-4">
+                  <SelectValue placeholder="Prioridad" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  <SelectItem value="all">Todas</SelectItem>
+                  <SelectItem value="Crítico">Crítico</SelectItem>
+                  <SelectItem value="Por reponer">Por reponer</SelectItem>
+                  <SelectItem value="Sin rotación">Sin rotación</SelectItem>
+                </SelectContent>
+              </Select>
 
-            <Select value={distributorFilter} onValueChange={setDistributorFilter}>
-              <SelectTrigger className="w-fit bg-white border-none h-9 font-bold text-[10px] rounded-xl shadow-sm px-4">
-                <SelectValue placeholder="Proveedor" />
-              </SelectTrigger>
-              <SelectContent className="rounded-xl">
-                <SelectItem value="all">Proveedores</SelectItem>
-                {distributors.map(dist => <SelectItem key={dist} value={dist}>{dist}</SelectItem>)}
-              </SelectContent>
-            </Select>
+              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                <SelectTrigger className="w-fit bg-white border-none h-9 font-bold text-[10px] rounded-xl shadow-sm px-4">
+                  <SelectValue placeholder="Categoría" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  <SelectItem value="all">Categorías</SelectItem>
+                  {categories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+                </SelectContent>
+              </Select>
+
+              <Select value={distributorFilter} onValueChange={setDistributorFilter}>
+                <SelectTrigger className="w-fit bg-white border-none h-9 font-bold text-[10px] rounded-xl shadow-sm px-4">
+                  <SelectValue placeholder="Proveedor" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  <SelectItem value="all">Proveedores</SelectItem>
+                  {distributors.map(dist => <SelectItem key={dist} value={dist}>{dist}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="p-4 bg-slate-50/30">
@@ -395,8 +415,8 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
             {filtered.length === 0 ? (
               <div className="text-center py-20 bg-white rounded-3xl border-2 border-dashed border-slate-100">
                 <Package className="w-16 h-16 mx-auto mb-4 text-slate-100" />
-                <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest">Nada que reponer</h3>
-                <p className="text-xs text-slate-400">Prueba cambiando los filtros.</p>
+                <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest">Sin resultados</h3>
+                <p className="text-xs text-slate-400">Prueba cambiando la búsqueda o los filtros.</p>
               </div>
             ) : viewMode === 'general' ? (
               <div className="space-y-1">
