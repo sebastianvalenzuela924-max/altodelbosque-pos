@@ -160,18 +160,35 @@ export default function ReportsPage() {
       return;
     }
 
-    const todayStr = editingBreadLog?.date || new Date().toISOString().split('T')[0];
-    const docRef = doc(firestore, "breadLogs", todayStr);
+    // Determinar la fecha objetivo basándonos en el filtro actual
+    let targetDateStr = "";
+    if (editingBreadLog) {
+      targetDateStr = editingBreadLog.date;
+    } else {
+      const now = new Date();
+      if (dateFilter === "today") targetDateStr = now.toISOString().split('T')[0];
+      else if (dateFilter === "yesterday") {
+        const yesterday = new Date(now);
+        yesterday.setDate(now.getDate() - 1);
+        targetDateStr = yesterday.toISOString().split('T')[0];
+      } else if (dateFilter === "custom" && customDate) {
+        targetDateStr = customDate;
+      } else {
+        targetDateStr = now.toISOString().split('T')[0];
+      }
+    }
+
+    const docRef = doc(firestore, "breadLogs", targetDateStr);
 
     setDocumentNonBlocking(docRef, {
-      id: todayStr,
-      date: todayStr,
+      id: targetDateStr,
+      date: targetDateStr,
       bought: parseFloat(breadBought),
       remaining: parseFloat(breadRemaining),
       timestamp: serverTimestamp()
     }, { merge: true });
     
-    toast({ title: "Registro de Pan guardado" });
+    toast({ title: "Registro de Pan guardado", description: `Fecha: ${targetDateStr}` });
     setBreadBought(""); setBreadRemaining(""); setEditingBreadLog(null);
   };
 
@@ -187,7 +204,7 @@ export default function ReportsPage() {
     text += `💳 *Tarjeta:* $${Math.round(stats.card).toLocaleString('es-CL')}\n`;
     text += `📦 *Valor inventario:* $${Math.round(stats.inventoryValue).toLocaleString('es-CL')}\n\n`;
 
-    // Buscar información de pan para el resumen si corresponde a un día específico
+    // Buscar información de pan para el resumen
     let targetDateStr = "";
     const today = new Date();
     if (dateFilter === "today") targetDateStr = today.toISOString().split('T')[0];
@@ -204,7 +221,7 @@ export default function ReportsPage() {
       text += `🥖 *Control de Pan:*\n`;
       text += `- Comprado: ${breadLog.bought} kg\n`;
       text += `- Quedó: ${breadLog.remaining} kg\n`;
-      text += `- Vendido: ${breadLog.bought - breadLog.remaining} kg\n\n`;
+      text += `- Vendido: ${(breadLog.bought - breadLog.remaining).toFixed(2)} kg\n\n`;
     }
 
     if (stats.transactions > 0) {
@@ -216,7 +233,8 @@ export default function ReportsPage() {
 
     if (topProducts.length > 0) {
       text += `🏆 *Top productos:*\n`;
-      topProducts.slice(0, 5).forEach((p: any) => {
+      // Solo el Top 3 según la solicitud
+      topProducts.slice(0, 3).forEach((p: any) => {
         text += `- ${p.name}: ${p.quantity} u.\n`;
       });
       text += `\n`;
@@ -398,6 +416,11 @@ export default function ReportsPage() {
 
         <TabsContent value="bread" className="mt-6 space-y-6">
           <Card className="border-none shadow-sm rounded-3xl bg-white p-6">
+            <div className="mb-4">
+               <Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest bg-amber-50 text-amber-600 border-amber-200">
+                  Fecha Registro: {dateFilter === 'today' ? 'Hoy' : dateFilter === 'yesterday' ? 'Ayer' : customDate || 'Seleccionada'}
+               </Badge>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
               <div className="space-y-2">
                 <Label className="text-[10px] font-black uppercase text-slate-400">¿Cuántos kg de Pan Compré?</Label>
@@ -408,7 +431,7 @@ export default function ReportsPage() {
                 <Input type="number" step="0.01" className="h-12 rounded-2xl bg-slate-50 border-none font-black text-lg text-center" placeholder="0.00" value={breadRemaining} onChange={(e) => setBreadRemaining(e.target.value)} />
               </div>
               <Button className="h-12 rounded-2xl bg-amber-600 hover:bg-amber-700 font-black uppercase tracking-widest text-xs" onClick={handleSaveBreadLog}>
-                {editingBreadLog ? 'Guardar Cambios' : 'Registrar Hoy'}
+                {editingBreadLog ? 'Guardar Cambios' : 'Registrar'}
               </Button>
             </div>
           </Card>
