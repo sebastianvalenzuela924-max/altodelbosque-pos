@@ -1,19 +1,21 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useUser, useFirestore, useAuth } from '@/firebase';
 import { initiateAnonymousSignIn } from '@/firebase/non-blocking-login';
 import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
-import { Loader2 } from 'lucide-react';
+import { Loader2, AlertCircle, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 /**
  * AuthWrapper: Gestiona la identidad del terminal de forma fluida.
- * Eliminamos esperas artificiales para evitar bloqueos en la interfaz.
+ * Añadimos manejo de errores y estados de tiempo de espera para evitar bloqueos.
  */
 export function AuthWrapper({ children }: { children: React.ReactNode }) {
-  const { user, isUserLoading } = useUser();
+  const { user, isUserLoading, userError } = useUser();
   const auth = useAuth();
   const firestore = useFirestore();
+  const [showRetry, setShowRetry] = useState(false);
 
   // Login anónimo automático si no hay sesión iniciada
   useEffect(() => {
@@ -22,22 +24,52 @@ export function AuthWrapper({ children }: { children: React.ReactNode }) {
     }
   }, [user, isUserLoading, auth]);
 
+  // Timeout para mostrar botón de reintento si tarda mucho
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (isUserLoading || !user) {
+      timer = setTimeout(() => setShowRetry(true), 8000);
+    } else {
+      setShowRetry(false);
+    }
+    return () => clearTimeout(timer);
+  }, [isUserLoading, user]);
+
   // Registro/Sincronización del terminal en segundo plano
   useEffect(() => {
     if (!user || !firestore) return;
 
     const docRef = doc(firestore, 'authorizedUsers', user.uid);
-    // Operación no bloqueante para asegurar que el terminal esté registrado
     setDoc(docRef, { 
       uid: user.uid,
       lastSession: serverTimestamp(),
       status: 'active'
     }, { merge: true }).catch(() => {
-      // Errores silenciados para no interrumpir el flujo de usuario
+      // Errores de firestore silenciados aquí
     });
   }, [user, firestore]);
 
-  // Pantalla de carga mínima mientras se establece la sesión inicial
+  const handleRetry = () => {
+    window.location.reload();
+  };
+
+  if (userError) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-background p-6 text-center">
+        <div className="w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mb-4 text-destructive">
+          <AlertCircle className="w-8 h-8" />
+        </div>
+        <h2 className="text-xl font-black text-primary uppercase">Error de Conexión</h2>
+        <p className="text-sm text-muted-foreground mt-2 max-w-xs mx-auto">
+          No pudimos conectar con el servidor de autenticación.
+        </p>
+        <Button onClick={handleRetry} className="mt-6 rounded-2xl gap-2 font-bold px-8">
+          <RefreshCw className="w-4 h-4" /> REINTENTAR
+        </Button>
+      </div>
+    );
+  }
+
   if (isUserLoading || !user) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-background">
@@ -54,11 +86,18 @@ export function AuthWrapper({ children }: { children: React.ReactNode }) {
               Iniciando Terminal...
             </p>
           </div>
+          
+          {showRetry && (
+            <div className="mt-8 animate-in slide-in-from-bottom-4 duration-500">
+              <Button variant="outline" onClick={handleRetry} className="rounded-2xl gap-2 text-xs font-bold border-slate-200">
+                <RefreshCw className="w-3 h-3" /> ¿Tarda demasiado? Reintentar
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     );
   }
 
-  // Una vez que hay un usuario (anónimo o no), mostramos la terminal
   return <>{children}</>;
 }
