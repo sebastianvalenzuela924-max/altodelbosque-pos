@@ -130,7 +130,7 @@ export default function ReportsPage() {
         }
       });
     });
-    return Object.values(productCounts).sort((a: any, b: any) => b.quantity - a.quantity).slice(0, 10);
+    return Object.values(productCounts).sort((a: any, b: any) => b.quantity - a.quantity).slice(0, 3);
   }, [filteredSales]);
 
   const salesAnalysis = useMemo(() => {
@@ -338,8 +338,8 @@ export default function ReportsPage() {
     if (stats.totalUnits > 0) text += `📚 *Unidades vendidas:* ${stats.totalUnits}\n\n`;
 
     if (topProducts.length > 0) {
-      text += `🏆 *Top productos (Top 3):*\n`;
-      topProducts.slice(0, 3).forEach((p: any) => {
+      text += `🏆 *Top productos:*\n`;
+      topProducts.forEach((p: any) => {
         text += `- ${p.name}: ${p.quantity} u.\n`;
       });
       text += `\n`;
@@ -562,7 +562,6 @@ export default function ReportsPage() {
             <div className="space-y-2">
               {allBreadLogs?.map((log) => {
                 const date = new Date(log.date + 'T12:00:00');
-                const sold = (log.bought || 0) - (log.remaining || 0);
                 const ClimaIcon = ClimaIcons[log.clima as ClimaType] || Sun;
                 
                 return (
@@ -578,14 +577,19 @@ export default function ReportsPage() {
                           <ClimaIcon className="w-3.5 h-3.5 text-slate-400" />
                           {log.quiebre && <Badge className="bg-destructive text-white text-[7px] font-black uppercase py-0 px-1 rounded">Quiebre</Badge>}
                         </div>
-                        <p className="text-[8px] font-bold text-slate-400 mt-0.5">Comprado: {log.bought}kg • Quedó: {log.remaining}kg</p>
                         {log.observation && <p className="text-[8px] text-slate-400 italic mt-1 truncate max-w-[150px]">"{log.observation}"</p>}
                       </div>
                     </div>
                     <div className="flex items-center gap-6">
-                      <div className="text-right">
-                        <p className="text-[8px] font-black text-slate-400 uppercase">Consumo Real</p>
-                        <p className="text-xl font-black text-primary">{sold.toFixed(2)} kg</p>
+                      <div className="flex flex-col text-right">
+                        <div className="flex items-center justify-end gap-2">
+                           <span className="text-[8px] font-black text-slate-400 uppercase">Comprado:</span>
+                           <span className="text-sm font-black text-primary">{log.bought} kg</span>
+                        </div>
+                        <div className="flex items-center justify-end gap-2">
+                           <span className="text-[8px] font-black text-slate-400 uppercase">Quedó:</span>
+                           <span className="text-sm font-black text-destructive">{log.remaining} kg</span>
+                        </div>
                       </div>
                       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => { 
