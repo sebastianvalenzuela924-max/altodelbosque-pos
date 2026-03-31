@@ -1,18 +1,20 @@
 
 "use client";
 
-import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import { collection, query, orderBy } from "firebase/firestore";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { DollarSign, Package, TrendingUp, Calendar, ShoppingBag, Loader2, ListFilter, Trophy, CheckCircle2, Filter, ShieldAlert, ShieldCheck, AlertTriangle, Tag, ArrowRight, Wallet, Banknote, CreditCard, Ghost, Search, X } from "lucide-react";
+import { useCollection, useFirestore, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase";
+import { collection, query, orderBy, doc, serverTimestamp, Timestamp } from "firebase/firestore";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { DollarSign, Package, TrendingUp, Calendar, ShoppingBag, Loader2, ListFilter, Trophy, CheckCircle2, Filter, ShieldAlert, ShieldCheck, AlertTriangle, Tag, ArrowRight, Wallet, Banknote, CreditCard, Ghost, Search, X, UtensilsCrossed, Plus, Edit3, Trash2, Check, Scale } from "lucide-react";
 import { useMemo, useState, useEffect } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/tabs";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 import React from 'react';
 
@@ -23,7 +25,14 @@ export default function ReportsPage() {
   const [dateFilter, setDateFilter] = useState<DateFilter>("today");
   const [customDate, setCustomDate] = useState<string>("");
   const [productSearchTerm, setProductSearchTerm] = useState("");
+  
+  // Estados para Control de Pan
+  const [breadBought, setBreadBought] = useState("");
+  const [breadRemaining, setBreadRemaining] = useState("");
+  const [editingBreadLog, setEditingBreadLog] = useState<any | null>(null);
+  
   const firestore = useFirestore();
+  const { toast } = useToast();
 
   useEffect(() => {
     setMounted(true);
@@ -37,8 +46,13 @@ export default function ReportsPage() {
     return query(collection(firestore, "products"));
   }, [firestore]);
 
+  const breadLogsQuery = useMemoFirebase(() => {
+    return query(collection(firestore, "breadLogs"), orderBy("date", "desc"));
+  }, [firestore]);
+
   const { data: allSales, isLoading: isLoadingSales } = useCollection(salesQuery);
   const { data: allProducts, isLoading: isLoadingProducts } = useCollection(productsQuery);
+  const { data: allBreadLogs, isLoading: isLoadingBread } = useCollection(breadLogsQuery);
 
   const getProductStatus = (stock: number, ideal: number, warning?: number) => {
     if (warning === 0 || ideal === 0) return "ok";
@@ -78,7 +92,6 @@ export default function ReportsPage() {
     });
   }, [allSales, dateFilter, customDate, mounted]);
 
-  // Solo incluir ventas monetarias en ingresos
   const totalRevenue = filteredSales
     .filter(s => s.paymentMethod !== 'deduction')
     .reduce((sum, s) => sum + (s.totalAmount || 0), 0);
@@ -90,34 +103,6 @@ export default function ReportsPage() {
   const totalCard = filteredSales
     .filter(s => s.paymentMethod === 'card')
     .reduce((sum, s) => sum + (s.totalAmount || 0), 0);
-
-  const searchResults = useMemo(() => {
-    if (!productSearchTerm || !allProducts) return [];
-    const term = productSearchTerm.toLowerCase().trim();
-    
-    const salesSummary: Record<string, { quantity: number, revenue: number }> = {};
-    filteredSales.forEach(sale => {
-      sale.itemsSummary?.forEach((item: any) => {
-        if (item.id) {
-          if (!salesSummary[item.id]) salesSummary[item.id] = { quantity: 0, revenue: 0 };
-          salesSummary[item.id].quantity += item.quantity;
-          // Las deducciones administrativas no generan ingresos monetarios en el buscador
-          if (sale.paymentMethod !== 'deduction') {
-            salesSummary[item.id].revenue += Math.round(item.price * item.quantity);
-          }
-        }
-      });
-    });
-
-    return allProducts
-      .filter(p => p.name.toLowerCase().includes(term) || String(p.id).includes(term))
-      .slice(0, 5)
-      .map(p => ({
-        ...p,
-        unitsSold: salesSummary[p.id]?.quantity || 0,
-        revenueGenerated: salesSummary[p.id]?.revenue || 0
-      }));
-  }, [productSearchTerm, allProducts, filteredSales]);
 
   const categoryStats = useMemo(() => {
     if (!allProducts || !mounted) return [];
@@ -135,7 +120,7 @@ export default function ReportsPage() {
     
     allProducts.forEach(p => {
       const soldThisPeriod = productSoldMap[p.id] || 0;
-      if (soldThisPeriod <= 0) return; // Solo incluimos productos con movimiento
+      if (soldThisPeriod <= 0) return;
 
       const cat = p.category || "General";
       const key = cat.toLowerCase();
@@ -159,7 +144,6 @@ export default function ReportsPage() {
     });
 
     filteredSales.forEach(sale => {
-      // Solo contar ingresos monetarios en las estadísticas de categoría
       const isMonetary = sale.paymentMethod !== 'deduction';
       sale.itemsSummary?.forEach((item: any) => {
         const key = (item.category || "General").toLowerCase();
@@ -201,31 +185,48 @@ export default function ReportsPage() {
       .slice(0, 15);
   }, [filteredSales]);
 
-  const unsoldByCategories = useMemo(() => {
-    if (!allProducts || !mounted) return [];
-    const soldIds = new Set();
-    filteredSales.forEach(sale => {
-      sale.itemsSummary?.forEach((item: any) => {
-        if (item.id) soldIds.add(String(item.id).trim());
-      });
-    });
+  const handleSaveBreadLog = () => {
+    if (!breadBought || !breadRemaining) {
+      toast({ title: "Datos incompletos", description: "Ingresa cuántos compraste y cuántos quedaron.", variant: "destructive" });
+      return;
+    }
 
-    const unsold = allProducts.filter(p => !soldIds.has(String(p.id).trim()));
+    const bought = parseInt(breadBought);
+    const remaining = parseInt(breadRemaining);
     
-    const groups: Record<string, any[]> = {};
-    unsold.forEach(p => {
-      const cat = p.category || "General";
-      if (!groups[cat]) groups[cat] = [];
-      groups[cat].push(p);
-    });
+    if (isNaN(bought) || isNaN(remaining)) return;
 
-    return Object.entries(groups)
-      .map(([category, products]) => ({
-        category,
-        products: products.sort((a, b) => (b.stock || 0) - (a.stock || 0))
-      }))
-      .sort((a, b) => a.category.localeCompare(b.category));
-  }, [filteredSales, allProducts, mounted]);
+    const todayStr = new Date().toISOString().split('T')[0];
+    const logId = editingBreadLog?.id || todayStr;
+    const docRef = doc(firestore, "breadLogs", logId);
+
+    const logData = {
+      id: logId,
+      date: editingBreadLog?.date || todayStr,
+      bought,
+      remaining,
+      timestamp: serverTimestamp()
+    };
+
+    setDocumentNonBlocking(docRef, logData, { merge: true });
+    
+    toast({ title: "Control de Pan guardado", description: "Los datos se han registrado correctamente." });
+    setBreadBought("");
+    setBreadRemaining("");
+    setEditingBreadLog(null);
+  };
+
+  const handleEditBreadLog = (log: any) => {
+    setEditingBreadLog(log);
+    setBreadBought(log.bought.toString());
+    setBreadRemaining(log.remaining.toString());
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleDeleteBreadLog = (id: string) => {
+    deleteDocumentNonBlocking(doc(firestore, "breadLogs", id));
+    toast({ title: "Registro eliminado" });
+  };
 
   if (!mounted || isLoadingSales || isLoadingProducts) {
     return (
@@ -236,7 +237,6 @@ export default function ReportsPage() {
     );
   }
 
-  // Filtrar productos sin alertas del valor del inventario
   const totalInventoryValue = allProducts?.reduce((sum, p) => {
     const noAlerts = p.warningStock === 0 || p.idealStock === 0;
     if (noAlerts) return sum;
@@ -252,7 +252,7 @@ export default function ReportsPage() {
             Reportes
           </h1>
           <p className="text-muted-foreground text-xs md:text-sm font-bold mt-1">
-            Análisis de rendimiento y productos sin rotación.
+            Análisis de rendimiento y control diario de productos.
           </p>
         </div>
         
@@ -334,84 +334,16 @@ export default function ReportsPage() {
         </Card>
       </section>
 
-      <section className="space-y-3 animate-in slide-in-from-top-4 duration-500">
-        <div className="relative group">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-primary transition-colors" />
-          <Input 
-            className="pl-11 h-12 bg-white rounded-2xl border-none shadow-md font-bold text-base focus:ring-2 focus:ring-primary/20" 
-            placeholder="Buscar producto..." 
-            value={productSearchTerm}
-            onChange={(e) => setProductSearchTerm(e.target.value)}
-          />
-          {productSearchTerm && (
-            <button 
-              onClick={() => setProductSearchTerm("")}
-              className="absolute right-4 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-slate-600"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          )}
-        </div>
-
-        {productSearchTerm && (
-          <div className="grid gap-2 animate-in fade-in duration-300">
-            {searchResults.length > 0 ? (
-              searchResults.map((p: any) => (
-                <Card key={p.id} className="border-none shadow-sm rounded-xl overflow-hidden bg-white hover:shadow-md transition-all">
-                  <div className="p-3 flex flex-col md:flex-row md:items-center justify-between gap-3">
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <div className="w-9 h-9 rounded-lg bg-primary/5 flex items-center justify-center text-primary shrink-0">
-                        <Package className="w-5 h-5" />
-                      </div>
-                      <div className="min-w-0">
-                        <h4 className="font-bold text-slate-800 text-xs uppercase tracking-tight truncate leading-none">{p.name}</h4>
-                        <div className="flex gap-1.5 mt-1">
-                          <span className="text-[8px] font-black text-slate-400 uppercase tracking-tighter bg-slate-50 px-1 rounded">ID: {p.id}</span>
-                          <span className="text-[8px] font-black text-slate-400 uppercase tracking-tighter bg-slate-50 px-1 rounded">{p.category || 'General'}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-4 gap-2 shrink-0 md:min-w-[300px]">
-                      <div className="bg-slate-50 p-1.5 rounded-lg border border-slate-100 text-center">
-                        <p className="text-[7px] font-black text-slate-400 uppercase leading-none mb-0.5">Stock</p>
-                        <p className="text-[10px] font-black text-slate-700 leading-none">{p.stock}</p>
-                      </div>
-                      <div className="bg-slate-50 p-1.5 rounded-lg border border-slate-100 text-center">
-                        <p className="text-[7px] font-black text-slate-400 uppercase leading-none mb-0.5">Precio</p>
-                        <p className="text-[10px] font-black text-primary leading-none">${Math.round(p.price).toLocaleString('es-CL')}</p>
-                      </div>
-                      <div className="bg-primary/5 p-1.5 rounded-lg border border-primary/10 text-center">
-                        <p className="text-[7px] font-black text-primary uppercase leading-none mb-0.5">Vendido</p>
-                        <p className="text-[10px] font-black text-primary leading-none">{p.unitsSold} u.</p>
-                      </div>
-                      <div className="bg-green-50 p-1.5 rounded-lg border border-green-100 text-center">
-                        <p className="text-[7px] font-black text-green-600 uppercase leading-none mb-0.5">Total</p>
-                        <p className="text-[10px] font-black text-green-700 leading-none">${p.revenueGenerated.toLocaleString('es-CL')}</p>
-                      </div>
-                    </div>
-                  </div>
-                </Card>
-              ))
-            ) : (
-              <div className="text-center py-4 bg-white rounded-xl border-2 border-dashed border-slate-100">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Sin resultados</p>
-              </div>
-            )}
-          </div>
-        )}
-      </section>
-
       <Tabs defaultValue="sales" className="w-full">
         <TabsList className="bg-white p-1 rounded-2xl shadow-sm border h-14 w-full grid grid-cols-3">
           <TabsTrigger value="sales" className="rounded-xl font-bold uppercase text-[9px] md:text-[10px] tracking-widest data-[state=active]:bg-primary data-[state=active]:text-white">
             <ShoppingBag className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" /> Ventas
           </TabsTrigger>
+          <TabsTrigger value="bread" className="rounded-xl font-bold uppercase text-[9px] md:text-[10px] tracking-widest data-[state=active]:bg-amber-600 data-[state=active]:text-white">
+            <UtensilsCrossed className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" /> Control Pan
+          </TabsTrigger>
           <TabsTrigger value="products" className="rounded-xl font-bold uppercase text-[9px] md:text-[10px] tracking-widest data-[state=active]:bg-primary data-[state=active]:text-white">
             <Trophy className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" /> Top Ventas
-          </TabsTrigger>
-          <TabsTrigger value="unsold" className="rounded-xl font-bold uppercase text-[9px] md:text-[10px] tracking-widest data-[state=active]:bg-destructive data-[state=active]:text-white">
-            <Ghost className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" /> Sin Ventas
           </TabsTrigger>
         </TabsList>
 
@@ -419,7 +351,7 @@ export default function ReportsPage() {
           <Accordion type="multiple" className="space-y-3">
             {categoryStats.length === 0 ? (
               <div className="text-center py-20 bg-white rounded-3xl border-2 border-dashed border-slate-100">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">No hay ventas registradas en este periodo</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">No hay ventas en este periodo</p>
               </div>
             ) : (
               categoryStats.map((cat, idx) => {
@@ -456,45 +388,22 @@ export default function ReportsPage() {
                           </div>
                         </div>
                       </AccordionTrigger>
-                      
                       <AccordionContent className="px-1 md:px-6 pb-4 md:pb-6 pt-0 bg-slate-50/50">
                         <div className="grid gap-1 mt-1 md:mt-2">
                           {cat.products.map((p: any) => {
                             const status = getProductStatus(p.stock, p.idealStock, p.warningStock);
-                            const productTotalRevenue = Math.round(p.price * p.soldThisPeriod);
                             return (
                               <div key={p.id} className={cn(
-                                "bg-white p-1 md:p-3 rounded-xl flex items-center justify-between border transition-all gap-0.5 md:gap-4 shadow-sm hover:border-primary/20",
-                                status === 'danger' ? "border-red-200 bg-red-50/20" : "border-slate-100"
+                                "bg-white p-2 rounded-xl flex items-center justify-between border shadow-sm gap-2",
+                                status === 'danger' ? "border-red-200" : "border-slate-100"
                               )}>
-                                <div className="flex items-center gap-1.5 md:gap-2 flex-1 min-w-0">
-                                  <div className={cn(
-                                    "w-6 h-6 md:w-8 md:h-8 rounded-full flex items-center justify-center shrink-0",
-                                    status === 'danger' ? "bg-red-100 text-destructive" : "bg-slate-100 text-slate-400"
-                                  )}>
-                                    {status === 'danger' ? <ShieldAlert className="w-3.5 h-3.5" /> : <Package className="w-3.5 h-3.5" />}
-                                  </div>
-                                  <div className="min-w-0 flex-1">
-                                    <p className="font-bold text-[9px] md:text-xs text-slate-700 truncate leading-tight">{p.name}</p>
-                                    <p className="text-[7px] text-slate-400 font-bold uppercase mt-0.5">St: {p.stock} • ${Math.round(p.price).toLocaleString('es-CL')}</p>
-                                  </div>
+                                <div className="min-w-0 flex-1">
+                                  <p className="font-bold text-[9px] md:text-xs text-slate-700 truncate">{p.name}</p>
+                                  <p className="text-[7px] text-slate-400 font-bold uppercase">Stock: {p.stock}</p>
                                 </div>
-                                
-                                <div className="flex items-center gap-0.5 md:gap-6 shrink-0 text-right">
-                                  <div className="flex flex-col items-end px-1">
-                                    <span className="text-[8px] md:text-sm font-black text-primary">{p.soldThisPeriod}u</span>
-                                  </div>
-                                  <div className="flex flex-col items-end px-1">
-                                    <span className="text-[8px] md:text-sm font-black text-slate-800 font-mono tracking-tighter">
-                                      ${productTotalRevenue.toLocaleString('es-CL')}
-                                    </span>
-                                  </div>
-                                  <Link 
-                                    href={`/inventory?search=${p.id}`}
-                                    className="h-7 w-7 md:h-8 md:w-8 flex items-center justify-center rounded-lg bg-slate-100 hover:bg-primary/10 text-primary transition-colors shrink-0 ml-1"
-                                  >
-                                    <ArrowRight className="w-3 h-3 md:w-4 md:h-4" />
-                                  </Link>
+                                <div className="text-right shrink-0">
+                                  <p className="text-[8px] md:text-sm font-black text-primary">{p.soldThisPeriod} u.</p>
+                                  <p className="text-[8px] md:text-sm font-black font-mono">${(Math.round(p.price) * p.soldThisPeriod).toLocaleString('es-CL')}</p>
                                 </div>
                               </div>
                             );
@@ -507,6 +416,132 @@ export default function ReportsPage() {
               })
             )}
           </Accordion>
+        </TabsContent>
+
+        <TabsContent value="bread" className="space-y-6 mt-6">
+          <Card className="border-none shadow-xl rounded-3xl overflow-hidden bg-white">
+            <CardHeader className="bg-amber-600 text-white p-6">
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                  <UtensilsCrossed className="w-8 h-8" />
+                  <div>
+                    <CardTitle className="text-xl md:text-2xl font-black uppercase tracking-tighter">Registrar Pan de Hoy</CardTitle>
+                    <CardDescription className="text-amber-100 font-bold text-xs uppercase">Control de quiebre y merma diaria.</CardDescription>
+                  </div>
+                </div>
+                {editingBreadLog && (
+                  <Button variant="ghost" onClick={() => { setEditingBreadLog(null); setBreadBought(""); setBreadRemaining(""); }} className="text-white hover:bg-white/20 font-black text-xs uppercase rounded-xl border border-white/30">
+                    <X className="w-4 h-4 mr-2" /> Cancelar Edición
+                  </Button>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent className="p-6 md:p-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="space-y-6">
+                  <div className="grid gap-3">
+                    <Label className="text-xs font-black uppercase text-slate-500 tracking-widest flex items-center gap-2">
+                      <Plus className="w-4 h-4 text-green-600" /> ¿Cuánto Pan compré hoy?
+                    </Label>
+                    <Input 
+                      type="number" 
+                      className="h-16 rounded-2xl bg-slate-50 border-none text-3xl font-black text-slate-700 text-center focus-visible:ring-amber-600" 
+                      placeholder="0"
+                      value={breadBought}
+                      onChange={(e) => setBreadBought(e.target.value)}
+                    />
+                  </div>
+                  <div className="grid gap-3">
+                    <Label className="text-xs font-black uppercase text-slate-500 tracking-widest flex items-center gap-2">
+                      <Scale className="w-4 h-4 text-amber-600" /> ¿Cuánto Pan quedó?
+                    </Label>
+                    <Input 
+                      type="number" 
+                      className="h-16 rounded-2xl bg-slate-50 border-none text-3xl font-black text-slate-700 text-center focus-visible:ring-amber-600" 
+                      placeholder="0"
+                      value={breadRemaining}
+                      onChange={(e) => setBreadRemaining(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="bg-slate-50 rounded-3xl p-8 flex flex-col items-center justify-center text-center space-y-4 border border-dashed border-slate-200">
+                   <p className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Resultado Calculado</p>
+                   <div className="text-6xl md:text-8xl font-black text-amber-600 tracking-tighter">
+                    {Math.max(0, (parseInt(breadBought || "0") - parseInt(breadRemaining || "0")))}
+                   </div>
+                   <p className="text-sm font-bold text-slate-600 uppercase">Unidades Vendidas / Consumidas</p>
+                   
+                   <Button 
+                    className={cn(
+                      "w-full h-16 rounded-2xl font-black text-lg uppercase tracking-widest shadow-lg shadow-amber-600/20",
+                      editingBreadLog ? "bg-primary" : "bg-amber-600 hover:bg-amber-700"
+                    )}
+                    onClick={handleSaveBreadLog}
+                   >
+                     {editingBreadLog ? <Check className="w-6 h-6 mr-3" /> : <Plus className="w-6 h-6 mr-3" />}
+                     {editingBreadLog ? "GUARDAR CAMBIOS" : "REGISTRAR PAN"}
+                   </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="space-y-4">
+            <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 px-1">
+              <TrendingUp className="w-4 h-4" /> Historial de Control
+            </h3>
+            
+            {isLoadingBread ? (
+              <div className="py-20 flex justify-center opacity-30"><Loader2 className="w-8 h-8 animate-spin" /></div>
+            ) : allBreadLogs?.length === 0 ? (
+              <div className="bg-white rounded-3xl p-16 text-center border-2 border-dashed border-slate-100">
+                <UtensilsCrossed className="w-12 h-12 mx-auto mb-4 text-slate-100" />
+                <p className="text-slate-400 font-bold uppercase text-xs">Sin registros de pan todavía</p>
+              </div>
+            ) : (
+              <div className="grid gap-3">
+                {allBreadLogs?.map((log) => {
+                  const date = new Date(log.date + 'T12:00:00');
+                  const sold = log.bought - log.remaining;
+                  return (
+                    <Card key={log.id} className="border-none shadow-sm rounded-2xl bg-white overflow-hidden group">
+                      <div className="p-4 flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 rounded-xl bg-slate-50 flex flex-col items-center justify-center shrink-0 border border-slate-100">
+                            <span className="text-[8px] font-black uppercase text-slate-400 leading-none">{date.toLocaleDateString('es-CL', { month: 'short' })}</span>
+                            <span className="text-lg font-black text-slate-800 leading-none">{date.getDate()}</span>
+                          </div>
+                          <div>
+                            <p className="text-xs font-black text-slate-800 uppercase tracking-tight">Pan del {date.toLocaleDateString('es-CL', { weekday: 'long' })}</p>
+                            <div className="flex gap-3 mt-1">
+                              <span className="text-[10px] font-bold text-green-600">Comp: {log.bought}</span>
+                              <span className="text-[10px] font-bold text-amber-600">Sobra: {log.remaining}</span>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-6">
+                           <div className="text-right">
+                              <p className="text-[8px] font-black text-slate-400 uppercase leading-none mb-1">Total Venta</p>
+                              <p className="text-xl font-black text-primary leading-none">{sold} u.</p>
+                           </div>
+                           <div className="flex gap-1">
+                              <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full text-slate-400 hover:text-primary hover:bg-primary/10" onClick={() => handleEditBreadLog(log)}>
+                                <Edit3 className="w-4 h-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full text-slate-400 hover:text-destructive hover:bg-destructive/10" onClick={() => handleDeleteBreadLog(log.id)}>
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                           </div>
+                        </div>
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </TabsContent>
 
         <TabsContent value="products" className="mt-6">
@@ -554,66 +589,6 @@ export default function ReportsPage() {
               )}
             </CardContent>
           </Card>
-        </TabsContent>
-
-        <TabsContent value="unsold" className="mt-6">
-          <div className="space-y-4">
-            {unsoldByCategories.length === 0 ? (
-              <div className="text-center py-20 bg-white rounded-3xl shadow-xl">
-                 <CheckCircle2 className="w-16 h-16 mx-auto mb-4 text-green-100" />
-                 <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">¡Excelente! Todo el stock se ha movido.</p>
-              </div>
-            ) : (
-              <Accordion type="multiple" className="space-y-3">
-                {unsoldByCategories.map((group, idx) => (
-                  <AccordionItem key={idx} value={`unsold-cat-${idx}`} className="border-none">
-                    <Card className="border-none shadow-md rounded-3xl overflow-hidden bg-white">
-                      <AccordionTrigger className="hover:no-underline p-2 md:p-6 text-left">
-                        <div className="flex items-center gap-2 md:gap-4 w-full min-w-0">
-                          <div className="w-8 h-8 md:w-12 md:h-12 rounded-2xl flex items-center justify-center font-black text-base md:text-xl bg-slate-100 text-slate-400 shadow-inner shrink-0">
-                            {group.category[0].toUpperCase()}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-black text-xs md:text-lg uppercase tracking-tighter text-slate-800 truncate">{group.category}</h3>
-                            <p className="text-[8px] font-bold uppercase text-slate-400">{group.products.length} productos sin movimiento</p>
-                          </div>
-                          <Ghost className="w-4 h-4 text-slate-200 mr-2" />
-                        </div>
-                      </AccordionTrigger>
-                      <AccordionContent className="px-1 md:px-6 pb-4 md:pb-6 pt-0 bg-slate-50/50">
-                        <div className="grid gap-1 mt-1 md:mt-2">
-                          {group.products.map((p) => (
-                            <div key={p.id} className="bg-white p-1 md:p-3 rounded-xl flex items-center justify-between border border-slate-100 shadow-sm gap-0.5 md:gap-2">
-                              <div className="min-w-0 flex-1">
-                                <p className="font-bold text-[9px] md:text-xs text-slate-700 truncate leading-tight">{p.name}</p>
-                                <p className="text-[7px] text-slate-400 font-bold uppercase mt-0.5">Cód: {p.id}</p>
-                              </div>
-                              <div className="text-right flex items-center gap-0.5 md:gap-4 shrink-0">
-                                <div className="flex flex-col items-end px-1">
-                                  <p className="text-[6px] md:text-[8px] font-black text-slate-400 uppercase leading-none mb-0.5">St</p>
-                                  <p className="text-[8px] md:text-sm font-black text-slate-700">{p.stock}</p>
-                                </div>
-                                <div className="flex flex-col items-end px-1">
-                                  <p className="text-[6px] md:text-[8px] font-black text-slate-400 uppercase leading-none mb-0.5">Precio</p>
-                                  <p className="text-[8px] md:text-sm font-black text-primary font-mono">${Math.round(p.price).toLocaleString('es-CL')}</p>
-                                </div>
-                                <Link 
-                                  href={`/inventory?search=${p.id}`}
-                                  className="h-7 w-7 md:h-8 md:w-8 flex items-center justify-center rounded-lg bg-slate-100 text-slate-400 hover:text-primary transition-colors shrink-0 ml-1"
-                                >
-                                  <ArrowRight className="w-3 h-3 md:w-4 md:h-4" />
-                                </Link>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </AccordionContent>
-                    </Card>
-                  </AccordionItem>
-                ))}
-              </Accordion>
-            )}
-          </div>
         </TabsContent>
       </Tabs>
     </div>

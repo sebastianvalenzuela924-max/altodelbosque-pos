@@ -5,7 +5,7 @@ service cloud.firestore {
 
     /**
      * ALTODELBOSQUE POS SECURITY RULES
-     * Version: 3.1 - Despliegue de emergencia para solucionar errores de actualización
+     * Version: 3.2 - Añadido soporte para BreadLogs
      */
 
     function isSignedIn() {
@@ -26,6 +26,10 @@ service cloud.firestore {
     }
 
     match /inventoryLogs/{logId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /breadLogs/{logId} {
       allow read, write: if isSignedIn();
     }
 
