@@ -109,6 +109,9 @@
         "date": { "type": "string", "format": "date-time" },
         "bought": { "type": "number", "description": "Amount of bread bought today in kg." },
         "remaining": { "type": "number", "description": "Amount of bread left today in kg." },
+        "clima": { "type": "string", "enum": ["Sol", "Nubes", "Lluvia"], "description": "Weather of the day." },
+        "quiebre": { "type": "boolean", "description": "Whether stock ran out prematurely." },
+        "observation": { "type": "string", "description": "Optional notes." },
         "timestamp": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "date", "bought", "remaining"]

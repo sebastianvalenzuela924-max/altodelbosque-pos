@@ -4,7 +4,7 @@
 import { useCollection, useFirestore, useMemoFirebase, setDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase";
 import { collection, query, orderBy, doc, serverTimestamp } from "firebase/firestore";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { DollarSign, TrendingUp, Calendar, ShoppingBag, Loader2, Trophy, Banknote, CreditCard, Wallet, UtensilsCrossed, Plus, Edit3, Trash2, Check, PackageX, PackageSearch, Clock, ChevronRight, Send, Copy, X, FileText, Share2 } from "lucide-react";
+import { DollarSign, TrendingUp, Calendar, ShoppingBag, Loader2, Trophy, Banknote, CreditCard, Wallet, UtensilsCrossed, Plus, Edit3, Trash2, Check, PackageX, PackageSearch, Clock, ChevronRight, Send, Copy, X, FileText, Share2, Sun, Cloud, CloudRain, AlertCircle, Sparkles, HelpCircle, Info } from "lucide-react";
 import { useMemo, useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -16,12 +16,14 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 
 type DateFilter = "today" | "yesterday" | "month" | "all" | "custom";
+type ClimaType = "Sol" | "Nubes" | "Lluvia";
 
 /**
  * Helper to get a local date string in YYYY-MM-DD format.
- * Prevents UTC timezone shift issues.
  */
 function getLocalDateString(date: Date): string {
   const year = date.getFullYear();
@@ -30,13 +32,25 @@ function getLocalDateString(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
+const ClimaIcons: Record<ClimaType, any> = {
+  "Sol": Sun,
+  "Nubes": Cloud,
+  "Lluvia": CloudRain
+};
+
 export default function ReportsPage() {
   const [mounted, setMounted] = useState(false);
   const [dateFilter, setDateFilter] = useState<DateFilter>("today");
   const [customDate, setCustomDate] = useState<string>("");
   
+  // Bread states
   const [breadBought, setBreadBought] = useState("");
   const [breadRemaining, setBreadRemaining] = useState("");
+  const [breadClima, setBreadClima] = useState<ClimaType>("Sol");
+  const [breadQuiebre, setBreadQuiebre] = useState(false);
+  const [breadObservation, setBreadObservation] = useState("");
+  const [tomorrowWeather, setTomorrowWeather] = useState<ClimaType>("Sol");
+  
   const [editingBreadLog, setEditingBreadLog] = useState<any | null>(null);
 
   const [isSummaryOpen, setIsSummaryOpen] = useState(false);
@@ -101,6 +115,23 @@ export default function ReportsPage() {
     return { revenue, cash, card, inventoryValue, transactions, totalUnits };
   }, [filteredSales, allProducts]);
 
+  const topProducts = useMemo(() => {
+    const productCounts: Record<string, any> = {};
+    filteredSales.forEach(sale => {
+      const isMonetary = sale.paymentMethod !== 'deduction';
+      sale.itemsSummary?.forEach((item: any) => {
+        if (item.type === 'product') {
+          if (!productCounts[item.id]) {
+            productCounts[item.id] = { name: item.name, quantity: 0, revenue: 0 };
+          }
+          productCounts[item.id].quantity += item.quantity;
+          if (isMonetary) productCounts[item.id].revenue += (item.price * item.quantity);
+        }
+      });
+    });
+    return Object.values(productCounts).sort((a: any, b: any) => b.quantity - a.quantity).slice(0, 10);
+  }, [filteredSales]);
+
   const salesAnalysis = useMemo(() => {
     if (!allProducts || !mounted) return { categoriesWithSales: [], categoriesWithNoSales: [] };
     
@@ -148,22 +179,70 @@ export default function ReportsPage() {
     };
   }, [filteredSales, allProducts, mounted]);
 
-  const topProducts = useMemo(() => {
-    const productCounts: Record<string, any> = {};
-    filteredSales.forEach(sale => {
-      const isMonetary = sale.paymentMethod !== 'deduction';
-      sale.itemsSummary?.forEach((item: any) => {
-        if (item.type === 'product') {
-          if (!productCounts[item.id]) {
-            productCounts[item.id] = { name: item.name, quantity: 0, revenue: 0 };
-          }
-          productCounts[item.id].quantity += item.quantity;
-          if (isMonetary) productCounts[item.id].revenue += (item.price * item.quantity);
-        }
-      });
-    });
-    return Object.values(productCounts).sort((a: any, b: any) => b.quantity - a.quantity).slice(0, 10);
-  }, [filteredSales]);
+  // LOGICA RECOMENDACION PAN
+  const breadAnalysis = useMemo(() => {
+    if (!allBreadLogs || allBreadLogs.length === 0) return null;
+
+    const now = new Date();
+    const tomorrow = new Date(now);
+    tomorrow.setDate(now.getDate() + 1);
+    const tomorrowDay = tomorrow.getDay(); // 0-6
+
+    // 1. Promedio histórico mismo día de la semana
+    const sameDayLogs = allBreadLogs.filter(l => new Date(l.date + 'T12:00:00').getDay() === tomorrowDay);
+    const avgConsumoSameDay = sameDayLogs.length > 0 
+      ? sameDayLogs.reduce((sum, l) => sum + (l.bought - l.remaining), 0) / sameDayLogs.length 
+      : 0;
+
+    // 2. Comportamiento reciente (últimos 7 días)
+    const recentLogs = allBreadLogs.slice(0, 7);
+    const avgConsumoRecent = recentLogs.reduce((sum, l) => sum + (l.bought - l.remaining), 0) / recentLogs.length;
+
+    // 3. Análisis de sobrantes recientes (últimos 3 días)
+    const recentLeftovers = allBreadLogs.slice(0, 3).reduce((sum, l) => sum + l.remaining, 0) / 3;
+    
+    // 4. Quiebres recientes
+    const recentQuiebres = allBreadLogs.slice(0, 5).filter(l => l.quiebre).length;
+
+    // 5. Análisis clima histórico
+    const weatherLogs = allBreadLogs.filter(l => l.clima === tomorrowWeather);
+    const avgConsumoWeather = weatherLogs.length > 0 
+      ? weatherLogs.reduce((sum, l) => sum + (l.bought - l.remaining), 0) / weatherLogs.length 
+      : 0;
+
+    // CALCULO DE SUGERENCIA
+    let base = avgConsumoSameDay > 0 ? (avgConsumoSameDay * 0.7 + avgConsumoRecent * 0.3) : avgConsumoRecent;
+    
+    // Ajuste por clima esperado
+    if (avgConsumoWeather > 0) {
+      base = (base * 0.6) + (avgConsumoWeather * 0.4);
+    } else {
+      if (tomorrowWeather === "Lluvia") base *= 0.85; // Menos gente con lluvia
+      if (tomorrowWeather === "Sol") base *= 1.05; // Más gente con sol
+    }
+
+    // Ajuste por sobrantes excesivos
+    if (recentLeftovers > 2) base *= 0.9; 
+    
+    // Ajuste por quiebres frecuentes
+    if (recentQuiebres >= 1) base *= 1.15;
+
+    const sugerencia = Math.max(2, Math.round(base * 10) / 10);
+
+    // INSIGHTS
+    const insights = [];
+    if (recentLeftovers > 3) insights.push("Llevas varios días con sobrante alto, sugerimos bajar el pedido.");
+    if (recentQuiebres > 0) insights.push("Hubo quiebre recientemente, se aumenta un poco la sugerencia.");
+    if (tomorrowWeather === "Lluvia") insights.push("Con lluvia normalmente se vende menos pan.");
+    if (sameDayLogs.length > 0 && avgConsumoSameDay < avgConsumoRecent) insights.push(`Los ${["Domingos","Lunes","Martes","Miércoles","Jueves","Viernes","Sábados"][tomorrowDay]} suele sobrar más pan.`);
+
+    // Razonamiento
+    let razon = `Basado en el promedio de los ${["Domingos","Lunes","Martes","Miércoles","Jueves","Viernes","Sábados"][tomorrowDay]} (${avgConsumoSameDay.toFixed(1)}kg) y la tendencia reciente.`;
+    if (tomorrowWeather === "Lluvia") razon += " Ajustado a la baja por lluvia esperada.";
+    if (recentQuiebres > 0) razon += " Aumentado por quiebres recientes.";
+
+    return { sugerencia, insights, razon };
+  }, [allBreadLogs, tomorrowWeather]);
 
   const handleSaveBreadLog = () => {
     if (!breadBought || !breadRemaining) {
@@ -195,11 +274,14 @@ export default function ReportsPage() {
       date: targetDateStr,
       bought: parseFloat(breadBought),
       remaining: parseFloat(breadRemaining),
+      clima: breadClima,
+      quiebre: breadQuiebre,
+      observation: breadObservation.trim(),
       timestamp: serverTimestamp()
     }, { merge: true });
     
     toast({ title: "Registro de Pan guardado", description: `Fecha: ${targetDateStr}` });
-    setBreadBought(""); setBreadRemaining(""); setEditingBreadLog(null);
+    setBreadBought(""); setBreadRemaining(""); setBreadObservation(""); setBreadQuiebre(false); setEditingBreadLog(null);
   };
 
   const generateDailySummary = () => {
@@ -214,7 +296,6 @@ export default function ReportsPage() {
     text += `💳 *Tarjeta:* $${Math.round(stats.card).toLocaleString('es-CL')}\n`;
     text += `📦 *Valor inventario:* $${Math.round(stats.inventoryValue).toLocaleString('es-CL')}\n\n`;
 
-    // Buscar información de pan para el resumen usando la fecha local
     let targetDateStr = "";
     const today = new Date();
     if (dateFilter === "today") targetDateStr = getLocalDateString(today);
@@ -236,12 +317,8 @@ export default function ReportsPage() {
       }
     }
 
-    if (stats.transactions > 0) {
-      text += `🧾 *Transacciones:* ${stats.transactions}\n`;
-    }
-    if (stats.totalUnits > 0) {
-      text += `📚 *Unidades vendidas:* ${stats.totalUnits}\n\n`;
-    }
+    if (stats.transactions > 0) text += `🧾 *Transacciones:* ${stats.transactions}\n`;
+    if (stats.totalUnits > 0) text += `📚 *Unidades vendidas:* ${stats.totalUnits}\n\n`;
 
     if (topProducts.length > 0) {
       text += `🏆 *Top productos (Top 3):*\n`;
@@ -249,24 +326,12 @@ export default function ReportsPage() {
         text += `- ${p.name}: ${p.quantity} u.\n`;
       });
       text += `\n`;
-    } else if (stats.revenue === 0) {
-      text += `⚠️ No se registraron ventas en el período seleccionado.\n\n`;
     }
 
     text += `✅ Resumen generado desde la app`;
 
     setSummaryText(text);
     setIsSummaryOpen(true);
-  };
-
-  const handleCopySummary = () => {
-    navigator.clipboard.writeText(summaryText);
-    toast({ title: "Copiado al portapapeles", description: "Ya puedes pegarlo en WhatsApp." });
-  };
-
-  const handleSendWhatsApp = () => {
-    const encodedText = encodeURIComponent(summaryText);
-    window.open(`https://wa.me/?text=${encodedText}`, '_blank');
   };
 
   if (!mounted || isLoadingSales || isLoadingProducts) {
@@ -285,14 +350,11 @@ export default function ReportsPage() {
           <h1 className="text-2xl font-black text-primary tracking-tighter uppercase flex items-center gap-2">
             <TrendingUp className="w-6 h-6" /> Reportes
           </h1>
-          <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest">Estadísticas y control diario.</p>
+          <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest">Estadísticas y control inteligente.</p>
         </div>
         
         <div className="flex flex-wrap gap-2 w-full md:w-auto">
-          <Button 
-            onClick={generateDailySummary}
-            className="rounded-2xl h-11 px-6 font-black uppercase text-[10px] tracking-widest bg-accent hover:bg-accent/90 shadow-lg shadow-accent/20"
-          >
+          <Button onClick={generateDailySummary} className="rounded-2xl h-11 px-6 font-black uppercase text-[10px] bg-accent shadow-lg shadow-accent/20">
             <Share2 className="w-4 h-4 mr-2" /> Generar Resumen
           </Button>
 
@@ -309,9 +371,6 @@ export default function ReportsPage() {
               <SelectItem value="all">Todo</SelectItem>
             </SelectContent>
           </Select>
-          {dateFilter === "custom" && (
-            <Input type="date" className="h-11 rounded-2xl bg-slate-100 border-none font-bold w-full md:w-[160px]" value={customDate} onChange={(e) => setCustomDate(e.target.value)} />
-          )}
         </div>
       </header>
 
@@ -336,19 +395,198 @@ export default function ReportsPage() {
 
       <Tabs defaultValue="sales" className="w-full">
         <TabsList className="bg-white p-1 rounded-2xl shadow-sm border h-14 w-full grid grid-cols-4">
-          <TabsTrigger value="sales" className="rounded-xl font-bold uppercase text-[9px] tracking-widest data-[state=active]:bg-primary data-[state=active]:text-white">
-            <ShoppingBag className="w-4 h-4 mr-2" /> Ventas
-          </TabsTrigger>
-          <TabsTrigger value="no-sales" className="rounded-xl font-bold uppercase text-[9px] tracking-widest data-[state=active]:bg-primary data-[state=active]:text-white">
-            <PackageX className="w-4 h-4 mr-2" /> Sin Ventas
-          </TabsTrigger>
-          <TabsTrigger value="bread" className="rounded-xl font-bold uppercase text-[9px] tracking-widest data-[state=active]:bg-amber-600 data-[state=active]:text-white">
-            <UtensilsCrossed className="w-4 h-4 mr-2" /> Pan
-          </TabsTrigger>
-          <TabsTrigger value="top" className="rounded-xl font-bold uppercase text-[9px] tracking-widest data-[state=active]:bg-primary data-[state=active]:text-white">
-            <Trophy className="w-4 h-4 mr-2" /> Top
-          </TabsTrigger>
+          <TabsTrigger value="sales" className="rounded-xl font-bold uppercase text-[9px] tracking-widest">Ventas</TabsTrigger>
+          <TabsTrigger value="no-sales" className="rounded-xl font-bold uppercase text-[9px] tracking-widest">Sin Ventas</TabsTrigger>
+          <TabsTrigger value="bread" className="rounded-xl font-bold uppercase text-[9px] tracking-widest">Control Pan</TabsTrigger>
+          <TabsTrigger value="top" className="rounded-xl font-bold uppercase text-[9px] tracking-widest">Top</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="bread" className="mt-6 space-y-8">
+          {/* BLOQUE 1: RECOMENDACIÓN INTELIGENTE */}
+          <section className="space-y-4">
+            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 px-2">
+              <Sparkles className="w-4 h-4 text-accent" /> Análisis y Recomendación
+            </h3>
+            <Card className="border-none shadow-xl rounded-3xl bg-white overflow-hidden">
+              <div className="grid grid-cols-1 md:grid-cols-2">
+                <div className="p-8 bg-slate-900 text-white flex flex-col justify-center items-center text-center space-y-4">
+                   <div className="w-16 h-16 rounded-3xl bg-primary flex items-center justify-center shadow-2xl shadow-primary/20">
+                     <UtensilsCrossed className="w-8 h-8" />
+                   </div>
+                   <div>
+                     <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">Sugerencia para Mañana</p>
+                     <h2 className="text-6xl font-black font-mono tracking-tighter">
+                       {breadAnalysis?.sugerencia || "---"} <span className="text-xl">kg</span>
+                     </h2>
+                   </div>
+                   <div className="flex gap-2">
+                      <Badge variant="outline" className="border-white/20 text-white font-black text-[9px] uppercase">
+                        {["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"][(new Date().getDay() + 1) % 7]}
+                      </Badge>
+                      <Badge className="bg-accent text-white font-black text-[9px] uppercase">Clima: {tomorrowWeather}</Badge>
+                   </div>
+                </div>
+                <div className="p-8 space-y-6 flex flex-col justify-center">
+                   <div className="space-y-2">
+                     <Label className="text-[10px] font-black uppercase text-slate-400">¿Cómo estará el clima mañana?</Label>
+                     <div className="grid grid-cols-3 gap-2">
+                       {(["Sol", "Nubes", "Lluvia"] as ClimaType[]).map(c => {
+                         const Icon = ClimaIcons[c];
+                         return (
+                           <Button 
+                             key={c} 
+                             variant={tomorrowWeather === c ? 'default' : 'outline'}
+                             className={cn("rounded-xl h-12 gap-2 font-bold", tomorrowWeather === c && "bg-accent hover:bg-accent/90")}
+                             onClick={() => setTomorrowWeather(c)}
+                           >
+                             <Icon className="w-4 h-4" /> <span className="text-[10px] uppercase">{c}</span>
+                           </Button>
+                         );
+                       })}
+                     </div>
+                   </div>
+                   <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-3">
+                     <div className="flex items-start gap-3">
+                       <Info className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                       <p className="text-xs font-bold text-slate-600 leading-relaxed italic">
+                         {breadAnalysis?.razon || "Aún no hay suficientes datos para una recomendación precisa."}
+                       </p>
+                     </div>
+                   </div>
+                </div>
+              </div>
+            </Card>
+          </section>
+
+          {/* BLOQUE 2: REGISTRO DIARIO MEJORADO */}
+          <section className="space-y-4">
+            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 px-2">
+              <Edit3 className="w-4 h-4 text-primary" /> Registro Diario
+            </h3>
+            <Card className="border-none shadow-sm rounded-3xl bg-white p-6 space-y-6">
+              <div className="flex justify-between items-center pb-2 border-b">
+                 <Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest bg-slate-50 text-primary border-slate-200">
+                    Fecha Registro: {dateFilter === 'today' ? 'Hoy' : dateFilter === 'yesterday' ? 'Ayer' : customDate || 'Seleccionada'}
+                 </Badge>
+                 <div className="flex items-center gap-2">
+                   <Label className="text-[9px] font-black uppercase text-slate-400">¿Hubo Quiebre?</Label>
+                   <Switch checked={breadQuiebre} onCheckedChange={setBreadQuiebre} />
+                 </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase text-slate-400">Pan Comprado (kg)</Label>
+                  <Input type="number" step="0.1" className="h-12 rounded-2xl bg-slate-50 border-none font-black text-lg text-center" placeholder="0.0" value={breadBought} onChange={(e) => setBreadBought(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase text-slate-400">Pan Sobrante (kg)</Label>
+                  <Input type="number" step="0.1" className="h-12 rounded-2xl bg-slate-50 border-none font-black text-lg text-center" placeholder="0.0" value={breadRemaining} onChange={(e) => setBreadRemaining(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase text-slate-400">Clima del Día</Label>
+                  <Select value={breadClima} onValueChange={(v: ClimaType) => setBreadClima(v)}>
+                    <SelectTrigger className="h-12 rounded-2xl bg-slate-50 border-none font-bold">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-2xl">
+                      <SelectItem value="Sol">Soleado</SelectItem>
+                      <SelectItem value="Nubes">Nublado</SelectItem>
+                      <SelectItem value="Lluvia">Lluvia</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2 flex flex-col justify-end">
+                  <Button className="h-12 rounded-2xl bg-primary font-black uppercase tracking-widest text-[10px]" onClick={handleSaveBreadLog}>
+                    {editingBreadLog ? 'Actualizar' : 'Guardar Registro'}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                 <Label className="text-[10px] font-black uppercase text-slate-400">Observaciones (Opcional)</Label>
+                 <Textarea 
+                    className="rounded-2xl bg-slate-50 border-none font-bold text-xs" 
+                    placeholder="Eje: Día festivo, evento especial..." 
+                    value={breadObservation} 
+                    onChange={e => setBreadObservation(e.target.value)} 
+                 />
+              </div>
+            </Card>
+          </section>
+
+          {/* BLOQUE 3: INSIGHTS AUTOMÁTICOS */}
+          {breadAnalysis && breadAnalysis.insights.length > 0 && (
+            <section className="space-y-4">
+              <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 px-2">
+                <HelpCircle className="w-4 h-4 text-amber-500" /> Insights y Alertas
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {breadAnalysis.insights.map((insight, idx) => (
+                  <Card key={idx} className="border-none shadow-sm bg-amber-50 text-amber-700 rounded-2xl p-4 flex items-center gap-3">
+                    <AlertCircle className="w-5 h-5 shrink-0" />
+                    <span className="text-xs font-bold leading-tight">{insight}</span>
+                  </Card>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* BLOQUE 4: HISTORIAL MEJORADO */}
+          <section className="space-y-4">
+            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 px-2">
+              <Clock className="w-4 h-4" /> Historial de Control
+            </h3>
+            <div className="space-y-2">
+              {allBreadLogs?.map((log) => {
+                const date = new Date(log.date + 'T12:00:00');
+                const sold = (log.bought || 0) - (log.remaining || 0);
+                const ClimaIcon = ClimaIcons[log.clima as ClimaType] || Sun;
+                
+                return (
+                  <Card key={log.id} className="border-none shadow-sm rounded-2xl bg-white p-4 flex items-center justify-between group">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-slate-50 border flex flex-col items-center justify-center text-slate-800">
+                        <span className="text-[7px] font-black uppercase text-slate-400 leading-none">{date.toLocaleDateString('es-CL', { month: 'short' })}</span>
+                        <span className="text-xl font-black leading-none">{date.getDate()}</span>
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className="text-[10px] font-black text-slate-800 uppercase">{date.toLocaleDateString('es-CL', { weekday: 'long' })}</p>
+                          <ClimaIcon className="w-3.5 h-3.5 text-slate-400" />
+                          {log.quiebre && <Badge className="bg-destructive text-white text-[7px] font-black uppercase py-0 px-1 rounded">Quiebre</Badge>}
+                        </div>
+                        <p className="text-[8px] font-bold text-slate-400 mt-0.5">Comprado: {log.bought}kg • Quedó: {log.remaining}kg</p>
+                        {log.observation && <p className="text-[8px] text-slate-400 italic mt-1 truncate max-w-[150px]">"{log.observation}"</p>}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-6">
+                      <div className="text-right">
+                        <p className="text-[8px] font-black text-slate-400 uppercase">Consumo Real</p>
+                        <p className="text-xl font-black text-primary">{sold.toFixed(2)} kg</p>
+                      </div>
+                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => { 
+                          setEditingBreadLog(log); 
+                          setBreadBought(log.bought.toString()); 
+                          setBreadRemaining(log.remaining.toString()); 
+                          setBreadClima(log.clima as ClimaType);
+                          setBreadQuiebre(!!log.quiebre);
+                          setBreadObservation(log.observation || "");
+                        }}>
+                          <Edit3 className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-destructive" onClick={() => deleteDocumentNonBlocking(doc(firestore, "breadLogs", log.id))}>
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
+          </section>
+        </TabsContent>
 
         <TabsContent value="sales" className="mt-6 space-y-3">
           {salesAnalysis.categoriesWithSales.length === 0 ? (
@@ -425,67 +663,6 @@ export default function ReportsPage() {
           )}
         </TabsContent>
 
-        <TabsContent value="bread" className="mt-6 space-y-6">
-          <Card className="border-none shadow-sm rounded-3xl bg-white p-6">
-            <div className="mb-4">
-               <Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest bg-amber-50 text-amber-600 border-amber-200">
-                  Fecha Registro: {dateFilter === 'today' ? 'Hoy' : dateFilter === 'yesterday' ? 'Ayer' : customDate || 'Seleccionada'}
-               </Badge>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
-              <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase text-slate-400">¿Cuántos kg de Pan Compré?</Label>
-                <Input type="number" step="0.01" className="h-12 rounded-2xl bg-slate-50 border-none font-black text-lg text-center" placeholder="0.00" value={breadBought} onChange={(e) => setBreadBought(e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase text-slate-400">¿Cuántos kg de Pan Quedaron?</Label>
-                <Input type="number" step="0.01" className="h-12 rounded-2xl bg-slate-50 border-none font-black text-lg text-center" placeholder="0.00" value={breadRemaining} onChange={(e) => setBreadRemaining(e.target.value)} />
-              </div>
-              <Button className="h-12 rounded-2xl bg-amber-600 hover:bg-amber-700 font-black uppercase tracking-widest text-xs" onClick={handleSaveBreadLog}>
-                {editingBreadLog ? 'Guardar Cambios' : 'Registrar'}
-              </Button>
-            </div>
-          </Card>
-
-          <div className="space-y-2">
-            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 flex items-center gap-2">
-              <Clock className="w-3 h-3" /> Historial Reciente (kg)
-            </h3>
-            {allBreadLogs?.map((log) => {
-              const date = new Date(log.date + 'T12:00:00');
-              const sold = (log.bought || 0) - (log.remaining || 0);
-              return (
-                <Card key={log.id} className="border-none shadow-sm rounded-2xl bg-white p-4 flex items-center justify-between group">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-slate-50 border flex flex-col items-center justify-center">
-                      <span className="text-[7px] font-black uppercase text-slate-400 leading-none">{date.toLocaleDateString('es-CL', { month: 'short' })}</span>
-                      <span className="text-lg font-black text-slate-800 leading-none">{date.getDate()}</span>
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-black text-slate-800 uppercase">{date.toLocaleDateString('es-CL', { weekday: 'long' })}</p>
-                      <p className="text-[8px] font-bold text-slate-400">{log.bought} kg comprados</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-6">
-                    <div className="text-right">
-                      <p className="text-[8px] font-black text-slate-400 uppercase">Consumo/Venta</p>
-                      <p className="text-xl font-black text-amber-600">{sold.toFixed(2)} kg</p>
-                    </div>
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => { setEditingBreadLog(log); setBreadBought(log.bought.toString()); setBreadRemaining(log.remaining.toString()); }}>
-                        <Edit3 className="w-3.5 h-3.5" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-destructive" onClick={() => deleteDocumentNonBlocking(doc(firestore, "breadLogs", log.id))}>
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
-                    </div>
-                  </div>
-                </Card>
-              );
-            })}
-          </div>
-        </TabsContent>
-
         <TabsContent value="top" className="mt-6">
           <Card className="border-none shadow-sm rounded-3xl bg-white p-6">
             <h3 className="text-sm font-black text-primary uppercase tracking-widest mb-6 flex items-center gap-2">
@@ -514,34 +691,21 @@ export default function ReportsPage() {
         </TabsContent>
       </Tabs>
 
-      {/* DIÁLOGOS DE RESUMEN WHATSAPP */}
       <Dialog open={isSummaryOpen} onOpenChange={setIsSummaryOpen}>
         <DialogContent className="rounded-3xl border-none shadow-2xl max-w-[90vw] sm:max-w-md p-6">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-xl font-black text-primary uppercase">
               <Share2 className="w-6 h-6" /> Vista Previa Resumen
             </DialogTitle>
-            <DialogDescription className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-              Este es el mensaje ejecutivo que se compartirá.
-            </DialogDescription>
           </DialogHeader>
-
           <div className="mt-4 bg-slate-50 rounded-2xl p-4 border border-slate-100 whitespace-pre-wrap font-mono text-[10px] md:text-xs leading-relaxed max-h-[40vh] overflow-y-auto">
             {summaryText}
           </div>
-
           <DialogFooter className="grid grid-cols-2 gap-2 mt-6">
-            <Button 
-              variant="outline" 
-              className="rounded-xl h-12 font-bold gap-2 border-slate-200" 
-              onClick={handleCopySummary}
-            >
+            <Button variant="outline" className="rounded-xl h-12 font-bold gap-2" onClick={() => { navigator.clipboard.writeText(summaryText); toast({ title: "Copiado" }); }}>
               <Copy className="w-4 h-4" /> Copiar
             </Button>
-            <Button 
-              className="rounded-xl h-12 font-black uppercase text-[10px] tracking-widest bg-green-600 hover:bg-green-700 shadow-lg shadow-green-200 gap-2" 
-              onClick={handleSendWhatsApp}
-            >
+            <Button className="rounded-xl h-12 font-black uppercase text-[10px] bg-green-600 hover:bg-green-700" onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(summaryText)}`, '_blank')}>
               <Send className="w-4 h-4" /> WhatsApp
             </Button>
           </DialogFooter>
