@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { AlertCircle, Package, Send, Sparkles, Truck, ListFilter, Trash2, CheckSquare, Search, X } from "lucide-react";
+import { AlertCircle, Package, Send, Sparkles, Truck, ListFilter, Trash2, CheckSquare, Search, X, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -34,13 +34,14 @@ interface SuggestionsViewProps {
   distributors: string[];
 }
 
-type Priority = 'Crítico' | 'Por reponer' | 'Sin rotación';
+type Priority = 'Crítico' | 'Por reponer' | 'Sin rotación' | 'OK';
 type ViewMode = 'general' | 'category' | 'distributor';
 
 export function SuggestionsView({ products, categories, distributors }: SuggestionsViewProps) {
   const firestore = useFirestore();
   const { toast } = useToast();
-  const [priorityFilter, setPriorityFilter] = useState<string>("all");
+  // 'suggestions' es el filtro por defecto que oculta los 'OK'
+  const [priorityFilter, setPriorityFilter] = useState<string>("suggestions");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [distributorFilter, setDistributorFilter] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
@@ -81,8 +82,8 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
         const sales = salesMap[p.id] || { d7: 0, d14: 0, d30: 0 };
         const rotationScore = (sales.d7 / 7 * 0.5) + (sales.d14 / 14 * 0.3) + (sales.d30 / 30 * 0.2);
         
-        let priority: Priority | 'Ignore' = 'Ignore';
-        let refType: 'Aviso' | 'Ideal' | '' = '';
+        let priority: Priority = 'OK';
+        let refType: 'AVISO' | 'IDEAL' | '' = '';
         let refValue = 0;
         let suggestedQty = 0;
 
@@ -93,39 +94,39 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
         // CRÍTICO
         if (stock <= 0) {
           priority = 'Crítico';
-          refType = hasWarning ? 'Aviso' : (hasIdeal ? 'Ideal' : '');
+          refType = hasWarning ? 'AVISO' : (hasIdeal ? 'IDEAL' : '');
           refValue = hasWarning ? p.warningStock! : (hasIdeal ? p.idealStock! : 0);
           suggestedQty = hasIdeal ? p.idealStock! : (hasWarning ? p.warningStock! * 2 : 5);
         } else if (hasWarning && stock <= p.warningStock!) {
           priority = 'Crítico';
-          refType = 'Aviso';
+          refType = 'AVISO';
           refValue = p.warningStock!;
           suggestedQty = Math.max(p.warningStock! * 2, Math.ceil(rotationScore * 14));
         }
 
         // POR REPONER
-        if (priority === 'Ignore' && stock > 0) {
+        if (priority === 'OK' && stock > 0) {
            if (hasWarning) {
               if (stock <= p.warningStock! + 2) {
                  priority = 'Por reponer';
-                 refType = 'Aviso';
+                 refType = 'AVISO';
                  refValue = p.warningStock!;
                  suggestedQty = Math.max(5, Math.ceil(rotationScore * 10));
               }
            } else if (hasIdeal) {
               if (stock < p.idealStock! * 0.6) {
                  priority = 'Por reponer';
-                 refType = 'Ideal';
+                 refType = 'IDEAL';
                  refValue = p.idealStock!;
                  suggestedQty = Math.max(0, p.idealStock! - stock);
               }
            }
         }
 
-        // SIN ROTACIÓN (Solo si tiene metas)
-        if (priority === 'Ignore' && sales.d30 === 0 && (hasWarning || hasIdeal)) {
+        // SIN ROTACIÓN (Solo si tiene metas definidas)
+        if (priority === 'OK' && sales.d30 === 0 && (hasWarning || hasIdeal)) {
           priority = 'Sin rotación';
-          refType = hasWarning ? 'Aviso' : 'Ideal';
+          refType = hasWarning ? 'AVISO' : 'IDEAL';
           refValue = hasWarning ? p.warningStock! : p.idealStock!;
         }
 
@@ -139,36 +140,39 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
           salesRecent: sales.d7
         };
       })
-      .filter(p => p.priority !== 'Ignore')
-      .filter(p => {
-        // No incluir en sin rotación los que no tienen aviso ni ideal
-        if (p.priority === 'Sin rotación' && !p.warningStock && !p.idealStock) return false;
-        return priorityFilter === 'all' || p.priority === priorityFilter;
-      })
       .sort((a, b) => {
-        const order = { 'Crítico': 0, 'Por reponer': 1, 'Sin rotación': 2 };
+        const order = { 'Crítico': 0, 'Por reponer': 1, 'Sin rotación': 2, 'OK': 3 };
         return order[a.priority as Priority] - order[b.priority as Priority];
       });
-  }, [products, allSales, priorityFilter]);
+  }, [products, allSales]);
 
   const filtered = useMemo(() => {
     return analysis.filter(p => {
       const q = searchTerm.toLowerCase().trim();
       const matchesSearch = q === "" || p.name.toLowerCase().includes(q) || String(p.id).includes(q);
-      const matchesCategory = categoryFilter === 'all' || (p.category || "General") === categoryFilter;
       
+      const matchesCategory = categoryFilter === 'all' || (p.category || "General") === categoryFilter;
       const pDist = p.distributor?.trim() || "Sin Prov. (General)";
       const matchesDistributor = distributorFilter === 'all' || pDist === distributorFilter;
       
-      return matchesSearch && matchesCategory && matchesDistributor;
+      let matchesPriority = true;
+      // Si hay búsqueda, ignoramos el filtro de "Ocultar OK" (suggestions)
+      if (priorityFilter === 'suggestions' && q === "") {
+        matchesPriority = p.priority !== 'OK';
+      } else if (priorityFilter !== 'all' && priorityFilter !== 'suggestions') {
+        matchesPriority = p.priority === priorityFilter;
+      }
+      
+      return matchesSearch && matchesCategory && matchesDistributor && matchesPriority;
     });
-  }, [analysis, categoryFilter, distributorFilter, searchTerm]);
+  }, [analysis, categoryFilter, distributorFilter, searchTerm, priorityFilter]);
 
   const summary = useMemo(() => {
     return {
       critical: analysis.filter(p => p.priority === 'Crítico').length,
       restock: analysis.filter(p => p.priority === 'Por reponer').length,
       noRotation: analysis.filter(p => p.priority === 'Sin rotación').length,
+      ok: analysis.filter(p => p.priority === 'OK').length,
       distributors: new Set(analysis.map(p => p.distributor?.trim() || "Sin Prov. (General)")).size
     };
   }, [analysis]);
@@ -206,10 +210,12 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
     Object.entries(grouped).forEach(([dist, items]) => {
       if (!groupName) text += `*📦 Distribuidor: ${dist}*\n`;
       items.forEach(i => {
-        if (i.priority !== 'Sin rotación') {
+        if (i.priority !== 'Sin rotación' && i.priority !== 'OK') {
           text += `- ${i.suggestedQty}u. x ${i.name} (St: ${i.stock})\n`;
-        } else {
+        } else if (i.priority === 'Sin rotación') {
           text += `- (REVISAR) ${i.name} [Sin rotación]\n`;
+        } else {
+          text += `- (OPCIONAL) ${i.name} (St: ${i.stock})\n`;
         }
       });
       text += "\n";
@@ -222,7 +228,6 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
   const handleWhatsApp = (itemsToShare?: any[], groupName?: string) => {
     let listToShare = itemsToShare || filtered;
     
-    // Si hay selección manual, priorizarla
     if (selectedIds.length > 0 && !itemsToShare) {
       listToShare = filtered.filter(item => selectedIds.includes(item.id));
     } else if (!itemsToShare && selectedIds.length === 0) {
@@ -250,7 +255,8 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
   const renderProductItem = (p: any) => (
     <Card key={p.id} className={cn(
       "border-none shadow-sm hover:shadow-md transition-all overflow-hidden rounded-2xl mb-2",
-      selectedIds.includes(p.id) ? "bg-primary/5 ring-1 ring-primary/20" : "bg-white"
+      selectedIds.includes(p.id) ? "bg-primary/5 ring-1 ring-primary/20" : "bg-white",
+      p.priority === 'OK' && "opacity-80"
     )}>
       <div className="p-3 flex items-center gap-3">
         <div className="shrink-0">
@@ -264,9 +270,11 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
         <div className={cn(
           "w-9 h-9 md:w-10 md:h-10 rounded-xl flex items-center justify-center shrink-0",
           p.priority === 'Crítico' ? "bg-red-100 text-red-600" : 
-          p.priority === 'Por reponer' ? "bg-amber-100 text-amber-600" : "bg-slate-100 text-slate-400"
+          p.priority === 'Por reponer' ? "bg-amber-100 text-amber-600" : 
+          p.priority === 'OK' ? "bg-green-100 text-green-600" : "bg-slate-100 text-slate-400"
         )}>
-          {p.priority === 'Crítico' ? <AlertCircle className="w-5 h-5 md:w-6 md:h-6" /> : <Package className="w-5 h-5 md:w-6 md:h-6" />}
+          {p.priority === 'Crítico' ? <AlertCircle className="w-5 h-5 md:w-6 md:h-6" /> : 
+           p.priority === 'OK' ? <CheckCircle2 className="w-5 h-5 md:w-6 md:h-6" /> : <Package className="w-5 h-5 md:w-6 md:h-6" />}
         </div>
 
         <div className="min-w-0 flex-1">
@@ -276,7 +284,9 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
             </h4>
             <Badge className={cn(
               "text-[7px] md:text-[8px] font-black uppercase rounded-lg px-1.5 py-0.5 border-none h-4 shrink-0",
-              p.priority === 'Crítico' ? "bg-red-600 text-white" : p.priority === 'Por reponer' ? "bg-amber-600 text-white" : "bg-slate-400 text-white"
+              p.priority === 'Crítico' ? "bg-red-600 text-white" : 
+              p.priority === 'Por reponer' ? "bg-amber-600 text-white" : 
+              p.priority === 'OK' ? "bg-green-600 text-white" : "bg-slate-400 text-white"
             )}>{p.priority}</Badge>
           </div>
           
@@ -295,10 +305,12 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
               )}
             </div>
 
-            <div className="flex items-center gap-1 bg-primary/10 px-1.5 py-0.5 rounded-md border border-primary/10">
-              <span className="text-[7px] font-black text-primary uppercase">Pedir:</span>
-              <span className="text-[8px] font-black text-primary">+{p.suggestedQty}</span>
-            </div>
+            {p.priority !== 'OK' && p.suggestedQty > 0 && (
+              <div className="flex items-center gap-1 bg-primary/10 px-1.5 py-0.5 rounded-md border border-primary/10">
+                <span className="text-[7px] font-black text-primary uppercase">Pedir:</span>
+                <span className="text-[8px] font-black text-primary">+{p.suggestedQty}</span>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -314,37 +326,38 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
     return Array.from(currentGroups).filter(g => g !== "").sort();
   }, [filtered, viewMode]);
 
-  const allDistributorsList = useMemo(() => {
-    const dists = new Set(analysis.map(p => p.distributor?.trim() || "Sin Prov. (General)"));
-    return Array.from(dists).sort();
-  }, [analysis]);
-
   return (
     <div className="space-y-6">
       {/* Resumen de prioridades */}
-      <section className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <section className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         <Card className="border-none shadow-sm bg-red-600 text-white rounded-2xl">
-          <CardHeader className="p-4 pb-1">
-            <CardDescription className="text-white/70 font-black text-[9px] uppercase tracking-widest">Críticos</CardDescription>
-            <CardTitle className="text-2xl font-black">{summary.critical}</CardTitle>
+          <CardHeader className="p-3 pb-1">
+            <CardDescription className="text-white/70 font-black text-[8px] uppercase tracking-widest">Críticos</CardDescription>
+            <CardTitle className="text-xl font-black">{summary.critical}</CardTitle>
           </CardHeader>
         </Card>
         <Card className="border-none shadow-sm bg-amber-600 text-white rounded-2xl">
-          <CardHeader className="p-4 pb-1">
-            <CardDescription className="text-white/70 font-black text-[9px] uppercase tracking-widest">Por reponer</CardDescription>
-            <CardTitle className="text-2xl font-black">{summary.restock}</CardTitle>
+          <CardHeader className="p-3 pb-1">
+            <CardDescription className="text-white/70 font-black text-[8px] uppercase tracking-widest">Reponer</CardDescription>
+            <CardTitle className="text-xl font-black">{summary.restock}</CardTitle>
           </CardHeader>
         </Card>
         <Card className="border-none shadow-sm bg-slate-500 text-white rounded-2xl">
-          <CardHeader className="p-4 pb-1">
-            <CardDescription className="text-white/70 font-black text-[9px] uppercase tracking-widest">Sin rotación</CardDescription>
-            <CardTitle className="text-2xl font-black">{summary.noRotation}</CardTitle>
+          <CardHeader className="p-3 pb-1">
+            <CardDescription className="text-white/70 font-black text-[8px] uppercase tracking-widest">Sin Rot.</CardDescription>
+            <CardTitle className="text-xl font-black">{summary.noRotation}</CardTitle>
           </CardHeader>
         </Card>
-        <Card className="border-none shadow-sm bg-accent text-white rounded-2xl">
-          <CardHeader className="p-4 pb-1">
-            <CardDescription className="text-white/70 font-black text-[9px] uppercase tracking-widest">Proveedores</CardDescription>
-            <CardTitle className="text-2xl font-black">{summary.distributors}</CardTitle>
+        <Card className="border-none shadow-sm bg-green-600/30 text-green-800 rounded-2xl">
+          <CardHeader className="p-3 pb-1">
+            <CardDescription className="text-green-800/60 font-black text-[8px] uppercase tracking-widest">Estado OK</CardDescription>
+            <CardTitle className="text-xl font-black">{summary.ok}</CardTitle>
+          </CardHeader>
+        </Card>
+        <Card className="border-none shadow-sm bg-accent text-white rounded-2xl hidden lg:block">
+          <CardHeader className="p-3 pb-1">
+            <CardDescription className="text-white/70 font-black text-[8px] uppercase tracking-widest">Distribuidores</CardDescription>
+            <CardTitle className="text-xl font-black">{summary.distributors}</CardTitle>
           </CardHeader>
         </Card>
       </section>
@@ -358,20 +371,20 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
               </h3>
               {selectedIds.length > 0 && (
                 <p className="text-[10px] font-black text-primary uppercase animate-in slide-in-from-left-2">
-                  {selectedIds.length} productos seleccionados
+                  {selectedIds.length} seleccionados
                 </p>
               )}
             </div>
             <div className="flex gap-2 w-full md:w-auto">
               <Button variant="outline" className="flex-1 md:flex-none h-10 rounded-xl font-bold gap-2 text-[10px] md:text-xs" onClick={() => setViewMode(viewMode === 'general' ? 'distributor' : viewMode === 'distributor' ? 'category' : 'general')}>
                 <ListFilter className="w-4 h-4" /> 
-                {viewMode === 'general' ? 'Vista Lista' : viewMode === 'distributor' ? 'Por Distribuidor' : 'Por Categoría'}
+                {viewMode === 'general' ? 'Lista' : viewMode === 'distributor' ? 'Distribuidor' : 'Categoría'}
               </Button>
               <Button 
                 className="flex-1 md:flex-none bg-green-600 hover:bg-green-700 h-10 rounded-xl font-black gap-2 text-[10px] md:text-xs text-white" 
                 onClick={() => handleWhatsApp()}
               >
-                <Send className="w-4 h-4" /> {selectedIds.length > 0 ? `Enviar ${selectedIds.length}` : 'Enviar Todo'}
+                <Send className="w-4 h-4" /> Enviar
               </Button>
             </div>
           </div>
@@ -381,15 +394,12 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <Input 
                 className="pl-11 h-12 bg-white rounded-2xl border-none shadow-sm font-bold text-sm" 
-                placeholder="Buscar en sugerencias..." 
+                placeholder="Buscar por nombre o código..." 
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
               {searchTerm && (
-                <button 
-                  onClick={() => setSearchTerm("")}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600"
-                >
+                <button onClick={() => setSearchTerm("")} className="absolute right-4 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600">
                   <X className="w-4 h-4" />
                 </button>
               )}
@@ -397,23 +407,25 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
 
             <div className="flex flex-wrap gap-2 items-center">
               <div className="flex gap-1 bg-white p-1 rounded-xl shadow-sm border mr-2">
-                <Button variant="ghost" size="sm" className="h-8 rounded-lg text-[9px] font-black uppercase px-2 hover:bg-primary/5 hover:text-primary" onClick={handleSelectAll}>
-                  <CheckSquare className="w-3.5 h-3.5 mr-1" /> Todo
+                <Button variant="ghost" size="sm" className="h-8 rounded-lg text-[9px] font-black uppercase px-2 hover:bg-primary/5" onClick={handleSelectAll}>
+                  Todo
                 </Button>
-                <Button variant="ghost" size="sm" className="h-8 rounded-lg text-[9px] font-black uppercase px-2 hover:bg-destructive/5 hover:text-destructive" onClick={handleClearSelection}>
-                  <Trash2 className="w-3.5 h-3.5 mr-1" /> Limpiar
+                <Button variant="ghost" size="sm" className="h-8 rounded-lg text-[9px] font-black uppercase px-2 hover:bg-destructive/5" onClick={handleClearSelection}>
+                  Limpiar
                 </Button>
               </div>
 
               <Select value={priorityFilter} onValueChange={setPriorityFilter}>
                 <SelectTrigger className="w-fit bg-white border-none h-9 font-bold text-[10px] rounded-xl shadow-sm px-4">
-                  <SelectValue placeholder="Prioridad" />
+                  <SelectValue placeholder="Ver Estados" />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl">
-                  <SelectItem value="all">Todas</SelectItem>
+                  <SelectItem value="suggestions">Sugerencias (Auto)</SelectItem>
+                  <SelectItem value="all">Ver Todos</SelectItem>
                   <SelectItem value="Crítico">Crítico</SelectItem>
                   <SelectItem value="Por reponer">Por reponer</SelectItem>
                   <SelectItem value="Sin rotación">Sin rotación</SelectItem>
+                  <SelectItem value="OK">Estado OK</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -433,19 +445,19 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
                 </SelectTrigger>
                 <SelectContent className="rounded-xl">
                   <SelectItem value="all">Proveedores</SelectItem>
-                  {allDistributorsList.map(dist => <SelectItem key={dist} value={dist}>{dist}</SelectItem>)}
+                  {distributors.concat(["Sin Prov. (General)"]).map(dist => <SelectItem key={dist} value={dist}>{dist}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
           </div>
         </CardHeader>
         <CardContent className="p-4 bg-slate-50/30">
-          <ScrollArea className="h-[500px] w-full pr-4">
+          <ScrollArea className="h-[500px] w-full">
             {filtered.length === 0 ? (
               <div className="text-center py-20 bg-white rounded-3xl border-2 border-dashed border-slate-100">
                 <Package className="w-16 h-16 mx-auto mb-4 text-slate-100" />
                 <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest">Sin resultados</h3>
-                <p className="text-xs text-slate-400">Prueba cambiando la búsqueda o los filtros.</p>
+                <p className="text-xs text-slate-400">Prueba ajustando los filtros o la búsqueda.</p>
               </div>
             ) : viewMode === 'general' ? (
               <div className="space-y-1">
@@ -469,22 +481,11 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
                               {viewMode === 'distributor' ? <Truck className="w-4 h-4 text-primary" /> : <ListFilter className="w-4 h-4 text-primary" />}
                               <span>{group}</span>
                               <Badge variant="outline" className="ml-2 bg-white text-[8px] border-slate-200">
-                                {selectedInGroup.length > 0 ? `${selectedInGroup.length} / ${groupItems.length}` : groupItems.length}
+                                {selectedInGroup.length > 0 ? `${selectedInGroup.length}/${groupItems.length}` : groupItems.length}
                               </Badge>
                             </div>
                           </AccordionTrigger>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className={cn(
-                              "h-8 w-8 rounded-full",
-                              selectedInGroup.length > 0 ? "text-green-600 bg-green-50" : "text-slate-400 hover:text-green-600"
-                            )}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleWhatsApp(groupItems, group);
-                            }}
-                          >
+                          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-slate-400" onClick={(e) => { e.stopPropagation(); handleWhatsApp(groupItems, group); }}>
                             <Send className="w-4 h-4" />
                           </Button>
                         </div>
