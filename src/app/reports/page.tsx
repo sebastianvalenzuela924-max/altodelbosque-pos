@@ -4,7 +4,7 @@
 import { useCollection, useFirestore, useMemoFirebase, setDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase";
 import { collection, query, orderBy, doc, serverTimestamp } from "firebase/firestore";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { DollarSign, TrendingUp, Calendar, ShoppingBag, Loader2, Trophy, Banknote, CreditCard, Wallet, UtensilsCrossed, Plus, Edit3, Trash2, Check, PackageX, PackageSearch, Clock } from "lucide-react";
+import { DollarSign, TrendingUp, Calendar, ShoppingBag, Loader2, Trophy, Banknote, CreditCard, Wallet, UtensilsCrossed, Plus, Edit3, Trash2, Check, PackageX, PackageSearch, Clock, ChevronRight } from "lucide-react";
 import { useMemo, useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -85,7 +85,7 @@ export default function ReportsPage() {
   }, [filteredSales, allProducts]);
 
   const salesAnalysis = useMemo(() => {
-    if (!allProducts || !mounted) return { categoriesWithSales: [], productsNoSales: [] };
+    if (!allProducts || !mounted) return { categoriesWithSales: [], categoriesWithNoSales: [] };
     
     const soldMap: Record<string, number> = {};
     const revenueMap: Record<string, number> = {};
@@ -102,28 +102,33 @@ export default function ReportsPage() {
       });
     });
 
-    const categories: Record<string, any> = {};
-    const productsNoSales: any[] = [];
+    const categoriesWithSales: Record<string, any> = {};
+    const categoriesNoSales: Record<string, any> = {};
 
     allProducts.forEach(p => {
       const sold = soldMap[p.id] || 0;
       const rev = revenueMap[p.id] || 0;
+      const catName = p.category || "General";
       
       if (sold > 0) {
-        const catName = p.category || "General";
-        if (!categories[catName]) {
-          categories[catName] = { name: catName, totalRev: 0, totalUnits: 0, products: [] };
+        if (!categoriesWithSales[catName]) {
+          categoriesWithSales[catName] = { name: catName, totalRev: 0, totalUnits: 0, products: [] };
         }
-        categories[catName].totalRev += Math.round(rev);
-        categories[catName].totalUnits += sold;
-        categories[catName].products.push({ ...p, sold, rev });
+        categoriesWithSales[catName].totalRev += Math.round(rev);
+        categoriesWithSales[catName].totalUnits += sold;
+        categoriesWithSales[catName].products.push({ ...p, sold, rev });
       } else {
-        productsNoSales.push(p);
+        if (!categoriesNoSales[catName]) {
+          categoriesNoSales[catName] = { name: catName, products: [] };
+        }
+        categoriesNoSales[catName].products.push(p);
       }
     });
 
-    const categoriesWithSales = Object.values(categories).sort((a: any, b: any) => b.totalRev - a.totalRev);
-    return { categoriesWithSales, productsNoSales };
+    return { 
+      categoriesWithSales: Object.values(categoriesWithSales).sort((a: any, b: any) => b.totalRev - a.totalRev),
+      categoriesWithNoSales: Object.values(categoriesNoSales).sort((a: any, b: any) => a.name.localeCompare(b.name))
+    };
   }, [filteredSales, allProducts, mounted]);
 
   const topProducts = useMemo(() => {
@@ -278,22 +283,39 @@ export default function ReportsPage() {
         </TabsContent>
 
         <TabsContent value="no-sales" className="mt-6 space-y-3">
-          <Card className="border-none shadow-sm rounded-2xl bg-white overflow-hidden p-6">
-            <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
-              <PackageX className="w-5 h-5" /> Productos sin movimiento
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {salesAnalysis.productsNoSales.map((p) => (
-                <div key={p.id} className="p-3 bg-slate-50 rounded-xl flex justify-between items-center group hover:bg-slate-100 transition-colors">
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold text-slate-700 truncate">{p.name}</p>
-                    <p className="text-[8px] font-black text-slate-400 uppercase">{p.category || 'General'}</p>
-                  </div>
-                  <Badge variant="outline" className="text-[9px] font-black bg-white border-slate-200">Stock: {p.stock}</Badge>
-                </div>
-              ))}
+          {salesAnalysis.categoriesWithNoSales.length === 0 ? (
+            <div className="text-center py-20 bg-white rounded-3xl border-2 border-dashed border-slate-100">
+               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Todos los productos tienen ventas</p>
             </div>
-          </Card>
+          ) : (
+            <Accordion type="multiple" className="space-y-3">
+              {salesAnalysis.categoriesWithNoSales.map((cat, idx) => (
+                <AccordionItem key={idx} value={`nosales-${idx}`} className="border-none">
+                  <Card className="border-none shadow-sm rounded-2xl overflow-hidden bg-white">
+                    <AccordionTrigger className="p-4 hover:no-underline text-left">
+                      <div className="flex items-center justify-between w-full pr-4">
+                        <div className="min-w-0">
+                          <h3 className="font-black text-sm uppercase text-slate-800 truncate">{cat.name}</h3>
+                          <Badge variant="outline" className="text-[8px] bg-slate-50 text-slate-400 border-slate-200">{cat.products.length} productos</Badge>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-slate-300" />
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="p-4 pt-0 bg-slate-50/50">
+                      <div className="space-y-1.5">
+                        {cat.products.map((p: any) => (
+                          <div key={p.id} className="flex justify-between items-center p-2 bg-white rounded-xl border border-slate-100 text-[10px]">
+                            <span className="font-bold text-slate-600">{p.name}</span>
+                            <Badge variant="outline" className="text-[9px] font-black bg-white border-slate-200">Stock: {p.stock}</Badge>
+                          </div>
+                        ))}
+                      </div>
+                    </AccordionContent>
+                  </Card>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          )}
         </TabsContent>
 
         <TabsContent value="bread" className="mt-6 space-y-6">
@@ -382,4 +404,3 @@ export default function ReportsPage() {
     </div>
   );
 }
-
