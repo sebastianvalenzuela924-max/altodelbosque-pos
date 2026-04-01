@@ -204,7 +204,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
     
     itemsToShare.forEach(p => {
       if (p.suggestedQty > 0) {
-        text += `- ${p.suggestedQty}u. x ${p.name} (${Math.round(p.price).toLocaleString('es-CL')}$) st:${p.stock}\n`;
+        text += `- ${p.suggestedQty}u.   ${p.name} (${Math.round(p.price).toLocaleString('es-CL')}$) Stock:${p.stock}\n`;
       }
     });
     return text;
