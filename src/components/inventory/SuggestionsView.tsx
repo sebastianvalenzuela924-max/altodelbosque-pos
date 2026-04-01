@@ -191,7 +191,8 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
     itemsToShare.forEach(p => {
       if (p.suggestedQty > 0) {
         const format = p.buyByCase ? "Caja" : "u.";
-        text += `- ${p.suggestedQty}${format} x ${p.name}\n`;
+        const priceStr = Math.round(p.price).toLocaleString('es-CL');
+        text += `- ${p.suggestedQty}${format} x ${p.name} (${priceStr}$)\n`;
       }
     });
     return text;
@@ -262,22 +263,22 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-        <div className="bg-red-600 text-white p-3 rounded-2xl shadow-sm flex flex-col justify-between min-h-[70px]">
-          <span className="text-[8px] font-black uppercase tracking-wider opacity-80">Críticos</span>
-          <span className="text-2xl font-black font-mono tracking-tighter">{summaryStats.criticos}</span>
+      <div className="grid grid-cols-4 gap-2">
+        <div className="bg-red-600 text-white p-2 rounded-xl shadow-sm flex flex-col justify-center items-center text-center">
+          <span className="text-[7px] font-black uppercase tracking-wider opacity-80">Críticos</span>
+          <span className="text-lg font-black font-mono tracking-tighter leading-none mt-0.5">{summaryStats.criticos}</span>
         </div>
-        <div className="bg-amber-600 text-white p-3 rounded-2xl shadow-sm flex flex-col justify-between min-h-[70px]">
-          <span className="text-[8px] font-black uppercase tracking-wider opacity-80">Reponer</span>
-          <span className="text-2xl font-black font-mono tracking-tighter">{summaryStats.reponer}</span>
+        <div className="bg-amber-600 text-white p-2 rounded-xl shadow-sm flex flex-col justify-center items-center text-center">
+          <span className="text-[7px] font-black uppercase tracking-wider opacity-80">Reponer</span>
+          <span className="text-lg font-black font-mono tracking-tighter leading-none mt-0.5">{summaryStats.reponer}</span>
         </div>
-        <div className="bg-blue-600 text-white p-3 rounded-2xl shadow-sm flex flex-col justify-between min-h-[70px]">
-          <span className="text-[8px] font-black uppercase tracking-wider opacity-80">Alta Rot.</span>
-          <span className="text-2xl font-black font-mono tracking-tighter">{summaryStats.altaRot}</span>
+        <div className="bg-blue-600 text-white p-2 rounded-xl shadow-sm flex flex-col justify-center items-center text-center">
+          <span className="text-[7px] font-black uppercase tracking-wider opacity-80">Alta Rot.</span>
+          <span className="text-lg font-black font-mono tracking-tighter leading-none mt-0.5">{summaryStats.altaRot}</span>
         </div>
-        <div className="bg-green-100 text-green-700 p-3 rounded-2xl shadow-sm flex flex-col justify-between min-h-[70px]">
-          <span className="text-[8px] font-black uppercase tracking-wider opacity-80">Estado OK</span>
-          <span className="text-2xl font-black font-mono tracking-tighter">{summaryStats.ok}</span>
+        <div className="bg-green-100 text-green-700 p-2 rounded-xl shadow-sm flex flex-col justify-center items-center text-center border border-green-200">
+          <span className="text-[7px] font-black uppercase tracking-wider opacity-80">Estado OK</span>
+          <span className="text-lg font-black font-mono tracking-tighter leading-none mt-0.5">{summaryStats.ok}</span>
         </div>
       </div>
 
