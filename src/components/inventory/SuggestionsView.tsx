@@ -207,7 +207,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
           onCheckedChange={() => setSelectedIds(prev => prev.includes(p.id) ? prev.filter(i => i !== p.id) : [...prev, p.id])} 
         />
         <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0", 
-          p.priority === 'Crítico' ? "bg-red-100 text-red-600" : p.priority === 'Por reponer' ? "bg-amber-100 text-amber-600" : "bg-green-100 text-green-600"
+          p.priority === 'Crítico' ? "bg-red-100 text-red-600" : p.priority === 'Por reponer' ? "bg-amber-100 text-amber-600" : "bg-green-100 text-green-700"
         )}>
           <Package className="w-5 h-5" />
         </div>
@@ -229,7 +229,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
             {(p.idealStock > 0 || p.warningStock > 0) && (
               <div className="flex gap-1 items-center bg-slate-50 px-1.5 py-0.5 rounded border">
                 <span className="text-[8px] font-black text-slate-400 uppercase">
-                  {p.idealStock > 0 ? "Meta:" : "Gatillo:"}
+                  {p.idealStock > 0 ? "Ideal:" : "Aviso:"}
                 </span>
                 <span className="text-[9px] font-black">{p.idealStock || p.warningStock}u.</span>
               </div>
@@ -249,19 +249,44 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-4 gap-2">
-        <button onClick={() => setPriorityFilter(priorityFilter === 'Crítico' ? 'suggestions' : 'Crítico')} className={cn("text-white py-1.5 rounded-xl flex flex-col items-center transition-all", priorityFilter === 'Crítico' ? "bg-red-600 ring-2 ring-red-400" : "bg-red-600/90")}>
+        <button 
+          onClick={() => {
+            setPriorityFilter(priorityFilter === 'Crítico' ? 'suggestions' : 'Crítico');
+            setRotationFilter('all');
+          }} 
+          className={cn("text-white py-1.5 rounded-xl flex flex-col items-center transition-all", priorityFilter === 'Crítico' ? "bg-red-600 ring-2 ring-red-400" : "bg-red-600/90")}
+        >
           <span className="text-[7px] font-black uppercase tracking-wider opacity-80">Críticos</span>
           <span className="text-sm font-black font-mono mt-0.5">{summaryStats.criticos}</span>
         </button>
-        <button onClick={() => setPriorityFilter(priorityFilter === 'Por reponer' ? 'suggestions' : 'Por reponer')} className={cn("text-white py-1.5 rounded-xl flex flex-col items-center transition-all", priorityFilter === 'Por reponer' ? "bg-amber-600 ring-2 ring-amber-400" : "bg-amber-600/90")}>
+        <button 
+          onClick={() => {
+            setPriorityFilter(priorityFilter === 'Por reponer' ? 'suggestions' : 'Por reponer');
+            setRotationFilter('all');
+          }} 
+          className={cn("text-white py-1.5 rounded-xl flex flex-col items-center transition-all", priorityFilter === 'Por reponer' ? "bg-amber-600 ring-2 ring-amber-400" : "bg-amber-600/90")}
+        >
           <span className="text-[7px] font-black uppercase tracking-wider opacity-80">Reponer</span>
           <span className="text-sm font-black font-mono mt-0.5">{summaryStats.reponer}</span>
         </button>
-        <button onClick={() => setRotationFilter(rotationFilter === 'Alta' ? 'all' : 'Alta')} className={cn("text-white py-1.5 rounded-xl flex flex-col items-center transition-all", rotationFilter === 'Alta' ? "bg-blue-600 ring-2 ring-blue-400" : "bg-blue-600/90")}>
+        <button 
+          onClick={() => {
+            const isActivating = rotationFilter !== 'Alta';
+            setRotationFilter(isActivating ? 'Alta' : 'all');
+            setPriorityFilter(isActivating ? 'all' : 'suggestions');
+          }} 
+          className={cn("text-white py-1.5 rounded-xl flex flex-col items-center transition-all", rotationFilter === 'Alta' ? "bg-blue-600 ring-2 ring-blue-400" : "bg-blue-600/90")}
+        >
           <span className="text-[7px] font-black uppercase tracking-wider opacity-80">Alta Rot.</span>
           <span className="text-sm font-black font-mono mt-0.5">{summaryStats.altaRot}</span>
         </button>
-        <button onClick={() => setPriorityFilter(priorityFilter === 'OK' ? 'suggestions' : 'OK')} className={cn("py-1.5 rounded-xl flex flex-col items-center border transition-all", priorityFilter === 'OK' ? "bg-green-100 text-green-700 ring-2 ring-green-400" : "bg-green-100 text-green-700")}>
+        <button 
+          onClick={() => {
+            setPriorityFilter(priorityFilter === 'OK' ? 'suggestions' : 'OK');
+            setRotationFilter('all');
+          }} 
+          className={cn("py-1.5 rounded-xl flex flex-col items-center border transition-all", priorityFilter === 'OK' ? "bg-green-100 text-green-700 ring-2 ring-green-400" : "bg-green-100 text-green-700")}
+        >
           <span className="text-[7px] font-black uppercase tracking-wider opacity-80">Estado OK</span>
           <span className="text-sm font-black font-mono mt-0.5">{summaryStats.ok}</span>
         </button>
