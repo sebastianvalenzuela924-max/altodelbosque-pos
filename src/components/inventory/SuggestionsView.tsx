@@ -437,7 +437,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
                   <AccordionItem key={groupName} value={groupName} className="border-none">
                     <Card className="border-none shadow-sm rounded-2xl overflow-hidden bg-white">
                       <div className="flex items-center px-4 py-3 bg-slate-50/50 justify-between">
-                         <div className="flex items-center gap-3">
+                         <div className="flex items-center gap-3 min-w-0 flex-1">
                            <Checkbox 
                               checked={items.every(i => selectedIds.includes(i.id))} 
                               onCheckedChange={(checked) => {
@@ -446,13 +446,16 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
                                 else setSelectedIds(prev => prev.filter(id => !groupIds.includes(id)));
                               }}
                            />
-                           <AccordionTrigger className="p-0 hover:no-underline font-black text-xs uppercase text-slate-700 tracking-tighter text-left justify-start gap-2">
-                             {groupName} <Badge variant="outline" className="text-[8px] bg-white">{items.length}</Badge>
+                           <AccordionTrigger className="p-0 hover:no-underline font-black text-xs uppercase text-slate-700 tracking-tighter text-left justify-start gap-2 [&>svg:last-child]:hidden truncate">
+                             {groupName}
                            </AccordionTrigger>
                          </div>
-                         <Button variant="ghost" size="sm" className="h-7 text-[8px] font-black uppercase text-green-600 gap-1" onClick={() => handleWhatsApp(items, groupName)}>
-                           <Send className="w-3 h-3" /> WhatsApp
-                         </Button>
+                         <div className="flex items-center gap-2 shrink-0 ml-4">
+                           <Badge variant="outline" className="text-[8px] bg-white font-bold">{items.length}</Badge>
+                           <Button variant="ghost" size="sm" className="h-7 text-[8px] font-black uppercase text-green-600 gap-1" onClick={() => handleWhatsApp(items, groupName)}>
+                             <Send className="w-3 h-3" /> WhatsApp
+                           </Button>
+                         </div>
                       </div>
                       <AccordionContent className="p-2 space-y-1">
                         {items.map(renderProductItem)}
