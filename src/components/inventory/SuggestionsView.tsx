@@ -80,7 +80,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
       .map(p => {
         let priority: Priority = 'OK';
         let suggestedQty = 0;
-        let reason = "Stock OK";
+        let reason = "Meta: Nivel Ideal";
         let rotation: RotationType = 'Ninguna';
 
         const stock = p.stock || 0;
@@ -183,8 +183,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
     itemsToShare.forEach(p => {
       if (p.suggestedQty > 0) {
         const priceStr = Math.round(p.price).toLocaleString('es-CL');
-        // Usar 'x' en lugar de '-' y añadir puntos de separación
-        text += `${p.suggestedQty}u x ${p.name} (${priceStr}$) .......... ST:${p.stock}\n`;
+        text += `- ${p.suggestedQty}u. x ${p.name} (${priceStr}$) st:${p.stock}\n`;
       }
     });
     return text;
@@ -354,6 +353,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
             </div>
           </div>
         </CardHeader>
+
         <CardContent className="p-4 bg-slate-50/30">
           <ScrollArea className="h-[500px] w-full">
             {isLoadingSales ? (
