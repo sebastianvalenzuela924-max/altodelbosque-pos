@@ -326,7 +326,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
                   <SelectItem value="OK">Productos OK</SelectItem>
                 </SelectContent>
               </Select>
-              <Select value={rotationFilter} onValueChange={setRotationFilter}>
+              <Select value={rotationFilter} onValueChange={rotationFilter}>
                 <SelectTrigger className="w-fit bg-white border-none h-8 font-black text-[9px] rounded-lg shadow-sm uppercase px-3"><SelectValue /></SelectTrigger>
                 <SelectContent className="rounded-xl">
                   <SelectItem value="all">Rotación: Todo</SelectItem>
@@ -345,7 +345,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
                 </Select>
               )}
               {viewMode === 'distributor' && (
-                <Select value={distributorFilter} onValueChange={setDistributorFilter}>
+                <Select value={distributorFilter} onValueChange={distributorFilter}>
                   <SelectTrigger className="w-fit bg-white border-none h-8 font-black text-[9px] rounded-lg shadow-sm uppercase px-3"><SelectValue placeholder="Distribuidora" /></SelectTrigger>
                   <SelectContent className="rounded-xl">
                     <SelectItem value="all">Todas las Distribuidoras</SelectItem>
