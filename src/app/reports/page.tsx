@@ -544,10 +544,10 @@ export default function ReportsPage() {
                 </div>
               </div>
 
-              <div className="space-y-1.5">
+              <div className="space-y-1">
                  <Label className="text-[9px] font-black uppercase text-slate-400">Observaciones (Opcional)</Label>
                  <Textarea 
-                    className="min-h-[50px] rounded-xl bg-slate-50 border-none font-bold text-[11px] p-2" 
+                    className="min-h-[40px] rounded-xl bg-slate-50 border-none font-bold text-[11px] p-2" 
                     placeholder="Eje: Día festivo..." 
                     value={breadObservation} 
                     onChange={e => setBreadObservation(e.target.value)} 

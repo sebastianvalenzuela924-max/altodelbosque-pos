@@ -90,7 +90,6 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
         const hasIdeal = p.idealStock !== undefined && p.idealStock !== null && p.idealStock > 0;
         const hasWarning = p.warningStock !== undefined && p.warningStock !== null && p.warningStock > 0;
 
-        // Excluir productos sin alertas de stock de las sugerencias y rotación
         if (!hasIdeal && !hasWarning) {
           return {
             ...p,
@@ -102,19 +101,16 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
           };
         }
 
-        // Calcular prioridad primero
         if (stock <= 0 || (hasWarning && stock <= p.warningStock!)) {
           priority = 'Crítico';
         } else if (hasWarning && stock <= p.warningStock! + 2) {
           priority = 'Por reponer';
         }
 
-        // Solo calcular rotación si tiene ventas
         if (totalSold >= 15) rotation = 'Alta';
         else if (totalSold >= 3) rotation = 'Media';
         else if (totalSold > 0) rotation = 'Baja';
 
-        // Solo sugerir cantidades si NO está OK
         if (priority !== 'OK') {
           if (hasIdeal) {
             suggestedQty = Math.max(0, p.idealStock! - stock);
@@ -136,7 +132,6 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
           reason = "Stock OK";
         }
 
-        // Caso especial: El usuario reportó stock 6 aviso 1 pidiendo 2. Forzamos 0 si stock > aviso
         if (hasWarning && stock > p.warningStock!) {
            if (!hasIdeal || stock >= p.idealStock!) {
               suggestedQty = 0;
@@ -257,9 +252,9 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
           <Package className="w-5 h-5" />
         </div>
 
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 text-left">
           <div className="flex justify-between items-start gap-2">
-            <h4 className="font-bold text-xs uppercase text-slate-800 break-words flex-1">{p.name}</h4>
+            <h4 className="font-bold text-xs uppercase text-slate-800 break-words flex-1 text-left">{p.name}</h4>
             <Badge className={cn("text-[8px] font-black uppercase h-4 shrink-0", 
               p.priority === 'Crítico' ? "bg-red-600" : p.priority === 'Por reponer' ? "bg-amber-600" : "bg-green-700"
             )}>{p.priority}</Badge>
@@ -451,8 +446,8 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
                                 else setSelectedIds(prev => prev.filter(id => !groupIds.includes(id)));
                               }}
                            />
-                           <AccordionTrigger className="p-0 hover:no-underline font-black text-xs uppercase text-slate-700 tracking-tighter">
-                             {groupName} <Badge variant="outline" className="ml-2 text-[8px] bg-white">{items.length}</Badge>
+                           <AccordionTrigger className="p-0 hover:no-underline font-black text-xs uppercase text-slate-700 tracking-tighter text-left justify-start gap-2">
+                             {groupName} <Badge variant="outline" className="text-[8px] bg-white">{items.length}</Badge>
                            </AccordionTrigger>
                          </div>
                          <Button variant="ghost" size="sm" className="h-7 text-[8px] font-black uppercase text-green-600 gap-1" onClick={() => handleWhatsApp(items, groupName)}>
