@@ -91,12 +91,10 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
         const hasIdeal = p.idealStock !== undefined && p.idealStock !== null && p.idealStock > 0;
         const hasWarning = p.warningStock !== undefined && p.warningStock !== null && p.warningStock > 0;
 
-        // 1. Exclusión: Si no tiene alertas, es siempre OK y 0 sugerencia
         if (!hasIdeal && !hasWarning) {
           return { ...p, priority: 'OK' as Priority, rotation: 'Ninguna' as RotationType, totalSold: 0, suggestedQty: 0, reason: "Sin alertas" };
         }
 
-        // 2. Determinar Prioridad
         if (stock <= (p.warningStock || 0)) {
           priority = 'Crítico';
         } else if (hasWarning && stock <= p.warningStock! + 2) {
@@ -105,18 +103,15 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
           priority = 'Por reponer';
         }
 
-        // 3. Determinar Rotación
         if (totalSold >= 15) rotation = 'Alta';
         else if (totalSold >= 3) rotation = 'Media';
         else if (totalSold > 0) rotation = 'Baja';
 
-        // 4. Calcular Sugerencia (Solo si no está OK)
         if (priority !== 'OK') {
           if (hasIdeal) {
             suggestedQty = Math.max(0, p.idealStock! - stock);
             reason = "Meta: Nivel Ideal";
           } else {
-            // Estimación por rotación si no hay Ideal
             if (rotation === 'Alta') {
               suggestedQty = Math.ceil(dailyAvg * 14);
               reason = "Urgente: Alta Demanda";
@@ -130,7 +125,6 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
           }
         }
 
-        // Verificación final: Si el stock ya es mayor o igual al ideal (si existe), es OK
         if (hasIdeal && stock >= p.idealStock!) {
           priority = 'OK';
           suggestedQty = 0;
