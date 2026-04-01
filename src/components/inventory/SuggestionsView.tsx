@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Package, Send, Sparkles, Truck, Loader2, ListFilter, LayoutGrid, Search, Target, AlertTriangle, Box } from "lucide-react";
+import { Package, Send, Sparkles, Truck, Loader2, ListFilter, LayoutGrid, Search, Target, AlertTriangle, Box, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -65,8 +65,9 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
     recentSales.forEach(sale => {
       sale.itemsSummary?.forEach((item: any) => {
         if (item.type === 'product' && item.id) {
-          const current = map.get(String(item.id).trim()) || 0;
-          map.set(String(item.id).trim(), current + (item.quantity || 0));
+          const key = String(item.id).trim();
+          const current = map.get(key) || 0;
+          map.set(key, current + (item.quantity || 0));
         }
       });
     });
@@ -90,32 +91,32 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
         const hasIdeal = p.idealStock !== undefined && p.idealStock !== null && p.idealStock > 0;
         const hasWarning = p.warningStock !== undefined && p.warningStock !== null && p.warningStock > 0;
 
+        // 1. Exclusión: Si no tiene alertas, es siempre OK y 0 sugerencia
         if (!hasIdeal && !hasWarning) {
-          return {
-            ...p,
-            priority: 'OK' as Priority,
-            rotation: 'Ninguna' as RotationType,
-            totalSold: 0,
-            suggestedQty: 0,
-            reason: "Sin alertas"
-          };
+          return { ...p, priority: 'OK' as Priority, rotation: 'Ninguna' as RotationType, totalSold: 0, suggestedQty: 0, reason: "Sin alertas" };
         }
 
+        // 2. Determinar Prioridad
         if (stock <= (p.warningStock || 0)) {
           priority = 'Crítico';
         } else if (hasWarning && stock <= p.warningStock! + 2) {
           priority = 'Por reponer';
+        } else if (hasIdeal && stock < p.idealStock!) {
+          priority = 'Por reponer';
         }
 
+        // 3. Determinar Rotación
         if (totalSold >= 15) rotation = 'Alta';
         else if (totalSold >= 3) rotation = 'Media';
         else if (totalSold > 0) rotation = 'Baja';
 
+        // 4. Calcular Sugerencia (Solo si no está OK)
         if (priority !== 'OK') {
           if (hasIdeal) {
             suggestedQty = Math.max(0, p.idealStock! - stock);
             reason = "Meta: Nivel Ideal";
           } else {
+            // Estimación por rotación si no hay Ideal
             if (rotation === 'Alta') {
               suggestedQty = Math.ceil(dailyAvg * 14);
               reason = "Urgente: Alta Demanda";
@@ -127,27 +128,16 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
               reason = "Mínimo: Baja Rotación";
             }
           }
-        } else {
+        }
+
+        // Verificación final: Si el stock ya es mayor o igual al ideal (si existe), es OK
+        if (hasIdeal && stock >= p.idealStock!) {
+          priority = 'OK';
           suggestedQty = 0;
           reason = "Stock OK";
         }
 
-        if (stock > (p.warningStock || 0)) {
-          if (!hasIdeal || stock >= p.idealStock!) {
-            suggestedQty = 0;
-            priority = 'OK';
-            reason = "Stock OK";
-          }
-        }
-
-        return {
-          ...p,
-          priority,
-          rotation,
-          totalSold,
-          suggestedQty: Math.max(0, suggestedQty),
-          reason
-        };
+        return { ...p, priority, rotation, totalSold, suggestedQty: Math.max(0, Math.round(suggestedQty)), reason };
       })
       .sort((a, b) => {
         const order = { 'Crítico': 0, 'Por reponer': 1, 'OK': 2 };
@@ -185,23 +175,18 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
 
   const groupedData = useMemo(() => {
     if (viewMode === 'general') return { "General": filtered };
-    
     const groups: Record<string, any[]> = {};
     filtered.forEach(p => {
       const key = viewMode === 'category' ? (p.category || "General") : (p.distributor || "Sin Distribuidora");
       if (!groups[key]) groups[key] = [];
       groups[key].push(p);
     });
-    
-    return Object.fromEntries(
-      Object.entries(groups).sort(([a], [b]) => a.localeCompare(b))
-    );
+    return Object.fromEntries(Object.entries(groups).sort(([a], [b]) => a.localeCompare(b)));
   }, [filtered, viewMode]);
 
   const generateSummaryText = (itemsToShare: any[], groupName?: string) => {
     if (itemsToShare.length === 0) return "";
     let text = `*COMPRA SUGERIDA*\n${groupName ? `*${groupName}*\n` : ''}----------------------------\n`;
-    
     itemsToShare.forEach(p => {
       if (p.suggestedQty > 0) {
         text += `- ${p.suggestedQty}u.   ${p.name} (${Math.round(p.price).toLocaleString('es-CL')}$) Stock:${p.stock}\n`;
@@ -220,45 +205,25 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
     window.open(`https://wa.me/?text=${text}`, '_blank');
   };
 
-  const toggleFilter = (type: 'priority' | 'rotation', value: string) => {
-    if (type === 'priority') {
-      if (priorityFilter === value) {
-        setPriorityFilter("suggestions");
-      } else {
-        setPriorityFilter(value);
-        setRotationFilter("all");
-      }
-    } else {
-      if (rotationFilter === value) {
-        setRotationFilter("all");
-        setPriorityFilter("suggestions");
-      } else {
-        setRotationFilter(value);
-        setPriorityFilter("all");
-      }
-    }
-    setSelectedIds([]);
-  };
-
   const renderProductItem = (p: any) => (
-    <Card key={p.id} className={cn("border-none shadow-sm rounded-2xl mb-2 bg-white")}>
+    <Card key={p.id} className="border-none shadow-sm rounded-2xl mb-2 bg-white overflow-hidden">
       <div className="p-3 flex items-center gap-3">
-        <Checkbox checked={selectedIds.includes(p.id)} onCheckedChange={() => setSelectedIds(prev => prev.includes(p.id) ? prev.filter(i => i !== p.id) : [...prev, p.id])} />
-        
+        <Checkbox 
+          checked={selectedIds.includes(p.id)} 
+          onCheckedChange={() => setSelectedIds(prev => prev.includes(p.id) ? prev.filter(i => i !== p.id) : [...prev, p.id])} 
+        />
         <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0", 
           p.priority === 'Crítico' ? "bg-red-100 text-red-600" : p.priority === 'Por reponer' ? "bg-amber-100 text-amber-600" : "bg-green-100 text-green-600"
         )}>
           <Package className="w-5 h-5" />
         </div>
-
         <div className="flex-1 min-w-0 text-left">
           <div className="flex justify-between items-start gap-2">
-            <h4 className="font-bold text-xs uppercase text-slate-800 break-words flex-1 text-left">{p.name}</h4>
+            <h4 className="font-bold text-xs uppercase text-slate-800 break-words flex-1">{p.name}</h4>
             <Badge className={cn("text-[8px] font-black uppercase h-4 shrink-0", 
               p.priority === 'Crítico' ? "bg-red-600" : p.priority === 'Por reponer' ? "bg-amber-600" : "bg-green-700"
             )}>{p.priority}</Badge>
           </div>
-          
           <div className="flex flex-wrap items-center gap-3 mt-1">
             <div className="flex gap-1 items-center bg-slate-50 px-1.5 py-0.5 rounded border">
               <span className="text-[8px] font-black text-slate-400 uppercase">Stock:</span>
@@ -268,13 +233,10 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
               <span className="text-[8px] font-black text-primary uppercase">PVP: ${Math.round(p.price).toLocaleString('es-CL')}</span>
             </div>
           </div>
-
           <div className="flex justify-between items-center mt-2">
             <p className="text-[9px] font-black text-primary uppercase tracking-tighter"><Sparkles className="w-3 h-3 inline mr-1" /> {p.reason}</p>
             {p.suggestedQty > 0 && (
-              <Badge className="bg-primary text-white font-black text-[10px] px-2 py-1">
-                Pedir: {p.suggestedQty} u.
-              </Badge>
+              <Badge className="bg-primary text-white font-black text-[10px] px-2 py-1">Pedir: {p.suggestedQty} u.</Badge>
             )}
           </div>
         </div>
@@ -285,171 +247,80 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-4 gap-2">
-        <button 
-          onClick={() => toggleFilter('priority', 'Crítico')}
-          className={cn(
-            "text-white py-1.5 rounded-xl shadow-sm flex flex-col justify-center items-center text-center transition-all active:scale-95",
-            priorityFilter === 'Crítico' ? "bg-red-600 ring-2 ring-red-400 ring-offset-2 scale-105" : "bg-red-600/90 hover:bg-red-600"
-          )}
-        >
+        <button onClick={() => setPriorityFilter(priorityFilter === 'Crítico' ? 'suggestions' : 'Crítico')} className={cn("text-white py-1.5 rounded-xl flex flex-col items-center transition-all", priorityFilter === 'Crítico' ? "bg-red-600 ring-2 ring-red-400" : "bg-red-600/90")}>
           <span className="text-[7px] font-black uppercase tracking-wider opacity-80">Críticos</span>
-          <span className="text-sm font-black font-mono tracking-tighter leading-none mt-0.5">{summaryStats.criticos}</span>
+          <span className="text-sm font-black font-mono mt-0.5">{summaryStats.criticos}</span>
         </button>
-        <button 
-          onClick={() => toggleFilter('priority', 'Por reponer')}
-          className={cn(
-            "text-white py-1.5 rounded-xl shadow-sm flex flex-col justify-center items-center text-center transition-all active:scale-95",
-            priorityFilter === 'Por reponer' ? "bg-amber-600 ring-2 ring-amber-400 ring-offset-2 scale-105" : "bg-amber-600/90 hover:bg-amber-600"
-          )}
-        >
+        <button onClick={() => setPriorityFilter(priorityFilter === 'Por reponer' ? 'suggestions' : 'Por reponer')} className={cn("text-white py-1.5 rounded-xl flex flex-col items-center transition-all", priorityFilter === 'Por reponer' ? "bg-amber-600 ring-2 ring-amber-400" : "bg-amber-600/90")}>
           <span className="text-[7px] font-black uppercase tracking-wider opacity-80">Reponer</span>
-          <span className="text-sm font-black font-mono tracking-tighter leading-none mt-0.5">{summaryStats.reponer}</span>
+          <span className="text-sm font-black font-mono mt-0.5">{summaryStats.reponer}</span>
         </button>
-        <button 
-          onClick={() => toggleFilter('rotation', 'Alta')}
-          className={cn(
-            "text-white py-1.5 rounded-xl shadow-sm flex flex-col justify-center items-center text-center transition-all active:scale-95",
-            rotationFilter === 'Alta' ? "bg-blue-600 ring-2 ring-blue-400 ring-offset-2 scale-105" : "bg-blue-600/90 hover:bg-blue-600"
-          )}
-        >
+        <button onClick={() => setRotationFilter(rotationFilter === 'Alta' ? 'all' : 'Alta')} className={cn("text-white py-1.5 rounded-xl flex flex-col items-center transition-all", rotationFilter === 'Alta' ? "bg-blue-600 ring-2 ring-blue-400" : "bg-blue-600/90")}>
           <span className="text-[7px] font-black uppercase tracking-wider opacity-80">Alta Rot.</span>
-          <span className="text-sm font-black font-mono tracking-tighter leading-none mt-0.5">{summaryStats.altaRot}</span>
+          <span className="text-sm font-black font-mono mt-0.5">{summaryStats.altaRot}</span>
         </button>
-        <button 
-          onClick={() => toggleFilter('priority', 'OK')}
-          className={cn(
-            "py-1.5 rounded-xl shadow-sm flex flex-col justify-center items-center text-center border transition-all active:scale-95",
-            priorityFilter === 'OK' ? "bg-green-100 text-green-700 ring-2 ring-green-400 ring-offset-2 scale-105 border-green-200" : "bg-green-100 text-green-700 border-green-200 opacity-90 hover:opacity-100"
-          )}
-        >
+        <button onClick={() => setPriorityFilter(priorityFilter === 'OK' ? 'suggestions' : 'OK')} className={cn("py-1.5 rounded-xl flex flex-col items-center border transition-all", priorityFilter === 'OK' ? "bg-green-100 text-green-700 ring-2 ring-green-400" : "bg-green-100 text-green-700")}>
           <span className="text-[7px] font-black uppercase tracking-wider opacity-80">Estado OK</span>
-          <span className="text-sm font-black font-mono tracking-tighter leading-none mt-0.5">{summaryStats.ok}</span>
+          <span className="text-sm font-black font-mono mt-0.5">{summaryStats.ok}</span>
         </button>
       </div>
 
       <Card className="border-none shadow-xl rounded-2xl bg-white overflow-hidden">
         <CardHeader className="bg-slate-50/50 p-4 border-b space-y-4">
           <div className="flex justify-between items-center">
-            <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-accent" /> Sugerencias de Compra
-            </h3>
-            <Button className="bg-green-600 text-white font-black h-9 rounded-xl text-[10px] uppercase gap-2 shadow-md shadow-green-100" onClick={() => handleWhatsApp()}>
+            <h3 className="text-sm font-black text-slate-500 uppercase flex items-center gap-2"><Sparkles className="w-4 h-4 text-accent" /> Sugerencias de Compra</h3>
+            <Button className="bg-green-600 text-white font-black h-9 rounded-xl text-[10px] uppercase gap-2" onClick={() => handleWhatsApp()}>
               <Send className="w-4 h-4" /> Enviar WSP
             </Button>
           </div>
-
           <div className="bg-slate-100 p-1 rounded-xl grid grid-cols-3 gap-1">
-            <Button 
-              variant={viewMode === 'general' ? 'default' : 'ghost'} 
-              className="h-8 rounded-lg text-[9px] font-black uppercase"
-              onClick={() => setViewMode('general')}
-            ><LayoutGrid className="w-3 h-3 mr-1" /> General</Button>
-            <Button 
-              variant={viewMode === 'category' ? 'default' : 'ghost'} 
-              className="h-8 rounded-lg text-[9px] font-black uppercase"
-              onClick={() => setViewMode('category')}
-            ><ListFilter className="w-3 h-3 mr-1" /> Categoría</Button>
-            <Button 
-              variant={viewMode === 'distributor' ? 'default' : 'ghost'} 
-              className="h-8 rounded-lg text-[9px] font-black uppercase"
-              onClick={() => setViewMode('distributor')}
-            ><Truck className="w-3 h-3 mr-1" /> Distribuidora</Button>
+            <Button variant={viewMode === 'general' ? 'default' : 'ghost'} className="h-8 rounded-lg text-[9px] font-black uppercase" onClick={() => setViewMode('general')}><LayoutGrid className="w-3 h-3 mr-1" /> General</Button>
+            <Button variant={viewMode === 'category' ? 'default' : 'ghost'} className="h-8 rounded-lg text-[9px] font-black uppercase" onClick={() => setViewMode('category')}><ListFilter className="w-3 h-3 mr-1" /> Categoría</Button>
+            <Button variant={viewMode === 'distributor' ? 'default' : 'ghost'} className="h-8 rounded-lg text-[9px] font-black uppercase" onClick={() => setViewMode('distributor')}><Truck className="w-3 h-3 mr-1" /> Distribuidora</Button>
           </div>
-
           <div className="space-y-3">
             <div className="relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <Input className="pl-11 h-11 bg-white rounded-xl font-bold border-none shadow-sm" placeholder="Buscar producto..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+              <Input className="pl-11 h-11 bg-white rounded-xl border-none shadow-sm" placeholder="Buscar producto..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
             </div>
             <div className="flex flex-wrap gap-2">
               <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-                <SelectTrigger className="w-fit bg-white border-none h-8 font-black text-[9px] rounded-lg shadow-sm uppercase px-3"><SelectValue /></SelectTrigger>
-                <SelectContent className="rounded-xl">
-                  <SelectItem value="suggestions">Sugerencias</SelectItem>
-                  <SelectItem value="all">Ver Todo</SelectItem>
-                  <SelectItem value="Crítico">Crítico</SelectItem>
-                  <SelectItem value="Por reponer">Por reponer</SelectItem>
-                  <SelectItem value="OK">Productos OK</SelectItem>
-                </SelectContent>
+                <SelectTrigger className="w-fit bg-white h-8 text-[9px] rounded-lg uppercase px-3"><SelectValue /></SelectTrigger>
+                <SelectContent><SelectItem value="suggestions">Sugerencias</SelectItem><SelectItem value="all">Ver Todo</SelectItem><SelectItem value="Crítico">Crítico</SelectItem><SelectItem value="Por reponer">Por reponer</SelectItem><SelectItem value="OK">OK</SelectItem></SelectContent>
               </Select>
-              <Select value={rotationFilter} onValueChange={setRotationFilter}>
-                <SelectTrigger className="w-fit bg-white border-none h-8 font-black text-[9px] rounded-lg shadow-sm uppercase px-3"><SelectValue placeholder="Rotación" /></SelectTrigger>
-                <SelectContent className="rounded-xl">
-                  <SelectItem value="all">Rotación: Todo</SelectItem>
-                  <SelectItem value="Alta">Alta</SelectItem>
-                  <SelectItem value="Media">Media</SelectItem>
-                  <SelectItem value="Baja">Baja</SelectItem>
-                </SelectContent>
-              </Select>
-              {viewMode === 'category' && (
-                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                  <SelectTrigger className="w-fit bg-white border-none h-8 font-black text-[9px] rounded-lg shadow-sm uppercase px-3"><SelectValue placeholder="Categoría" /></SelectTrigger>
-                  <SelectContent className="rounded-xl">
-                    <SelectItem value="all">Todas las Categorías</SelectItem>
-                    {categories.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              )}
-              {viewMode === 'distributor' && (
-                <Select value={distributorFilter} onValueChange={setDistributorFilter}>
-                  <SelectTrigger className="w-fit bg-white border-none h-8 font-black text-[9px] rounded-lg shadow-sm uppercase px-3"><SelectValue placeholder="Distribuidora" /></SelectTrigger>
-                  <SelectContent className="rounded-xl">
-                    <SelectItem value="all">Todas las Distribuidoras</SelectItem>
-                    {distributors.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              )}
               <div className="flex gap-1 ml-auto">
-                <Button variant="ghost" className="h-8 text-[9px] font-black uppercase text-primary px-2" onClick={() => setSelectedIds(filtered.map(f => f.id))}>Sel. Todo</Button>
-                <Button variant="ghost" className="h-8 text-[9px] font-black uppercase text-destructive px-2" onClick={() => setSelectedIds([])}>Limpiar</Button>
+                <Button variant="ghost" className="h-8 text-[9px] font-black uppercase text-primary" onClick={() => setSelectedIds(filtered.map(f => f.id))}>Todos</Button>
+                <Button variant="ghost" className="h-8 text-[9px] font-black uppercase text-destructive" onClick={() => setSelectedIds([])}>Limpiar</Button>
               </div>
             </div>
           </div>
         </CardHeader>
         <CardContent className="p-4 bg-slate-50/30">
           <ScrollArea className="h-[500px] w-full">
-            {isLoadingSales ? (
-              <div className="flex flex-col items-center justify-center py-20 opacity-30">
-                <Loader2 className="animate-spin mx-auto w-8 h-8" />
-              </div>
-            ) : filtered.length === 0 ? (
-              <div className="text-center py-20 text-slate-400 font-bold uppercase text-[10px]">Sin coincidencias</div>
-            ) : viewMode === 'general' ? (
-              <div className="space-y-1 text-left">
-                {filtered.map(renderProductItem)}
-              </div>
+            {viewMode === 'general' ? (
+              <div className="space-y-1">{filtered.map(renderProductItem)}</div>
             ) : (
               <Accordion type="multiple" className="space-y-3">
                 {Object.entries(groupedData).map(([groupName, items]) => (
                   <AccordionItem key={groupName} value={groupName} className="border-none">
-                    <AccordionTrigger className="p-0 hover:no-underline [&>svg]:hidden w-full" asChild>
-                      <div className="flex items-center px-4 py-3 bg-slate-50/50 justify-between w-full cursor-pointer">
-                         <div className="flex items-center gap-3 min-w-0 flex-1">
-                           <div onClick={(e) => e.stopPropagation()} className="flex items-center">
-                             <Checkbox 
-                                checked={items.every(i => selectedIds.includes(i.id))} 
-                                onCheckedChange={(checked) => {
-                                  const groupIds = items.map(i => i.id);
-                                  if (checked) setSelectedIds(prev => [...new Set([...prev, ...groupIds])]);
-                                  else setSelectedIds(prev => prev.filter(id => !groupIds.includes(id)));
-                                }}
-                             />
-                           </div>
-                           <span className="font-black text-xs uppercase text-slate-700 tracking-tighter text-left truncate">
-                             {groupName}
-                           </span>
-                         </div>
-                         <div className="flex items-center gap-2 shrink-0 ml-4" onClick={(e) => e.stopPropagation()}>
-                           <Badge variant="outline" className="text-[8px] bg-white font-bold">{items.length}</Badge>
-                           <Button variant="ghost" size="sm" className="h-7 text-[8px] font-black uppercase text-green-600 gap-1" onClick={() => handleWhatsApp(items, groupName)}>
-                             <Send className="w-3 h-3" /> WSP
-                           </Button>
-                         </div>
+                    <AccordionTrigger asChild className="p-0 hover:no-underline w-full">
+                      <div className="flex items-center px-4 py-3 bg-slate-50/50 justify-between w-full cursor-pointer rounded-xl">
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <Checkbox checked={items.every(i => selectedIds.includes(i.id))} onCheckedChange={(checked) => {
+                            const ids = items.map(i => i.id);
+                            setSelectedIds(prev => checked ? [...new Set([...prev, ...ids])] : prev.filter(id => !ids.includes(id)));
+                          }} onClick={(e) => e.stopPropagation()} />
+                          <span className="font-black text-xs uppercase text-slate-700 truncate text-left">{groupName}</span>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0 ml-4">
+                          <Badge variant="outline" className="text-[8px] font-black bg-white">{items.length}</Badge>
+                          <Button variant="ghost" size="sm" className="h-7 text-[8px] font-black uppercase text-green-600 gap-1" onClick={(e) => { e.stopPropagation(); handleWhatsApp(items, groupName); }}>
+                            <Send className="w-3 h-3" /> WSP
+                          </Button>
+                        </div>
                       </div>
                     </AccordionTrigger>
-                    <AccordionContent className="p-2 space-y-1 text-left">
-                      {items.map(renderProductItem)}
-                    </AccordionContent>
+                    <AccordionContent className="p-2 space-y-1">{items.map(renderProductItem)}</AccordionContent>
                   </AccordionItem>
                 ))}
               </Accordion>
