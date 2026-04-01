@@ -251,7 +251,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
       <div className="grid grid-cols-4 gap-2">
         <button 
           onClick={() => {
-            setPriorityFilter(priorityFilter === 'Crítico' ? 'suggestions' : 'Crítico');
+            setPriorityFilter('Crítico');
             setRotationFilter('all');
           }} 
           className={cn("text-white py-1.5 rounded-xl flex flex-col items-center transition-all", priorityFilter === 'Crítico' ? "bg-red-600 ring-2 ring-red-400" : "bg-red-600/90")}
@@ -261,7 +261,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
         </button>
         <button 
           onClick={() => {
-            setPriorityFilter(priorityFilter === 'Por reponer' ? 'suggestions' : 'Por reponer');
+            setPriorityFilter('Por reponer');
             setRotationFilter('all');
           }} 
           className={cn("text-white py-1.5 rounded-xl flex flex-col items-center transition-all", priorityFilter === 'Por reponer' ? "bg-amber-600 ring-2 ring-amber-400" : "bg-amber-600/90")}
@@ -271,9 +271,8 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
         </button>
         <button 
           onClick={() => {
-            const isActivating = rotationFilter !== 'Alta';
-            setRotationFilter(isActivating ? 'Alta' : 'all');
-            setPriorityFilter(isActivating ? 'all' : 'suggestions');
+            setRotationFilter('Alta');
+            setPriorityFilter('all');
           }} 
           className={cn("text-white py-1.5 rounded-xl flex flex-col items-center transition-all", rotationFilter === 'Alta' ? "bg-blue-600 ring-2 ring-blue-400" : "bg-blue-600/90")}
         >
@@ -282,7 +281,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
         </button>
         <button 
           onClick={() => {
-            setPriorityFilter(priorityFilter === 'OK' ? 'suggestions' : 'OK');
+            setPriorityFilter('OK');
             setRotationFilter('all');
           }} 
           className={cn("py-1.5 rounded-xl flex flex-col items-center border transition-all", priorityFilter === 'OK' ? "bg-green-100 text-green-700 ring-2 ring-green-400" : "bg-green-100 text-green-700")}

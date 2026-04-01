@@ -342,7 +342,7 @@ export default function HistoryPage() {
                 <Card key={sale.id} className="overflow-hidden border-none shadow-sm hover:shadow-md transition-all duration-200 rounded-2xl group bg-white">
                   <Accordion type="single" collapsible className="w-full">
                     <AccordionItem value="items" className="border-none">
-                      <AccordionTrigger className="hover:no-underline p-0 w-full [&>svg]:hidden">
+                      <AccordionTrigger asChild className="hover:no-underline p-0 w-full [&>svg]:hidden">
                         <div className="flex items-center p-3 md:p-4 gap-2 md:gap-6 w-full cursor-pointer">
                           <div className="min-w-[65px] md:min-w-[70px] flex flex-col text-left">
                             <span className="text-xs font-black text-slate-800">
@@ -353,7 +353,7 @@ export default function HistoryPage() {
                             </span>
                           </div>
                           
-                          <div className="flex-1 flex items-center gap-2 md:gap-3 min-w-0 overflow-hidden">
+                          <div className="flex-1 flex items-center gap-2 md:gap-3 min-w-0 overflow-hidden text-left">
                             <div className="flex flex-col gap-1 shrink-0">
                                <Badge variant="outline" className="text-[8px] md:text-[9px] font-black uppercase bg-slate-50 border-slate-100 px-1.5 md:px-2 py-0.5 shrink-0 w-fit">
                                 {totalItems} Art.
@@ -405,13 +405,13 @@ export default function HistoryPage() {
                         <div className="space-y-1.5 mt-2">
                           {sale.itemsSummary?.map((item: any, idx: number) => (
                             <div key={idx} className="flex justify-between items-center p-2 bg-white rounded-xl border border-slate-100 text-xs">
-                              <div className="flex flex-col">
+                              <div className="flex flex-col text-left">
                                 <span className="font-bold text-slate-700">{item.name}</span>
                                 <span className="text-[8px] text-slate-400 font-bold uppercase tracking-widest">
                                   {item.type === 'manual' ? 'Cobro Manual' : `Cód: ${item.id}`}
                                 </span>
                               </div>
-                              <div className="text-right">
+                              <div className="text-right shrink-0 ml-2">
                                 <span className="font-black text-slate-500 mr-2 text-[10px]">{item.quantity} x ${Math.round(item.price).toLocaleString('es-CL')}</span>
                                 <span className={cn("font-black", isCash ? "text-green-600" : isCard ? "text-primary" : "text-amber-600")}>
                                   ${Math.round(item.price * item.quantity).toLocaleString('es-CL')}
@@ -461,7 +461,7 @@ export default function HistoryPage() {
                   <Card key={invoice} className="overflow-hidden border-none shadow-sm hover:shadow-md transition-all duration-200 rounded-2xl bg-white">
                     <Accordion type="single" collapsible className="w-full">
                       <AccordionItem value={invoice} className="border-none">
-                        <AccordionTrigger className="hover:no-underline p-0 w-full [&>svg]:hidden">
+                        <AccordionTrigger asChild className="hover:no-underline p-0 w-full [&>svg]:hidden">
                           <div className="flex items-center p-3 md:p-4 gap-4 w-full cursor-pointer">
                             <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center text-accent shrink-0">
                               {isNoInvoice ? <Box className="w-5 h-5" /> : <FileText className="w-5 h-5" />}
@@ -490,12 +490,12 @@ export default function HistoryPage() {
                               return (
                                 <div key={log.id} className="flex justify-between items-center p-2 bg-white rounded-xl border border-slate-100 text-xs">
                                   <div className="flex-1 min-w-0 mr-4 text-left">
-                                    <p className="font-bold text-slate-700 truncate">{log.productName}</p>
+                                    <p className="font-bold text-slate-700">{log.productName}</p>
                                     <p className="text-[8px] text-slate-400 font-bold uppercase">Fecha: {date.toLocaleDateString()} • {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • Cód: {log.productId}</p>
                                   </div>
                                   <div className="flex items-center gap-3 shrink-0">
                                     <span className="font-black text-accent text-sm">+{log.quantity}</span>
-                                    <div className="flex gap-1">
+                                    <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                                       <Button 
                                         variant="ghost" 
                                         size="icon" 

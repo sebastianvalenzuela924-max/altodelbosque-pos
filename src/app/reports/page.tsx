@@ -542,7 +542,7 @@ export default function ReportsPage() {
                         <span className="text-[6px] font-black uppercase text-slate-400 leading-none">{date.toLocaleDateString('es-CL', { month: 'short' })}</span>
                         <span className="text-lg font-black leading-none">{date.getDate()}</span>
                       </div>
-                      <div className="min-w-0">
+                      <div className="min-w-0 text-left">
                         <div className="flex items-center gap-1.5">
                           <p className="text-[9px] font-black text-slate-800 uppercase truncate">{date.toLocaleDateString('es-CL', { weekday: 'short' })}</p>
                           <ClimaIcon className="w-3 h-3 text-slate-400" />
@@ -590,9 +590,9 @@ export default function ReportsPage() {
               {salesAnalysis.categoriesWithSales.map((cat, idx) => (
                 <AccordionItem key={idx} value={`sales-${idx}`} className="border-none">
                   <Card className="border-none shadow-sm rounded-2xl overflow-hidden bg-white">
-                    <AccordionTrigger className="p-4 hover:no-underline text-left" asChild>
+                    <AccordionTrigger asChild className="p-4 hover:no-underline text-left">
                       <div className="flex items-center justify-between w-full pr-4 cursor-pointer">
-                        <div className="min-w-0">
+                        <div className="min-w-0 text-left">
                           <h3 className="font-black text-sm uppercase text-slate-800 truncate">{cat.name}</h3>
                           <Badge variant="outline" className="text-[8px] bg-primary/5 text-primary border-primary/10">{cat.totalUnits} u.</Badge>
                         </div>
@@ -600,11 +600,11 @@ export default function ReportsPage() {
                       </div>
                     </AccordionTrigger>
                     <AccordionContent className="p-4 pt-0 bg-slate-50/50">
-                      <div className="space-y-1.5">
+                      <div className="space-y-1.5 mt-2">
                         {cat.products.map((p: any) => (
                           <div key={p.id} className="flex justify-between items-center p-2 bg-white rounded-xl border border-slate-100 text-[10px]">
-                            <span className="font-bold text-slate-600">{p.name}</span>
-                            <div className="text-right">
+                            <span className="font-bold text-slate-600 text-left">{p.name}</span>
+                            <div className="text-right shrink-0 ml-2">
                               <span className="font-black text-primary mr-2">{p.sold} u.</span>
                               <span className="font-black font-mono">${Math.round(p.rev).toLocaleString('es-CL')}</span>
                             </div>
@@ -629,9 +629,9 @@ export default function ReportsPage() {
               {salesAnalysis.categoriesWithNoSales.map((cat, idx) => (
                 <AccordionItem key={idx} value={`nosales-${idx}`} className="border-none">
                   <Card className="border-none shadow-sm rounded-2xl overflow-hidden bg-white">
-                    <AccordionTrigger className="p-4 hover:no-underline text-left" asChild>
+                    <AccordionTrigger asChild className="p-4 hover:no-underline text-left">
                       <div className="flex items-center justify-between w-full pr-4 cursor-pointer">
-                        <div className="min-w-0">
+                        <div className="min-w-0 text-left">
                           <h3 className="font-black text-sm uppercase text-slate-800 truncate">{cat.name}</h3>
                           <Badge variant="outline" className="text-[8px] bg-slate-50 text-slate-400 border-slate-200">{cat.products.length} productos</Badge>
                         </div>
@@ -639,11 +639,11 @@ export default function ReportsPage() {
                       </div>
                     </AccordionTrigger>
                     <AccordionContent className="p-4 pt-0 bg-slate-50/50">
-                      <div className="space-y-1.5">
+                      <div className="space-y-1.5 mt-2">
                         {cat.products.map((p: any) => (
                           <div key={p.id} className="flex justify-between items-center p-2 bg-white rounded-xl border border-slate-100 text-[10px]">
-                            <span className="font-bold text-slate-600">{p.name}</span>
-                            <Badge variant="outline" className="text-[9px] font-black bg-white border-slate-200">Stock: {p.stock}</Badge>
+                            <span className="font-bold text-slate-600 text-left">{p.name}</span>
+                            <Badge variant="outline" className="text-[9px] font-black bg-white border-slate-200 shrink-0 ml-2">Stock: {p.stock}</Badge>
                           </div>
                         ))}
                       </div>
@@ -666,7 +666,7 @@ export default function ReportsPage() {
                   <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs", idx < 3 ? "bg-primary text-white" : "bg-slate-100 text-slate-400")}>
                     {idx + 1}
                   </div>
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0 text-left">
                     <p className="text-xs font-bold text-slate-700 truncate">{p.name}</p>
                     <div className="w-full h-1 bg-slate-100 rounded-full mt-1.5 overflow-hidden">
                       <div className="h-full bg-primary" style={{ width: `${(p.quantity / (topProducts[0]?.quantity || 1)) * 100}%` }} />
