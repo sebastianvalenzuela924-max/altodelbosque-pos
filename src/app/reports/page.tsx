@@ -90,7 +90,7 @@ export default function ReportsPage() {
     return allSales.filter(sale => {
       const saleDate = sale.saleDateTime?.toDate?.() || (sale.saleDateTime ? new Date(sale.saleDateTime) : new Date());
       
-      if (dateFilter === "today") return saleDate.toDateString() === now.slice(0, 10);
+      if (dateFilter === "today") return saleDate.toDateString() === now.toDateString();
       if (dateFilter === "yesterday") {
         const yesterday = new Date(now);
         yesterday.setDate(now.getDate() - 1);

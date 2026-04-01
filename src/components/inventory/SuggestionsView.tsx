@@ -213,12 +213,12 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
         </div>
         <div className="flex-1 min-w-0 text-left">
           <div className="flex justify-between items-start gap-2">
-            <h4 className="font-bold text-xs uppercase text-slate-800 break-words flex-1">{p.name}</h4>
+            <h4 className="font-bold text-xs uppercase text-slate-800 break-words flex-1 leading-tight">{p.name}</h4>
             <Badge className={cn("text-[8px] font-black uppercase h-4 shrink-0", 
-              p.priority === 'Crítico' ? "bg-red-600" : p.priority === 'Por reponer' ? "bg-amber-600" : "bg-green-700"
+              p.priority === 'Crítico' ? "bg-red-600 text-white" : p.priority === 'Por reponer' ? "bg-amber-600 text-white" : "bg-green-700 text-white"
             )}>{p.priority}</Badge>
           </div>
-          <div className="flex flex-wrap items-center gap-3 mt-1">
+          <div className="flex flex-wrap items-center gap-2 mt-1.5">
             <div className="flex gap-1 items-center bg-slate-50 px-1.5 py-0.5 rounded border">
               <span className="text-[8px] font-black text-slate-400 uppercase">Stock:</span>
               <span className="text-[9px] font-black">{p.stock}u.</span>
@@ -226,11 +226,19 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
             <div className="flex gap-1 items-center bg-primary/5 px-1.5 py-0.5 rounded border border-primary/10">
               <span className="text-[8px] font-black text-primary uppercase">PVP: ${Math.round(p.price).toLocaleString('es-CL')}</span>
             </div>
+            {(p.idealStock > 0 || p.warningStock > 0) && (
+              <div className="flex gap-1 items-center bg-slate-50 px-1.5 py-0.5 rounded border">
+                <span className="text-[8px] font-black text-slate-400 uppercase">
+                  {p.idealStock > 0 ? "Meta:" : "Gatillo:"}
+                </span>
+                <span className="text-[9px] font-black">{p.idealStock || p.warningStock}u.</span>
+              </div>
+            )}
           </div>
-          <div className="flex justify-between items-center mt-2">
-            <p className="text-[9px] font-black text-primary uppercase tracking-tighter"><Sparkles className="w-3 h-3 inline mr-1" /> {p.reason}</p>
+          <div className="flex justify-between items-center mt-2 pt-2 border-t border-slate-50">
+            <p className="text-[9px] font-black text-primary uppercase tracking-tighter flex items-center gap-1"><Sparkles className="w-3 h-3" /> {p.reason}</p>
             {p.suggestedQty > 0 && (
-              <Badge className="bg-primary text-white font-black text-[10px] px-2 py-1">Pedir: {p.suggestedQty} u.</Badge>
+              <Badge className="bg-primary text-white font-black text-[10px] px-2 py-1 rounded-lg">Pedir: {p.suggestedQty} u.</Badge>
             )}
           </div>
         </div>
@@ -307,7 +315,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
                           <span className="font-black text-xs uppercase text-slate-700 truncate text-left">{groupName}</span>
                         </div>
                         <div className="flex items-center gap-2 shrink-0 ml-4">
-                          <Badge variant="outline" className="text-[8px] font-black bg-white">{items.length}</Badge>
+                          <Badge variant="outline" className="text-[8px] font-black bg-white border-slate-200">{items.length}</Badge>
                           <Button variant="ghost" size="sm" className="h-7 text-[8px] font-black uppercase text-green-600 gap-1" onClick={(e) => { e.stopPropagation(); handleWhatsApp(items, groupName); }}>
                             <Send className="w-3 h-3" /> WSP
                           </Button>
