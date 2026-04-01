@@ -343,7 +343,7 @@ export default function HistoryPage() {
                   <Accordion type="single" collapsible className="w-full">
                     <AccordionItem value="items" className="border-none">
                       <AccordionTrigger className="hover:no-underline p-0 w-full [&>svg]:hidden">
-                        <div className="flex items-center p-3 md:p-4 gap-2 md:gap-6 w-full">
+                        <div className="flex items-center p-3 md:p-4 gap-2 md:gap-6 w-full cursor-pointer">
                           <div className="min-w-[65px] md:min-w-[70px] flex flex-col text-left">
                             <span className="text-xs font-black text-slate-800">
                               {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -375,26 +375,28 @@ export default function HistoryPage() {
                             </div>
                           </div>
 
-                          <div className="text-right min-w-[120px] md:min-w-[130px] flex items-center justify-end gap-2 md:gap-3 shrink-0" onClick={(e) => e.stopPropagation()}>
+                          <div className="text-right min-w-[120px] md:min-w-[130px] flex items-center justify-end gap-2 md:gap-3 shrink-0">
                             <span className={cn(
                               "text-base md:text-lg font-black font-mono tracking-tighter leading-none",
                               isCash ? "text-green-600" : isCard ? "text-primary" : "text-amber-600"
                             )}>
                               {sale.paymentMethod === 'deduction' ? "ADMIN" : `$${Math.round(sale.totalAmount).toLocaleString('es-CL')}`}
                             </span>
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="h-9 w-9 text-destructive bg-destructive/10 hover:bg-destructive hover:text-white rounded-full transition-all" 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setDeleteContext('sales');
-                                setSecurityKey("");
-                                setItemToDelete(sale);
-                              }}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
+                            <div onClick={(e) => e.stopPropagation()}>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-9 w-9 text-destructive bg-destructive/10 hover:bg-destructive hover:text-white rounded-full transition-all" 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDeleteContext('sales');
+                                  setSecurityKey("");
+                                  setItemToDelete(sale);
+                                }}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
                           </div>
                         </div>
                       </AccordionTrigger>
@@ -460,7 +462,7 @@ export default function HistoryPage() {
                     <Accordion type="single" collapsible className="w-full">
                       <AccordionItem value={invoice} className="border-none">
                         <AccordionTrigger className="hover:no-underline p-0 w-full [&>svg]:hidden">
-                          <div className="flex items-center p-3 md:p-4 gap-4 w-full">
+                          <div className="flex items-center p-3 md:p-4 gap-4 w-full cursor-pointer">
                             <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center text-accent shrink-0">
                               {isNoInvoice ? <Box className="w-5 h-5" /> : <FileText className="w-5 h-5" />}
                             </div>

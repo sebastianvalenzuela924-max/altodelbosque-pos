@@ -90,7 +90,7 @@ export default function ReportsPage() {
     return allSales.filter(sale => {
       const saleDate = sale.saleDateTime?.toDate?.() || (sale.saleDateTime ? new Date(sale.saleDateTime) : new Date());
       
-      if (dateFilter === "today") return saleDate.toDateString() === now.toDateString();
+      if (dateFilter === "today") return saleDate.toDateString() === now.slice(0, 10);
       if (dateFilter === "yesterday") {
         const yesterday = new Date(now);
         yesterday.setDate(now.getDate() - 1);
@@ -311,19 +311,15 @@ export default function ReportsPage() {
 
   const generateDailySummary = () => {
     const today = new Date();
-    let targetDateStr = "";
     let dateLabel = "";
 
     if (dateFilter === "today") {
-      targetDateStr = getLocalDateString(today);
       dateLabel = today.toLocaleDateString('es-CL');
     } else if (dateFilter === "yesterday") {
       const yest = new Date(today);
       yest.setDate(today.getDate() - 1);
-      targetDateStr = getLocalDateString(yest);
       dateLabel = yest.toLocaleDateString('es-CL');
     } else if (dateFilter === "custom" && customDate) {
-      targetDateStr = customDate;
       const [y, m, d] = customDate.split('-').map(Number);
       dateLabel = new Date(y, m - 1, d).toLocaleDateString('es-CL');
     } else {
@@ -336,16 +332,6 @@ export default function ReportsPage() {
     text += `💵 *Efectivo:* $${Math.round(stats.cash).toLocaleString('es-CL')}\n`;
     text += `💳 *Tarjeta:* $${Math.round(stats.card).toLocaleString('es-CL')}\n`;
     text += `📦 *Valor inventario:* $${Math.round(stats.inventoryValue).toLocaleString('es-CL')}\n\n`;
-
-    if (targetDateStr) {
-      const breadLog = allBreadLogs?.find(l => l.id === targetDateStr);
-      if (breadLog) {
-        text += `🥖 *Control de Pan:*\n`;
-        text += `- Comprado: ${breadLog.bought} kg\n`;
-        text += `- Quedó: ${breadLog.remaining} kg\n`;
-        text += `- Vendido: ${(breadLog.bought - breadLog.remaining).toFixed(2)} kg\n\n`;
-      }
-    }
 
     if (stats.transactions > 0) text += `🧾 *Transacciones:* ${stats.transactions}\n`;
     if (stats.totalUnits > 0) text += `📚 *Unidades vendidas:* ${stats.totalUnits}\n\n`;
@@ -604,8 +590,8 @@ export default function ReportsPage() {
               {salesAnalysis.categoriesWithSales.map((cat, idx) => (
                 <AccordionItem key={idx} value={`sales-${idx}`} className="border-none">
                   <Card className="border-none shadow-sm rounded-2xl overflow-hidden bg-white">
-                    <AccordionTrigger className="p-4 hover:no-underline text-left">
-                      <div className="flex items-center justify-between w-full pr-4">
+                    <AccordionTrigger className="p-4 hover:no-underline text-left" asChild>
+                      <div className="flex items-center justify-between w-full pr-4 cursor-pointer">
                         <div className="min-w-0">
                           <h3 className="font-black text-sm uppercase text-slate-800 truncate">{cat.name}</h3>
                           <Badge variant="outline" className="text-[8px] bg-primary/5 text-primary border-primary/10">{cat.totalUnits} u.</Badge>
@@ -643,8 +629,8 @@ export default function ReportsPage() {
               {salesAnalysis.categoriesWithNoSales.map((cat, idx) => (
                 <AccordionItem key={idx} value={`nosales-${idx}`} className="border-none">
                   <Card className="border-none shadow-sm rounded-2xl overflow-hidden bg-white">
-                    <AccordionTrigger className="p-4 hover:no-underline text-left">
-                      <div className="flex items-center justify-between w-full pr-4">
+                    <AccordionTrigger className="p-4 hover:no-underline text-left" asChild>
+                      <div className="flex items-center justify-between w-full pr-4 cursor-pointer">
                         <div className="min-w-0">
                           <h3 className="font-black text-sm uppercase text-slate-800 truncate">{cat.name}</h3>
                           <Badge variant="outline" className="text-[8px] bg-slate-50 text-slate-400 border-slate-200">{cat.products.length} productos</Badge>

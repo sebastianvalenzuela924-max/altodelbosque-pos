@@ -422,36 +422,34 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
               <Accordion type="multiple" className="space-y-3">
                 {Object.entries(groupedData).map(([groupName, items]) => (
                   <AccordionItem key={groupName} value={groupName} className="border-none">
-                    <Card className="border-none shadow-sm rounded-2xl overflow-hidden bg-white">
-                      <AccordionTrigger className="p-0 hover:no-underline [&>svg]:hidden w-full">
-                        <div className="flex items-center px-4 py-3 bg-slate-50/50 justify-between w-full">
-                           <div className="flex items-center gap-3 min-w-0 flex-1">
-                             <div onClick={(e) => e.stopPropagation()} className="flex items-center">
-                               <Checkbox 
-                                  checked={items.every(i => selectedIds.includes(i.id))} 
-                                  onCheckedChange={(checked) => {
-                                    const groupIds = items.map(i => i.id);
-                                    if (checked) setSelectedIds(prev => [...new Set([...prev, ...groupIds])]);
-                                    else setSelectedIds(prev => prev.filter(id => !groupIds.includes(id)));
-                                  }}
-                               />
-                             </div>
-                             <span className="font-black text-xs uppercase text-slate-700 tracking-tighter text-left truncate">
-                               {groupName}
-                             </span>
+                    <AccordionTrigger className="p-0 hover:no-underline [&>svg]:hidden w-full" asChild>
+                      <div className="flex items-center px-4 py-3 bg-slate-50/50 justify-between w-full cursor-pointer">
+                         <div className="flex items-center gap-3 min-w-0 flex-1">
+                           <div onClick={(e) => e.stopPropagation()} className="flex items-center">
+                             <Checkbox 
+                                checked={items.every(i => selectedIds.includes(i.id))} 
+                                onCheckedChange={(checked) => {
+                                  const groupIds = items.map(i => i.id);
+                                  if (checked) setSelectedIds(prev => [...new Set([...prev, ...groupIds])]);
+                                  else setSelectedIds(prev => prev.filter(id => !groupIds.includes(id)));
+                                }}
+                             />
                            </div>
-                           <div className="flex items-center gap-2 shrink-0 ml-4" onClick={(e) => e.stopPropagation()}>
-                             <Badge variant="outline" className="text-[8px] bg-white font-bold">{items.length}</Badge>
-                             <Button variant="ghost" size="sm" className="h-7 text-[8px] font-black uppercase text-green-600 gap-1" onClick={() => handleWhatsApp(items, groupName)}>
-                               <Send className="w-3 h-3" /> WSP
-                             </Button>
-                           </div>
-                        </div>
-                      </AccordionTrigger>
-                      <AccordionContent className="p-2 space-y-1 text-left">
-                        {items.map(renderProductItem)}
-                      </AccordionContent>
-                    </Card>
+                           <span className="font-black text-xs uppercase text-slate-700 tracking-tighter text-left truncate">
+                             {groupName}
+                           </span>
+                         </div>
+                         <div className="flex items-center gap-2 shrink-0 ml-4" onClick={(e) => e.stopPropagation()}>
+                           <Badge variant="outline" className="text-[8px] bg-white font-bold">{items.length}</Badge>
+                           <Button variant="ghost" size="sm" className="h-7 text-[8px] font-black uppercase text-green-600 gap-1" onClick={() => handleWhatsApp(items, groupName)}>
+                             <Send className="w-3 h-3" /> WSP
+                           </Button>
+                         </div>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="p-2 space-y-1 text-left">
+                      {items.map(renderProductItem)}
+                    </AccordionContent>
                   </AccordionItem>
                 ))}
               </Accordion>
