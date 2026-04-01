@@ -101,7 +101,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
           };
         }
 
-        if (stock <= (p.warningStock || 0) || (hasWarning && stock <= p.warningStock!)) {
+        if (stock <= (p.warningStock || 0)) {
           priority = 'Crítico';
         } else if (hasWarning && stock <= p.warningStock! + 2) {
           priority = 'Por reponer';
@@ -132,12 +132,12 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
           reason = "Stock OK";
         }
 
-        if (hasWarning && stock > p.warningStock!) {
-           if (!hasIdeal || stock >= p.idealStock!) {
-              suggestedQty = 0;
-              priority = 'OK';
-              reason = "Stock OK";
-           }
+        if (stock > (p.warningStock || 0)) {
+          if (!hasIdeal || stock >= p.idealStock!) {
+            suggestedQty = 0;
+            priority = 'OK';
+            reason = "Stock OK";
+          }
         }
 
         return {
@@ -204,8 +204,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
     
     itemsToShare.forEach(p => {
       if (p.suggestedQty > 0) {
-        const priceStr = Math.round(p.price).toLocaleString('es-CL');
-        text += `- ${p.suggestedQty}u. x ${p.name} (${priceStr}$) st:${p.stock}\n`;
+        text += `- ${p.suggestedQty}u. x ${p.name} (${Math.round(p.price).toLocaleString('es-CL')}$) st:${p.stock}\n`;
       }
     });
     return text;
@@ -268,18 +267,6 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
             <div className="flex gap-1 items-center bg-primary/5 px-1.5 py-0.5 rounded border border-primary/10">
               <span className="text-[8px] font-black text-primary uppercase">PVP: ${Math.round(p.price).toLocaleString('es-CL')}</span>
             </div>
-            {p.idealStock > 0 && (
-              <div className="flex gap-1 items-center bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200">
-                <Target className="w-2.5 h-2.5 text-slate-400" />
-                <span className="text-[8px] font-bold text-slate-500 uppercase">Id: {p.idealStock}</span>
-              </div>
-            )}
-            {p.warningStock > 0 && (
-              <div className="flex gap-1 items-center bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200">
-                <AlertTriangle className="w-2.5 h-2.5 text-slate-400" />
-                <span className="text-[8px] font-bold text-slate-500 uppercase">Av: {p.warningStock}</span>
-              </div>
-            )}
           </div>
 
           <div className="flex justify-between items-center mt-2">
@@ -436,27 +423,31 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
                 {Object.entries(groupedData).map(([groupName, items]) => (
                   <AccordionItem key={groupName} value={groupName} className="border-none">
                     <Card className="border-none shadow-sm rounded-2xl overflow-hidden bg-white">
-                      <div className="flex items-center px-4 py-3 bg-slate-50/50 justify-between">
-                         <div className="flex items-center gap-3 min-w-0 flex-1">
-                           <Checkbox 
-                              checked={items.every(i => selectedIds.includes(i.id))} 
-                              onCheckedChange={(checked) => {
-                                const groupIds = items.map(i => i.id);
-                                if (checked) setSelectedIds(prev => [...new Set([...prev, ...groupIds])]);
-                                else setSelectedIds(prev => prev.filter(id => !groupIds.includes(id)));
-                              }}
-                           />
-                           <AccordionTrigger className="p-0 hover:no-underline font-black text-xs uppercase text-slate-700 tracking-tighter text-left justify-start gap-2 [&>svg:last-child]:hidden truncate">
-                             {groupName}
-                           </AccordionTrigger>
-                         </div>
-                         <div className="flex items-center gap-2 shrink-0 ml-4">
-                           <Badge variant="outline" className="text-[8px] bg-white font-bold">{items.length}</Badge>
-                           <Button variant="ghost" size="sm" className="h-7 text-[8px] font-black uppercase text-green-600 gap-1" onClick={() => handleWhatsApp(items, groupName)}>
-                             <Send className="w-3 h-3" /> WSP
-                           </Button>
-                         </div>
-                      </div>
+                      <AccordionTrigger className="p-0 hover:no-underline [&>svg]:hidden w-full">
+                        <div className="flex items-center px-4 py-3 bg-slate-50/50 justify-between w-full">
+                           <div className="flex items-center gap-3 min-w-0 flex-1">
+                             <div onClick={(e) => e.stopPropagation()} className="flex items-center">
+                               <Checkbox 
+                                  checked={items.every(i => selectedIds.includes(i.id))} 
+                                  onCheckedChange={(checked) => {
+                                    const groupIds = items.map(i => i.id);
+                                    if (checked) setSelectedIds(prev => [...new Set([...prev, ...groupIds])]);
+                                    else setSelectedIds(prev => prev.filter(id => !groupIds.includes(id)));
+                                  }}
+                               />
+                             </div>
+                             <span className="font-black text-xs uppercase text-slate-700 tracking-tighter text-left truncate">
+                               {groupName}
+                             </span>
+                           </div>
+                           <div className="flex items-center gap-2 shrink-0 ml-4" onClick={(e) => e.stopPropagation()}>
+                             <Badge variant="outline" className="text-[8px] bg-white font-bold">{items.length}</Badge>
+                             <Button variant="ghost" size="sm" className="h-7 text-[8px] font-black uppercase text-green-600 gap-1" onClick={() => handleWhatsApp(items, groupName)}>
+                               <Send className="w-3 h-3" /> WSP
+                             </Button>
+                           </div>
+                        </div>
+                      </AccordionTrigger>
                       <AccordionContent className="p-2 space-y-1 text-left">
                         {items.map(renderProductItem)}
                       </AccordionContent>

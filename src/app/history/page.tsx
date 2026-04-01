@@ -342,60 +342,62 @@ export default function HistoryPage() {
                 <Card key={sale.id} className="overflow-hidden border-none shadow-sm hover:shadow-md transition-all duration-200 rounded-2xl group bg-white">
                   <Accordion type="single" collapsible className="w-full">
                     <AccordionItem value="items" className="border-none">
-                      <div className="flex items-center p-3 md:p-4 gap-2 md:gap-6">
-                        <div className="min-w-[65px] md:min-w-[70px] flex flex-col">
-                          <span className="text-xs font-black text-slate-800">
-                            {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                          <span className="text-[9px] font-mono text-slate-400 uppercase">
-                            #{sale.id?.slice(-5)}
-                          </span>
-                        </div>
-                        
-                        <div className="flex-1 flex items-center gap-2 md:gap-3 min-w-0 overflow-hidden">
-                          <div className="flex flex-col gap-1 shrink-0">
-                             <Badge variant="outline" className="text-[8px] md:text-[9px] font-black uppercase bg-slate-50 border-slate-100 px-1.5 md:px-2 py-0.5 shrink-0 w-fit">
-                              {totalItems} Art.
-                            </Badge>
-                            <Badge 
-                              variant="outline" 
-                              className={cn(
-                                "text-[8px] font-black uppercase px-1.5 md:px-2 py-0.5 shrink-0 w-fit border-none",
-                                isCash ? "bg-green-100 text-green-700" : isCard ? "bg-blue-100 text-blue-700" : "bg-amber-100 text-amber-700"
-                              )}
-                            >
-                              {isCash ? <Banknote className="w-3 h-3 mr-1 inline" /> : isCard ? <CreditCard className="w-3 h-3 mr-1 inline" /> : <PackageMinus className="w-3 h-3 mr-1 inline" />}
-                              <span className="hidden sm:inline">{isCash ? 'Efectivo' : isCard ? 'Tarjeta' : 'Descontado'}</span>
-                            </Badge>
+                      <AccordionTrigger className="hover:no-underline p-0 w-full [&>svg]:hidden">
+                        <div className="flex items-center p-3 md:p-4 gap-2 md:gap-6 w-full">
+                          <div className="min-w-[65px] md:min-w-[70px] flex flex-col text-left">
+                            <span className="text-xs font-black text-slate-800">
+                              {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                            <span className="text-[9px] font-mono text-slate-400 uppercase">
+                              #{sale.id?.slice(-5)}
+                            </span>
                           </div>
                           
-                          <AccordionTrigger className="hover:no-underline py-0 justify-start gap-1 md:gap-2 text-primary font-bold text-[10px] uppercase tracking-tighter shrink-0 [&>svg:last-child]:hidden">
-                            <ChevronRight className="w-3 h-3" /> Detalle
-                          </AccordionTrigger>
-                        </div>
+                          <div className="flex-1 flex items-center gap-2 md:gap-3 min-w-0 overflow-hidden">
+                            <div className="flex flex-col gap-1 shrink-0">
+                               <Badge variant="outline" className="text-[8px] md:text-[9px] font-black uppercase bg-slate-50 border-slate-100 px-1.5 md:px-2 py-0.5 shrink-0 w-fit">
+                                {totalItems} Art.
+                              </Badge>
+                              <Badge 
+                                variant="outline" 
+                                className={cn(
+                                  "text-[8px] font-black uppercase px-1.5 md:px-2 py-0.5 shrink-0 w-fit border-none",
+                                  isCash ? "bg-green-100 text-green-700" : isCard ? "bg-blue-100 text-blue-700" : "bg-amber-100 text-amber-700"
+                                )}
+                              >
+                                {isCash ? <Banknote className="w-3 h-3 mr-1 inline" /> : isCard ? <CreditCard className="w-3 h-3 mr-1 inline" /> : <PackageMinus className="w-3 h-3 mr-1 inline" />}
+                                <span className="hidden sm:inline">{isCash ? 'Efectivo' : isCard ? 'Tarjeta' : 'Descontado'}</span>
+                              </Badge>
+                            </div>
+                            
+                            <div className="text-primary font-bold text-[10px] uppercase tracking-tighter flex items-center gap-1">
+                              <ChevronRight className="w-3 h-3" /> Ver Detalle
+                            </div>
+                          </div>
 
-                        <div className="text-right min-w-[120px] md:min-w-[130px] flex items-center justify-end gap-2 md:gap-3 shrink-0">
-                          <span className={cn(
-                            "text-base md:text-lg font-black font-mono tracking-tighter leading-none",
-                            isCash ? "text-green-600" : isCard ? "text-primary" : "text-amber-600"
-                          )}>
-                            {sale.paymentMethod === 'deduction' ? "ADMIN" : `$${Math.round(sale.totalAmount).toLocaleString('es-CL')}`}
-                          </span>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-9 w-9 text-destructive bg-destructive/10 hover:bg-destructive hover:text-white rounded-full transition-all" 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setDeleteContext('sales');
-                              setSecurityKey("");
-                              setItemToDelete(sale);
-                            }}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                          <div className="text-right min-w-[120px] md:min-w-[130px] flex items-center justify-end gap-2 md:gap-3 shrink-0" onClick={(e) => e.stopPropagation()}>
+                            <span className={cn(
+                              "text-base md:text-lg font-black font-mono tracking-tighter leading-none",
+                              isCash ? "text-green-600" : isCard ? "text-primary" : "text-amber-600"
+                            )}>
+                              {sale.paymentMethod === 'deduction' ? "ADMIN" : `$${Math.round(sale.totalAmount).toLocaleString('es-CL')}`}
+                            </span>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-9 w-9 text-destructive bg-destructive/10 hover:bg-destructive hover:text-white rounded-full transition-all" 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeleteContext('sales');
+                                setSecurityKey("");
+                                setItemToDelete(sale);
+                              }}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
                         </div>
-                      </div>
+                      </AccordionTrigger>
                       
                       <AccordionContent className="bg-slate-50/50 px-4 pb-4 pt-2 border-t border-slate-100">
                         <div className="space-y-1.5 mt-2">
@@ -457,25 +459,27 @@ export default function HistoryPage() {
                   <Card key={invoice} className="overflow-hidden border-none shadow-sm hover:shadow-md transition-all duration-200 rounded-2xl bg-white">
                     <Accordion type="single" collapsible className="w-full">
                       <AccordionItem value={invoice} className="border-none">
-                        <div className="flex items-center p-3 md:p-4 gap-4">
-                          <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center text-accent shrink-0">
-                            {isNoInvoice ? <Box className="w-5 h-5" /> : <FileText className="w-5 h-5" />}
-                          </div>
-                          
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-black text-xs md:text-sm text-slate-800 uppercase tracking-tighter truncate">
-                              {isNoInvoice ? "Carga Sin Factura" : `Factura: ${invoice}`}
-                            </h3>
-                            <div className="flex gap-2 mt-0.5">
-                              <span className="text-[8px] font-black text-slate-400 uppercase">Inicio: {invoiceDate.toLocaleDateString()}</span>
-                              <span className="text-[8px] font-black text-accent uppercase">{totalUnits} Unidades Totales</span>
+                        <AccordionTrigger className="hover:no-underline p-0 w-full [&>svg]:hidden">
+                          <div className="flex items-center p-3 md:p-4 gap-4 w-full">
+                            <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center text-accent shrink-0">
+                              {isNoInvoice ? <Box className="w-5 h-5" /> : <FileText className="w-5 h-5" />}
+                            </div>
+                            
+                            <div className="flex-1 min-w-0 text-left">
+                              <h3 className="font-black text-xs md:text-sm text-slate-800 uppercase tracking-tighter truncate">
+                                {isNoInvoice ? "Carga Sin Factura" : `Factura: ${invoice}`}
+                              </h3>
+                              <div className="flex gap-2 mt-0.5">
+                                <span className="text-[8px] font-black text-slate-400 uppercase">Inicio: {invoiceDate.toLocaleDateString()}</span>
+                                <span className="text-[8px] font-black text-accent uppercase">{totalUnits} Unidades</span>
+                              </div>
+                            </div>
+
+                            <div className="text-accent font-black text-[10px] uppercase tracking-tighter flex items-center gap-1">
+                              <ChevronRight className="w-4 h-4" /> Detalle
                             </div>
                           </div>
-
-                          <AccordionTrigger className="hover:no-underline py-0 justify-start gap-1 md:gap-2 text-accent font-black text-[10px] uppercase tracking-tighter shrink-0 [&>svg:last-child]:hidden">
-                            <ChevronRight className="w-4 h-4" /> Ver Detalle
-                          </AccordionTrigger>
-                        </div>
+                        </AccordionTrigger>
 
                         <AccordionContent className="bg-slate-50/50 px-2 md:px-4 pb-4 pt-2 border-t border-slate-100">
                           <div className="space-y-1.5 mt-2">
@@ -483,7 +487,7 @@ export default function HistoryPage() {
                               const date = log.timestamp?.toDate?.() || new Date();
                               return (
                                 <div key={log.id} className="flex justify-between items-center p-2 bg-white rounded-xl border border-slate-100 text-xs">
-                                  <div className="flex-1 min-w-0 mr-4">
+                                  <div className="flex-1 min-w-0 mr-4 text-left">
                                     <p className="font-bold text-slate-700 truncate">{log.productName}</p>
                                     <p className="text-[8px] text-slate-400 font-bold uppercase">Fecha: {date.toLocaleDateString()} • {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • Cód: {log.productId}</p>
                                   </div>
@@ -717,13 +721,13 @@ export default function HistoryPage() {
           </DialogHeader>
           
           <div className="py-4 space-y-4">
-            <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-left">
               <p className="text-[10px] font-black uppercase text-slate-400">Producto</p>
               <p className="text-sm font-bold text-slate-700">{editingLog?.productName}</p>
             </div>
             
             <div className="grid gap-2">
-              <Label className="text-[10px] font-black uppercase text-slate-400">Número de Factura</Label>
+              <Label className="text-[10px] font-black uppercase text-slate-400 text-left">Número de Factura</Label>
               <Input 
                 className="h-12 rounded-xl bg-slate-50 border-none font-bold text-lg" 
                 placeholder="Ej: 999888"
