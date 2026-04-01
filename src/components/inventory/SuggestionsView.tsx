@@ -25,7 +25,6 @@ interface Product {
   warningStock?: number;
   idealStock?: number;
   price: number;
-  status?: string;
 }
 
 interface SuggestionsViewProps {
@@ -184,7 +183,8 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
     itemsToShare.forEach(p => {
       if (p.suggestedQty > 0) {
         const priceStr = Math.round(p.price).toLocaleString('es-CL');
-        text += `${p.suggestedQty}u -${p.name} (${priceStr}$) ST:${p.stock}\n`;
+        // Usar 'x' en lugar de '-' y añadir puntos de separación
+        text += `${p.suggestedQty}u x ${p.name} (${priceStr}$) .......... ST:${p.stock}\n`;
       }
     });
     return text;
@@ -219,22 +219,24 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
             )}>{p.priority}</Badge>
           </div>
           
-          <div className="flex flex-wrap items-center gap-2 mt-1">
+          <div className="flex flex-wrap items-center gap-3 mt-1">
             <div className="flex gap-1 items-center bg-slate-50 px-1.5 py-0.5 rounded border">
               <span className="text-[8px] font-black text-slate-400 uppercase">Stock:</span>
               <span className="text-[9px] font-black">{p.stock}u.</span>
             </div>
-            <span className="text-[8px] font-black text-primary uppercase">PVP: ${Math.round(p.price).toLocaleString('es-CL')}</span>
+            <div className="flex gap-1 items-center bg-primary/5 px-1.5 py-0.5 rounded border border-primary/10">
+              <span className="text-[8px] font-black text-primary uppercase">PVP: ${Math.round(p.price).toLocaleString('es-CL')}</span>
+            </div>
             {p.idealStock > 0 && (
-              <div className="flex gap-1 items-center bg-primary/5 px-1.5 py-0.5 rounded border border-primary/10">
-                <Target className="w-2.5 h-2.5 text-primary" />
-                <span className="text-[8px] font-bold text-primary uppercase">Ideal: {p.idealStock}</span>
+              <div className="flex gap-1 items-center bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200">
+                <Target className="w-2.5 h-2.5 text-slate-400" />
+                <span className="text-[8px] font-bold text-slate-500 uppercase">Id: {p.idealStock}</span>
               </div>
             )}
             {p.warningStock > 0 && (
-              <div className="flex gap-1 items-center bg-destructive/5 px-1.5 py-0.5 rounded border border-destructive/10">
-                <AlertTriangle className="w-2.5 h-2.5 text-destructive" />
-                <span className="text-[8px] font-bold text-destructive uppercase">Aviso: {p.warningStock}</span>
+              <div className="flex gap-1 items-center bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200">
+                <AlertTriangle className="w-2.5 h-2.5 text-slate-400" />
+                <span className="text-[8px] font-bold text-slate-500 uppercase">Av: {p.warningStock}</span>
               </div>
             )}
           </div>
@@ -255,19 +257,19 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-4 gap-2">
-        <div className="bg-red-600 text-white py-2 rounded-xl shadow-sm flex flex-col justify-center items-center text-center">
+        <div className="bg-red-600 text-white py-1.5 rounded-xl shadow-sm flex flex-col justify-center items-center text-center">
           <span className="text-[7px] font-black uppercase tracking-wider opacity-80">Críticos</span>
           <span className="text-sm font-black font-mono tracking-tighter leading-none mt-0.5">{summaryStats.criticos}</span>
         </div>
-        <div className="bg-amber-600 text-white py-2 rounded-xl shadow-sm flex flex-col justify-center items-center text-center">
+        <div className="bg-amber-600 text-white py-1.5 rounded-xl shadow-sm flex flex-col justify-center items-center text-center">
           <span className="text-[7px] font-black uppercase tracking-wider opacity-80">Reponer</span>
           <span className="text-sm font-black font-mono tracking-tighter leading-none mt-0.5">{summaryStats.reponer}</span>
         </div>
-        <div className="bg-blue-600 text-white py-2 rounded-xl shadow-sm flex flex-col justify-center items-center text-center">
+        <div className="bg-blue-600 text-white py-1.5 rounded-xl shadow-sm flex flex-col justify-center items-center text-center">
           <span className="text-[7px] font-black uppercase tracking-wider opacity-80">Alta Rot.</span>
           <span className="text-sm font-black font-mono tracking-tighter leading-none mt-0.5">{summaryStats.altaRot}</span>
         </div>
-        <div className="bg-green-100 text-green-700 py-2 rounded-xl shadow-sm flex flex-col justify-center items-center text-center border border-green-200">
+        <div className="bg-green-100 text-green-700 py-1.5 rounded-xl shadow-sm flex flex-col justify-center items-center text-center border border-green-200">
           <span className="text-[7px] font-black uppercase tracking-wider opacity-80">Estado OK</span>
           <span className="text-sm font-black font-mono tracking-tighter leading-none mt-0.5">{summaryStats.ok}</span>
         </div>
@@ -279,7 +281,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
             <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-accent" /> Sugerencias de Compra
             </h3>
-            <Button className="bg-green-600 text-white font-black h-9 rounded-xl text-[10px] uppercase gap-2" onClick={() => handleWhatsApp()}>
+            <Button className="bg-green-600 text-white font-black h-9 rounded-xl text-[10px] uppercase gap-2 shadow-md shadow-green-100" onClick={() => handleWhatsApp()}>
               <Send className="w-4 h-4" /> Enviar WhatsApp
             </Button>
           </div>
