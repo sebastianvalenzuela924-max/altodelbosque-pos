@@ -243,7 +243,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
                 <span className="text-[8px] font-bold text-destructive uppercase">Aviso: {p.warningStock}</span>
               </div>
             )}
-            {p.price > 0 && <span className="text-[8px] font-bold text-slate-500 uppercase">P. Venta: ${Math.round(p.price).toLocaleString('es-CL')}</span>}
+            <span className="text-[8px] font-bold text-slate-500 uppercase">P. Venta: ${Math.round(p.price).toLocaleString('es-CL')}</span>
             {p.buyByCase && <Badge variant="outline" className="text-[7px] font-black bg-blue-50 text-blue-600 border-blue-100">Caja ({p.unitsPerCase}u)</Badge>}
           </div>
 
@@ -262,22 +262,22 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-3">
-        <div className="bg-red-600 text-white p-6 rounded-[2rem] shadow-lg flex flex-col justify-between min-h-[140px]">
-          <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80">Críticos</span>
-          <span className="text-5xl font-black font-mono tracking-tighter">{summaryStats.criticos}</span>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+        <div className="bg-red-600 text-white p-3 rounded-2xl shadow-sm flex flex-col justify-between min-h-[70px]">
+          <span className="text-[8px] font-black uppercase tracking-wider opacity-80">Críticos</span>
+          <span className="text-2xl font-black font-mono tracking-tighter">{summaryStats.criticos}</span>
         </div>
-        <div className="bg-amber-600 text-white p-6 rounded-[2rem] shadow-lg flex flex-col justify-between min-h-[140px]">
-          <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80">Reponer</span>
-          <span className="text-5xl font-black font-mono tracking-tighter">{summaryStats.reponer}</span>
+        <div className="bg-amber-600 text-white p-3 rounded-2xl shadow-sm flex flex-col justify-between min-h-[70px]">
+          <span className="text-[8px] font-black uppercase tracking-wider opacity-80">Reponer</span>
+          <span className="text-2xl font-black font-mono tracking-tighter">{summaryStats.reponer}</span>
         </div>
-        <div className="bg-blue-600 text-white p-6 rounded-[2rem] shadow-lg flex flex-col justify-between min-h-[140px]">
-          <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80">Alta Rot.</span>
-          <span className="text-5xl font-black font-mono tracking-tighter">{summaryStats.altaRot}</span>
+        <div className="bg-blue-600 text-white p-3 rounded-2xl shadow-sm flex flex-col justify-between min-h-[70px]">
+          <span className="text-[8px] font-black uppercase tracking-wider opacity-80">Alta Rot.</span>
+          <span className="text-2xl font-black font-mono tracking-tighter">{summaryStats.altaRot}</span>
         </div>
-        <div className="bg-green-100 text-green-700 p-6 rounded-[2rem] shadow-lg flex flex-col justify-between min-h-[140px]">
-          <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80">Estado OK</span>
-          <span className="text-5xl font-black font-mono tracking-tighter">{summaryStats.ok}</span>
+        <div className="bg-green-100 text-green-700 p-3 rounded-2xl shadow-sm flex flex-col justify-between min-h-[70px]">
+          <span className="text-[8px] font-black uppercase tracking-wider opacity-80">Estado OK</span>
+          <span className="text-2xl font-black font-mono tracking-tighter">{summaryStats.ok}</span>
         </div>
       </div>
 
@@ -326,7 +326,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
                   <SelectItem value="OK">Productos OK</SelectItem>
                 </SelectContent>
               </Select>
-              <Select value={rotationFilter} onValueChange={rotationFilter}>
+              <Select value={rotationFilter} onValueChange={setRotationFilter}>
                 <SelectTrigger className="w-fit bg-white border-none h-8 font-black text-[9px] rounded-lg shadow-sm uppercase px-3"><SelectValue /></SelectTrigger>
                 <SelectContent className="rounded-xl">
                   <SelectItem value="all">Rotación: Todo</SelectItem>
@@ -345,7 +345,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
                 </Select>
               )}
               {viewMode === 'distributor' && (
-                <Select value={distributorFilter} onValueChange={distributorFilter}>
+                <Select value={distributorFilter} onValueChange={setDistributorFilter}>
                   <SelectTrigger className="w-fit bg-white border-none h-8 font-black text-[9px] rounded-lg shadow-sm uppercase px-3"><SelectValue placeholder="Distribuidora" /></SelectTrigger>
                   <SelectContent className="rounded-xl">
                     <SelectItem value="all">Todas las Distribuidoras</SelectItem>
