@@ -415,7 +415,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
             ) : filtered.length === 0 ? (
               <div className="text-center py-20 text-slate-400 font-bold uppercase text-[10px]">Sin coincidencias</div>
             ) : viewMode === 'general' ? (
-              <div className="space-y-1">
+              <div className="space-y-1 text-left">
                 {filtered.map(renderProductItem)}
               </div>
             ) : (
