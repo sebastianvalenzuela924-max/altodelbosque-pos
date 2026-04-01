@@ -298,8 +298,8 @@ function InventoryContent() {
                           )}
                         >
                           <TableCell className="px-4 py-2">
-                            <div className="flex flex-col min-w-0">
-                              <p className="font-bold text-xs sm:text-sm text-slate-800 truncate max-w-[180px]">{p.name}</p>
+                            <div className="flex flex-col min-w-[140px]">
+                              <p className="font-bold text-xs sm:text-sm text-slate-800 break-words line-clamp-2">{p.name}</p>
                               <p className="text-[9px] font-mono text-slate-400 uppercase">#{p.id}</p>
                             </div>
                           </TableCell>

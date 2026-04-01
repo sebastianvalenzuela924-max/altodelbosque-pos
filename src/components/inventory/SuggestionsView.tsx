@@ -136,6 +136,15 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
           reason = "Stock OK";
         }
 
+        // Caso especial: El usuario reportó stock 6 aviso 1 pidiendo 2. Forzamos 0 si stock > aviso
+        if (hasWarning && stock > p.warningStock!) {
+           if (!hasIdeal || stock >= p.idealStock!) {
+              suggestedQty = 0;
+              priority = 'OK';
+              reason = "Stock OK";
+           }
+        }
+
         return {
           ...p,
           priority,
@@ -249,9 +258,9 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
         </div>
 
         <div className="flex-1 min-w-0">
-          <div className="flex justify-between items-start">
-            <h4 className="font-bold text-xs uppercase text-slate-800 truncate pr-2">{p.name}</h4>
-            <Badge className={cn("text-[8px] font-black uppercase h-4", 
+          <div className="flex justify-between items-start gap-2">
+            <h4 className="font-bold text-xs uppercase text-slate-800 break-words flex-1">{p.name}</h4>
+            <Badge className={cn("text-[8px] font-black uppercase h-4 shrink-0", 
               p.priority === 'Crítico' ? "bg-red-600" : p.priority === 'Por reponer' ? "bg-amber-600" : "bg-green-700"
             )}>{p.priority}</Badge>
           </div>
@@ -297,8 +306,8 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
         <button 
           onClick={() => toggleFilter('priority', 'Crítico')}
           className={cn(
-            "bg-red-600 text-white py-1.5 rounded-xl shadow-sm flex flex-col justify-center items-center text-center transition-all active:scale-95",
-            priorityFilter === 'Crítico' ? "ring-2 ring-red-400 ring-offset-2 scale-105" : "opacity-90 hover:opacity-100"
+            "text-white py-1.5 rounded-xl shadow-sm flex flex-col justify-center items-center text-center transition-all active:scale-95",
+            priorityFilter === 'Crítico' ? "bg-red-600 ring-2 ring-red-400 ring-offset-2 scale-105" : "bg-red-600/90 hover:bg-red-600"
           )}
         >
           <span className="text-[7px] font-black uppercase tracking-wider opacity-80">Críticos</span>
@@ -307,8 +316,8 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
         <button 
           onClick={() => toggleFilter('priority', 'Por reponer')}
           className={cn(
-            "bg-amber-600 text-white py-1.5 rounded-xl shadow-sm flex flex-col justify-center items-center text-center transition-all active:scale-95",
-            priorityFilter === 'Por reponer' ? "ring-2 ring-amber-400 ring-offset-2 scale-105" : "opacity-90 hover:opacity-100"
+            "text-white py-1.5 rounded-xl shadow-sm flex flex-col justify-center items-center text-center transition-all active:scale-95",
+            priorityFilter === 'Por reponer' ? "bg-amber-600 ring-2 ring-amber-400 ring-offset-2 scale-105" : "bg-amber-600/90 hover:bg-amber-600"
           )}
         >
           <span className="text-[7px] font-black uppercase tracking-wider opacity-80">Reponer</span>
@@ -317,8 +326,8 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
         <button 
           onClick={() => toggleFilter('rotation', 'Alta')}
           className={cn(
-            "bg-blue-600 text-white py-1.5 rounded-xl shadow-sm flex flex-col justify-center items-center text-center transition-all active:scale-95",
-            rotationFilter === 'Alta' ? "ring-2 ring-blue-400 ring-offset-2 scale-105" : "opacity-90 hover:opacity-100"
+            "text-white py-1.5 rounded-xl shadow-sm flex flex-col justify-center items-center text-center transition-all active:scale-95",
+            rotationFilter === 'Alta' ? "bg-blue-600 ring-2 ring-blue-400 ring-offset-2 scale-105" : "bg-blue-600/90 hover:bg-blue-600"
           )}
         >
           <span className="text-[7px] font-black uppercase tracking-wider opacity-80">Alta Rot.</span>
@@ -327,8 +336,8 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
         <button 
           onClick={() => toggleFilter('priority', 'OK')}
           className={cn(
-            "bg-green-100 text-green-700 py-1.5 rounded-xl shadow-sm flex flex-col justify-center items-center text-center border border-green-200 transition-all active:scale-95",
-            priorityFilter === 'OK' ? "ring-2 ring-green-400 ring-offset-2 scale-105" : "opacity-90 hover:opacity-100"
+            "py-1.5 rounded-xl shadow-sm flex flex-col justify-center items-center text-center border transition-all active:scale-95",
+            priorityFilter === 'OK' ? "bg-green-100 text-green-700 ring-2 ring-green-400 ring-offset-2 scale-105 border-green-200" : "bg-green-100 text-green-700 border-green-200 opacity-90 hover:opacity-100"
           )}
         >
           <span className="text-[7px] font-black uppercase tracking-wider opacity-80">Estado OK</span>
@@ -382,7 +391,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
                 </SelectContent>
               </Select>
               <Select value={rotationFilter} onValueChange={setRotationFilter}>
-                <SelectTrigger className="w-fit bg-white border-none h-8 font-black text-[9px] rounded-lg shadow-sm uppercase px-3"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-fit bg-white border-none h-8 font-black text-[9px] rounded-lg shadow-sm uppercase px-3"><SelectValue placeholder="Rotación" /></SelectTrigger>
                 <SelectContent className="rounded-xl">
                   <SelectItem value="all">Rotación: Todo</SelectItem>
                   <SelectItem value="Alta">Alta</SelectItem>
