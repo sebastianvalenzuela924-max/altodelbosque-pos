@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Package, Send, Sparkles, Truck, Loader2, ListFilter, LayoutGrid, Search, Target, AlertTriangle } from "lucide-react";
+import { Package, Send, Sparkles, Truck, Loader2, ListFilter, LayoutGrid, Search, Target, AlertTriangle, Box } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -101,7 +101,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
           priority = 'Por reponer';
         }
 
-        if (priority !== 'OK' || priorityFilter === 'all') {
+        if (priority !== 'OK' || priorityFilter === 'all' || priorityFilter === 'OK') {
           if (hasIdeal) {
             suggestedQty = Math.max(0, p.idealStock! - stock);
             reason = "Meta: Nivel Ideal";
@@ -184,7 +184,6 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
     itemsToShare.forEach(p => {
       if (p.suggestedQty > 0) {
         const priceStr = Math.round(p.price).toLocaleString('es-CL');
-        // Formato: [cantidad]u -[nombre] ([precio]$ ) ST:[stock]
         text += `${p.suggestedQty}u -${p.name} (${priceStr}$) ST:${p.stock}\n`;
       }
     });
@@ -225,19 +224,19 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
               <span className="text-[8px] font-black text-slate-400 uppercase">Stock:</span>
               <span className="text-[9px] font-black">{p.stock}u.</span>
             </div>
+            <span className="text-[8px] font-black text-primary uppercase">PVP: ${Math.round(p.price).toLocaleString('es-CL')}</span>
             {p.idealStock > 0 && (
               <div className="flex gap-1 items-center bg-primary/5 px-1.5 py-0.5 rounded border border-primary/10">
                 <Target className="w-2.5 h-2.5 text-primary" />
-                <span className="text-[8px] font-bold text-primary uppercase">Met: {p.idealStock}</span>
+                <span className="text-[8px] font-bold text-primary uppercase">Ideal: {p.idealStock}</span>
               </div>
             )}
             {p.warningStock > 0 && (
               <div className="flex gap-1 items-center bg-destructive/5 px-1.5 py-0.5 rounded border border-destructive/10">
                 <AlertTriangle className="w-2.5 h-2.5 text-destructive" />
-                <span className="text-[8px] font-bold text-destructive uppercase">Avi: {p.warningStock}</span>
+                <span className="text-[8px] font-bold text-destructive uppercase">Aviso: {p.warningStock}</span>
               </div>
             )}
-            <span className="text-[8px] font-bold text-slate-500 uppercase">PVP: ${Math.round(p.price).toLocaleString('es-CL')}</span>
           </div>
 
           <div className="flex justify-between items-center mt-2">
@@ -397,7 +396,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
               </Accordion>
             )}
           </ScrollArea>
-        </CardHeader>
+        </CardContent>
       </Card>
     </div>
   );
