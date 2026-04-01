@@ -213,7 +213,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
           <div className="flex justify-between items-start">
             <h4 className="font-bold text-xs uppercase text-slate-800 truncate pr-2">{p.name}</h4>
             <Badge className={cn("text-[8px] font-black uppercase h-4", 
-              p.priority === 'Crítico' ? "bg-red-600" : p.priority === 'Por reponer' ? "bg-amber-600" : "bg-green-600"
+              p.priority === 'Crítico' ? "bg-red-600" : p.priority === 'Por reponer' ? "bg-amber-600" : "bg-green-700"
             )}>{p.priority}</Badge>
           </div>
           
@@ -224,6 +224,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
             </div>
             {p.idealStock > 0 && <span className="text-[8px] font-bold text-primary uppercase">Meta: {p.idealStock}</span>}
             {p.warningStock > 0 && <span className="text-[8px] font-bold text-destructive uppercase">Aviso: {p.warningStock}</span>}
+            {p.price > 0 && <span className="text-[8px] font-bold text-slate-500 uppercase">P. Venta: ${Math.round(p.price).toLocaleString('es-CL')}</span>}
             {p.buyByCase && <Badge variant="outline" className="text-[7px] font-black bg-blue-50 text-blue-600 border-blue-100">Caja ({p.unitsPerCase}u)</Badge>}
           </div>
 
