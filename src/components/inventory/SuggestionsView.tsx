@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Package, Send, Sparkles, Truck, Loader2, Box, ChevronRight, ListFilter, LayoutGrid, Search } from "lucide-react";
+import { Package, Send, Sparkles, Truck, Loader2, Box, ChevronRight, ListFilter, LayoutGrid, Search, Target, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -141,6 +141,15 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
       });
   }, [products, salesMap]);
 
+  const summaryStats = useMemo(() => {
+    return {
+      criticos: analysis.filter(p => p.priority === 'Crítico').length,
+      reponer: analysis.filter(p => p.priority === 'Por reponer').length,
+      altaRot: analysis.filter(p => p.rotation === 'Alta').length,
+      ok: analysis.filter(p => p.priority === 'OK').length,
+    };
+  }, [analysis]);
+
   const filtered = useMemo(() => {
     return analysis.filter(p => {
       const q = searchTerm.toLowerCase().trim();
@@ -222,8 +231,18 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
               <span className="text-[8px] font-black text-slate-400 uppercase">Stock:</span>
               <span className="text-[9px] font-black">{p.stock}u.</span>
             </div>
-            {p.idealStock > 0 && <span className="text-[8px] font-bold text-primary uppercase">Meta: {p.idealStock}</span>}
-            {p.warningStock > 0 && <span className="text-[8px] font-bold text-destructive uppercase">Aviso: {p.warningStock}</span>}
+            {p.idealStock > 0 && (
+              <div className="flex gap-1 items-center bg-primary/5 px-1.5 py-0.5 rounded border border-primary/10">
+                <Target className="w-2.5 h-2.5 text-primary" />
+                <span className="text-[8px] font-bold text-primary uppercase">Meta: {p.idealStock}</span>
+              </div>
+            )}
+            {p.warningStock > 0 && (
+              <div className="flex gap-1 items-center bg-destructive/5 px-1.5 py-0.5 rounded border border-destructive/10">
+                <AlertTriangle className="w-2.5 h-2.5 text-destructive" />
+                <span className="text-[8px] font-bold text-destructive uppercase">Aviso: {p.warningStock}</span>
+              </div>
+            )}
             {p.price > 0 && <span className="text-[8px] font-bold text-slate-500 uppercase">P. Venta: ${Math.round(p.price).toLocaleString('es-CL')}</span>}
             {p.buyByCase && <Badge variant="outline" className="text-[7px] font-black bg-blue-50 text-blue-600 border-blue-100">Caja ({p.unitsPerCase}u)</Badge>}
           </div>
@@ -243,6 +262,25 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
 
   return (
     <div className="space-y-6">
+      <div className="grid grid-cols-2 gap-3">
+        <div className="bg-red-600 text-white p-6 rounded-[2rem] shadow-lg flex flex-col justify-between min-h-[140px]">
+          <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80">Críticos</span>
+          <span className="text-5xl font-black font-mono tracking-tighter">{summaryStats.criticos}</span>
+        </div>
+        <div className="bg-amber-600 text-white p-6 rounded-[2rem] shadow-lg flex flex-col justify-between min-h-[140px]">
+          <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80">Reponer</span>
+          <span className="text-5xl font-black font-mono tracking-tighter">{summaryStats.reponer}</span>
+        </div>
+        <div className="bg-blue-600 text-white p-6 rounded-[2rem] shadow-lg flex flex-col justify-between min-h-[140px]">
+          <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80">Alta Rot.</span>
+          <span className="text-5xl font-black font-mono tracking-tighter">{summaryStats.altaRot}</span>
+        </div>
+        <div className="bg-green-100 text-green-700 p-6 rounded-[2rem] shadow-lg flex flex-col justify-between min-h-[140px]">
+          <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80">Estado OK</span>
+          <span className="text-5xl font-black font-mono tracking-tighter">{summaryStats.ok}</span>
+        </div>
+      </div>
+
       <Card className="border-none shadow-xl rounded-2xl bg-white overflow-hidden">
         <CardHeader className="bg-slate-50/50 p-4 border-b space-y-4">
           <div className="flex justify-between items-center">
