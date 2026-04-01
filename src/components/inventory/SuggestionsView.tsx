@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Package, Send, Sparkles, Truck, Loader2, ChevronRight, ListFilter, LayoutGrid, Search, Target, AlertTriangle } from "lucide-react";
+import { Package, Send, Sparkles, Truck, Loader2, ListFilter, LayoutGrid, Search, Target, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -101,7 +101,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
           priority = 'Por reponer';
         }
 
-        if (priority !== 'OK') {
+        if (priority !== 'OK' || priorityFilter === 'all') {
           if (hasIdeal) {
             suggestedQty = Math.max(0, p.idealStock! - stock);
             reason = "Meta: Nivel Ideal";
@@ -132,7 +132,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
         const order = { 'Crítico': 0, 'Por reponer': 1, 'OK': 2 };
         return order[a.priority as Priority] - order[b.priority as Priority];
       });
-  }, [products, salesMap]);
+  }, [products, salesMap, priorityFilter]);
 
   const summaryStats = useMemo(() => {
     return {
@@ -184,7 +184,8 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
     itemsToShare.forEach(p => {
       if (p.suggestedQty > 0) {
         const priceStr = Math.round(p.price).toLocaleString('es-CL');
-        text += `- ${p.suggestedQty}u. x ${p.name} (${priceStr}$)\n`;
+        // Formato: [cantidad]u -[nombre] ([precio]$ ) ST:[stock]
+        text += `${p.suggestedQty}u -${p.name} (${priceStr}$) ST:${p.stock}\n`;
       }
     });
     return text;
@@ -227,16 +228,16 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
             {p.idealStock > 0 && (
               <div className="flex gap-1 items-center bg-primary/5 px-1.5 py-0.5 rounded border border-primary/10">
                 <Target className="w-2.5 h-2.5 text-primary" />
-                <span className="text-[8px] font-bold text-primary uppercase">Meta: {p.idealStock}</span>
+                <span className="text-[8px] font-bold text-primary uppercase">Met: {p.idealStock}</span>
               </div>
             )}
             {p.warningStock > 0 && (
               <div className="flex gap-1 items-center bg-destructive/5 px-1.5 py-0.5 rounded border border-destructive/10">
                 <AlertTriangle className="w-2.5 h-2.5 text-destructive" />
-                <span className="text-[8px] font-bold text-destructive uppercase">Aviso: {p.warningStock}</span>
+                <span className="text-[8px] font-bold text-destructive uppercase">Avi: {p.warningStock}</span>
               </div>
             )}
-            <span className="text-[8px] font-bold text-slate-500 uppercase">P. Venta: ${Math.round(p.price).toLocaleString('es-CL')}</span>
+            <span className="text-[8px] font-bold text-slate-500 uppercase">PVP: ${Math.round(p.price).toLocaleString('es-CL')}</span>
           </div>
 
           <div className="flex justify-between items-center mt-2">
@@ -255,21 +256,21 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-4 gap-2">
-        <div className="bg-red-600 text-white p-2 rounded-xl shadow-sm flex flex-col justify-center items-center text-center">
+        <div className="bg-red-600 text-white py-2 rounded-xl shadow-sm flex flex-col justify-center items-center text-center">
           <span className="text-[7px] font-black uppercase tracking-wider opacity-80">Críticos</span>
-          <span className="text-lg font-black font-mono tracking-tighter leading-none mt-0.5">{summaryStats.criticos}</span>
+          <span className="text-sm font-black font-mono tracking-tighter leading-none mt-0.5">{summaryStats.criticos}</span>
         </div>
-        <div className="bg-amber-600 text-white p-2 rounded-xl shadow-sm flex flex-col justify-center items-center text-center">
+        <div className="bg-amber-600 text-white py-2 rounded-xl shadow-sm flex flex-col justify-center items-center text-center">
           <span className="text-[7px] font-black uppercase tracking-wider opacity-80">Reponer</span>
-          <span className="text-lg font-black font-mono tracking-tighter leading-none mt-0.5">{summaryStats.reponer}</span>
+          <span className="text-sm font-black font-mono tracking-tighter leading-none mt-0.5">{summaryStats.reponer}</span>
         </div>
-        <div className="bg-blue-600 text-white p-2 rounded-xl shadow-sm flex flex-col justify-center items-center text-center">
+        <div className="bg-blue-600 text-white py-2 rounded-xl shadow-sm flex flex-col justify-center items-center text-center">
           <span className="text-[7px] font-black uppercase tracking-wider opacity-80">Alta Rot.</span>
-          <span className="text-lg font-black font-mono tracking-tighter leading-none mt-0.5">{summaryStats.altaRot}</span>
+          <span className="text-sm font-black font-mono tracking-tighter leading-none mt-0.5">{summaryStats.altaRot}</span>
         </div>
-        <div className="bg-green-100 text-green-700 p-2 rounded-xl shadow-sm flex flex-col justify-center items-center text-center border border-green-200">
+        <div className="bg-green-100 text-green-700 py-2 rounded-xl shadow-sm flex flex-col justify-center items-center text-center border border-green-200">
           <span className="text-[7px] font-black uppercase tracking-wider opacity-80">Estado OK</span>
-          <span className="text-lg font-black font-mono tracking-tighter leading-none mt-0.5">{summaryStats.ok}</span>
+          <span className="text-sm font-black font-mono tracking-tighter leading-none mt-0.5">{summaryStats.ok}</span>
         </div>
       </div>
 
@@ -396,7 +397,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
               </Accordion>
             )}
           </ScrollArea>
-        </CardContent>
+        </CardHeader>
       </Card>
     </div>
   );
