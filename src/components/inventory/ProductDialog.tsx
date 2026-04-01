@@ -9,10 +9,9 @@ import { Label } from "@/components/ui/label";
 import { useFirestore, setDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase";
 import { doc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Package, Tag, Target, HelpCircle, AlertTriangle, Truck, Box } from "lucide-react";
+import { Loader2, Package, Tag, Target, HelpCircle, AlertTriangle, Truck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Checkbox } from "@/components/ui/checkbox";
 
 interface ProductDialogProps {
   product?: any | null;
@@ -32,9 +31,7 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
     idealStock: "",
     warningStock: "",
     category: "",
-    distributor: "",
-    buyByCase: false,
-    unitsPerCase: ""
+    distributor: ""
   });
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -49,9 +46,7 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
         idealStock: (product.idealStock !== undefined && product.idealStock !== null) ? product.idealStock.toString() : "",
         warningStock: (product.warningStock !== undefined && product.warningStock !== null) ? product.warningStock.toString() : "",
         category: product.category || "",
-        distributor: product.distributor || "",
-        buyByCase: !!product.buyByCase,
-        unitsPerCase: product.unitsPerCase?.toString() || ""
+        distributor: product.distributor || ""
       });
     } else {
       setFormData({
@@ -62,9 +57,7 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
         idealStock: "10",
         warningStock: "",
         category: "",
-        distributor: "",
-        buyByCase: false,
-        unitsPerCase: ""
+        distributor: ""
       });
     }
   }, [product, open]);
@@ -72,11 +65,6 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
   const handleSave = () => {
     if (!formData.name || !formData.price) {
       toast({ title: "Faltan datos", description: "El nombre y precio son obligatorios.", variant: "destructive" });
-      return;
-    }
-
-    if (formData.buyByCase && (!formData.unitsPerCase || parseInt(formData.unitsPerCase) <= 0)) {
-      toast({ title: "Faltan datos de caja", description: "Debes indicar cuántas unidades trae la caja.", variant: "destructive" });
       return;
     }
 
@@ -102,9 +90,7 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
       idealStock: formData.idealStock !== "" ? parseInt(formData.idealStock) : null,
       warningStock: formData.warningStock !== "" ? parseInt(formData.warningStock) : null,
       category: finalCategory,
-      distributor: formData.distributor.trim(),
-      buyByCase: formData.buyByCase,
-      unitsPerCase: formData.buyByCase ? (parseInt(formData.unitsPerCase) || null) : null
+      distributor: formData.distributor.trim()
     };
 
     setDocumentNonBlocking(docRef, data, { merge: true });
@@ -189,38 +175,6 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
             </div>
           </div>
 
-          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-4">
-            <p className="text-[10px] font-black uppercase text-slate-400 text-center tracking-widest">Formato de Reposición</p>
-            <div className="flex items-center space-x-3 bg-white p-3 rounded-xl border">
-              <Checkbox 
-                id="buyByCase" 
-                checked={formData.buyByCase} 
-                onCheckedChange={(checked) => setFormData({ ...formData, buyByCase: !!checked })}
-                className="w-5 h-5"
-              />
-              <div className="grid gap-1.5 leading-none">
-                <label htmlFor="buyByCase" className="text-sm font-bold leading-none cursor-pointer">Se compra por caja</label>
-                <p className="text-[9px] text-muted-foreground font-medium uppercase">La reposición se calcula en cajas cerradas.</p>
-              </div>
-            </div>
-
-            {formData.buyByCase && (
-              <div className="grid gap-2 animate-in slide-in-from-top-2 duration-300">
-                <Label htmlFor="unitsPerCase" className="font-bold text-slate-500 text-[10px] uppercase tracking-widest flex items-center gap-1">
-                  <Box className="w-3 h-3" /> Unidades por caja
-                </Label>
-                <Input 
-                  id="unitsPerCase" 
-                  type="number" 
-                  className="h-12 rounded-xl bg-white border-none font-black text-primary text-center" 
-                  value={formData.unitsPerCase} 
-                  onChange={e => setFormData({ ...formData, unitsPerCase: e.target.value })} 
-                  placeholder="Ej: 6, 12, 24" 
-                />
-              </div>
-            )}
-          </div>
-
           <div className="grid gap-4">
             <div className="grid gap-2">
               <Label htmlFor="stock" className="font-bold text-slate-500 text-xs uppercase tracking-widest">Stock Actual (Unidades)</Label>
@@ -239,7 +193,7 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
                     type="number" 
                     className="h-12 rounded-xl bg-white border-none font-black text-primary text-center" 
                     value={formData.idealStock} 
-                    onChange={e => setFormData({ ...formData, idealStock: e.target.value, warningStock: "" })} 
+                    onChange={e => { setFormData({ ...formData, idealStock: e.target.value, warningStock: "" }); }} 
                     placeholder="Ejem: 10" 
                   />
                 </div>
@@ -252,7 +206,7 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
                     type="number" 
                     className="h-12 rounded-xl bg-white border-none font-black text-destructive text-center" 
                     value={formData.warningStock} 
-                    onChange={e => setFormData({ ...formData, warningStock: e.target.value, idealStock: "" })} 
+                    onChange={e => { setFormData({ ...formData, warningStock: e.target.value, idealStock: "" }); }} 
                     placeholder="Ejem: 5" 
                   />
                 </div>

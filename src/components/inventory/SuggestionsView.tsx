@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Package, Send, Sparkles, Truck, Loader2, Box, ChevronRight, ListFilter, LayoutGrid, Search, Target, AlertTriangle } from "lucide-react";
+import { Package, Send, Sparkles, Truck, Loader2, ChevronRight, ListFilter, LayoutGrid, Search, Target, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -26,8 +26,6 @@ interface Product {
   idealStock?: number;
   price: number;
   status?: string;
-  buyByCase?: boolean;
-  unitsPerCase?: number;
 }
 
 interface SuggestionsViewProps {
@@ -104,24 +102,19 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
         }
 
         if (priority !== 'OK') {
-          if (p.buyByCase && p.unitsPerCase && p.unitsPerCase > 0) {
-            suggestedQty = 1;
-            reason = hasIdeal ? "Meta: Nivel Ideal" : "Reponer Stock";
+          if (hasIdeal) {
+            suggestedQty = Math.max(0, p.idealStock! - stock);
+            reason = "Meta: Nivel Ideal";
           } else {
-            if (hasIdeal) {
-              suggestedQty = Math.max(0, p.idealStock! - stock);
-              reason = "Meta: Nivel Ideal";
+            if (rotation === 'Alta') {
+              suggestedQty = Math.ceil(dailyAvg * 14);
+              reason = "Urgente: Alta Demanda";
+            } else if (rotation === 'Media') {
+              suggestedQty = Math.max(3, Math.ceil(dailyAvg * 7));
+              reason = "Reponer: Venta Normal";
             } else {
-              if (rotation === 'Alta') {
-                suggestedQty = Math.ceil(dailyAvg * 14);
-                reason = "Urgente: Alta Demanda";
-              } else if (rotation === 'Media') {
-                suggestedQty = Math.max(3, Math.ceil(dailyAvg * 7));
-                reason = "Reponer: Venta Normal";
-              } else {
-                suggestedQty = 1;
-                reason = "Mínimo: Baja Rotación";
-              }
+              suggestedQty = 2;
+              reason = "Mínimo: Baja Rotación";
             }
           }
         }
@@ -190,9 +183,8 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
     
     itemsToShare.forEach(p => {
       if (p.suggestedQty > 0) {
-        const format = p.buyByCase ? "Caja" : "u.";
         const priceStr = Math.round(p.price).toLocaleString('es-CL');
-        text += `- ${p.suggestedQty}${format} x ${p.name} (${priceStr}$)\n`;
+        text += `- ${p.suggestedQty}u. x ${p.name} (${priceStr}$)\n`;
       }
     });
     return text;
@@ -216,7 +208,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
         <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0", 
           p.priority === 'Crítico' ? "bg-red-100 text-red-600" : p.priority === 'Por reponer' ? "bg-amber-100 text-amber-600" : "bg-green-100 text-green-600"
         )}>
-          {p.buyByCase ? <Box className="w-5 h-5" /> : <Package className="w-5 h-5" />}
+          <Package className="w-5 h-5" />
         </div>
 
         <div className="flex-1 min-w-0">
@@ -245,14 +237,13 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
               </div>
             )}
             <span className="text-[8px] font-bold text-slate-500 uppercase">P. Venta: ${Math.round(p.price).toLocaleString('es-CL')}</span>
-            {p.buyByCase && <Badge variant="outline" className="text-[7px] font-black bg-blue-50 text-blue-600 border-blue-100">Caja ({p.unitsPerCase}u)</Badge>}
           </div>
 
           <div className="flex justify-between items-center mt-2">
             <p className="text-[9px] font-black text-primary uppercase tracking-tighter"><Sparkles className="w-3 h-3 inline mr-1" /> {p.reason}</p>
             {p.suggestedQty > 0 && (
               <Badge className="bg-primary text-white font-black text-[10px] px-2 py-1">
-                Pedir: {p.suggestedQty} {p.buyByCase ? "Caja" : "u."}
+                Pedir: {p.suggestedQty} u.
               </Badge>
             )}
           </div>
