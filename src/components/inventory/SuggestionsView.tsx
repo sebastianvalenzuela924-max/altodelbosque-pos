@@ -100,21 +100,19 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
           priority = 'Por reponer';
         }
 
-        if (priority !== 'OK' || priorityFilter === 'all' || priorityFilter === 'OK') {
-          if (hasIdeal) {
-            suggestedQty = Math.max(0, p.idealStock! - stock);
-            reason = "Meta: Nivel Ideal";
+        if (hasIdeal) {
+          suggestedQty = Math.max(0, p.idealStock! - stock);
+          reason = "Meta: Nivel Ideal";
+        } else {
+          if (rotation === 'Alta') {
+            suggestedQty = Math.ceil(dailyAvg * 14);
+            reason = "Urgente: Alta Demanda";
+          } else if (rotation === 'Media') {
+            suggestedQty = Math.max(3, Math.ceil(dailyAvg * 7));
+            reason = "Reponer: Venta Normal";
           } else {
-            if (rotation === 'Alta') {
-              suggestedQty = Math.ceil(dailyAvg * 14);
-              reason = "Urgente: Alta Demanda";
-            } else if (rotation === 'Media') {
-              suggestedQty = Math.max(3, Math.ceil(dailyAvg * 7));
-              reason = "Reponer: Venta Normal";
-            } else {
-              suggestedQty = 2;
-              reason = "Mínimo: Baja Rotación";
-            }
+            suggestedQty = 2;
+            reason = "Mínimo: Baja Rotación";
           }
         }
 
@@ -131,7 +129,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
         const order = { 'Crítico': 0, 'Por reponer': 1, 'OK': 2 };
         return order[a.priority as Priority] - order[b.priority as Priority];
       });
-  }, [products, salesMap, priorityFilter]);
+  }, [products, salesMap]);
 
   const summaryStats = useMemo(() => {
     return {
@@ -253,25 +251,69 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
     </Card>
   );
 
+  const toggleFilter = (type: 'priority' | 'rotation', value: string) => {
+    if (type === 'priority') {
+      if (priorityFilter === value) {
+        setPriorityFilter("suggestions");
+      } else {
+        setPriorityFilter(value);
+        setRotationFilter("all");
+      }
+    } else {
+      if (rotationFilter === value) {
+        setRotationFilter("all");
+        setPriorityFilter("suggestions");
+      } else {
+        setRotationFilter(value);
+        setPriorityFilter("all");
+      }
+    }
+    setSelectedIds([]);
+  };
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-4 gap-2">
-        <div className="bg-red-600 text-white py-1.5 rounded-xl shadow-sm flex flex-col justify-center items-center text-center">
+        <button 
+          onClick={() => toggleFilter('priority', 'Crítico')}
+          className={cn(
+            "bg-red-600 text-white py-1.5 rounded-xl shadow-sm flex flex-col justify-center items-center text-center transition-all active:scale-95",
+            priorityFilter === 'Crítico' ? "ring-2 ring-red-400 ring-offset-2 scale-105" : "opacity-90 hover:opacity-100"
+          )}
+        >
           <span className="text-[7px] font-black uppercase tracking-wider opacity-80">Críticos</span>
           <span className="text-sm font-black font-mono tracking-tighter leading-none mt-0.5">{summaryStats.criticos}</span>
-        </div>
-        <div className="bg-amber-600 text-white py-1.5 rounded-xl shadow-sm flex flex-col justify-center items-center text-center">
+        </button>
+        <button 
+          onClick={() => toggleFilter('priority', 'Por reponer')}
+          className={cn(
+            "bg-amber-600 text-white py-1.5 rounded-xl shadow-sm flex flex-col justify-center items-center text-center transition-all active:scale-95",
+            priorityFilter === 'Por reponer' ? "ring-2 ring-amber-400 ring-offset-2 scale-105" : "opacity-90 hover:opacity-100"
+          )}
+        >
           <span className="text-[7px] font-black uppercase tracking-wider opacity-80">Reponer</span>
           <span className="text-sm font-black font-mono tracking-tighter leading-none mt-0.5">{summaryStats.reponer}</span>
-        </div>
-        <div className="bg-blue-600 text-white py-1.5 rounded-xl shadow-sm flex flex-col justify-center items-center text-center">
+        </button>
+        <button 
+          onClick={() => toggleFilter('rotation', 'Alta')}
+          className={cn(
+            "bg-blue-600 text-white py-1.5 rounded-xl shadow-sm flex flex-col justify-center items-center text-center transition-all active:scale-95",
+            rotationFilter === 'Alta' ? "ring-2 ring-blue-400 ring-offset-2 scale-105" : "opacity-90 hover:opacity-100"
+          )}
+        >
           <span className="text-[7px] font-black uppercase tracking-wider opacity-80">Alta Rot.</span>
           <span className="text-sm font-black font-mono tracking-tighter leading-none mt-0.5">{summaryStats.altaRot}</span>
-        </div>
-        <div className="bg-green-100 text-green-700 py-1.5 rounded-xl shadow-sm flex flex-col justify-center items-center text-center border border-green-200">
+        </button>
+        <button 
+          onClick={() => toggleFilter('priority', 'OK')}
+          className={cn(
+            "bg-green-100 text-green-700 py-1.5 rounded-xl shadow-sm flex flex-col justify-center items-center text-center border border-green-200 transition-all active:scale-95",
+            priorityFilter === 'OK' ? "ring-2 ring-green-400 ring-offset-2 scale-105" : "opacity-90 hover:opacity-100"
+          )}
+        >
           <span className="text-[7px] font-black uppercase tracking-wider opacity-80">Estado OK</span>
           <span className="text-sm font-black font-mono tracking-tighter leading-none mt-0.5">{summaryStats.ok}</span>
-        </div>
+        </button>
       </div>
 
       <Card className="border-none shadow-xl rounded-2xl bg-white overflow-hidden">
@@ -353,7 +395,6 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
             </div>
           </div>
         </CardHeader>
-
         <CardContent className="p-4 bg-slate-50/30">
           <ScrollArea className="h-[500px] w-full">
             {isLoadingSales ? (
