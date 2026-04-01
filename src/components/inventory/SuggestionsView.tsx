@@ -90,7 +90,6 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
         const hasIdeal = p.idealStock !== undefined && p.idealStock !== null && p.idealStock > 0;
         const hasWarning = p.warningStock !== undefined && p.warningStock !== null && p.warningStock > 0;
 
-        // Si no tiene alertas, ignorar para sugerencias y rotación
         if (!hasIdeal && !hasWarning) {
           return {
             ...p,

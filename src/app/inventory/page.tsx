@@ -46,6 +46,7 @@ function InventoryContent() {
   
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
   const isLongPress = useRef(false);
+  const startPos = useRef<{ x: number, y: number } | null>(null);
   
   const { toast } = useToast();
 
@@ -135,12 +136,22 @@ function InventoryContent() {
     });
   }, [products, searchTerm, sortBy, categoryFilter, distributorFilter, statusFilter]);
 
-  const handlePointerDown = (product: any) => {
+  const handlePointerDown = (e: React.PointerEvent, product: any) => {
     isLongPress.current = false;
+    startPos.current = { x: e.clientX, y: e.clientY };
     longPressTimer.current = setTimeout(() => {
       isLongPress.current = true;
       setQuickStockProduct(product);
-    }, 800);
+    }, 600);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!startPos.current) return;
+    const dist = Math.sqrt(
+      Math.pow(e.clientX - startPos.current.x, 2) + 
+      Math.pow(e.clientY - startPos.current.y, 2)
+    );
+    if (dist > 10) clearTimer();
   };
 
   const clearTimer = () => {
@@ -148,6 +159,7 @@ function InventoryContent() {
       clearTimeout(longPressTimer.current);
       longPressTimer.current = null;
     }
+    startPos.current = null;
   };
 
   const handleDeleteProduct = () => {
@@ -269,10 +281,11 @@ function InventoryContent() {
                       return (
                         <TableRow 
                           key={p.id} 
-                          onPointerDown={() => handlePointerDown(p)}
+                          onPointerDown={(e) => handlePointerDown(e, p)}
                           onPointerUp={clearTimer}
-                          onPointerMove={clearTimer}
+                          onPointerMove={handlePointerMove}
                           onPointerCancel={clearTimer}
+                          onContextMenu={(e) => e.preventDefault()}
                           onClick={() => {
                             if (!isLongPress.current) {
                               setSelectedProduct(p);
@@ -280,7 +293,7 @@ function InventoryContent() {
                             }
                           }}
                           className={cn(
-                            "transition-colors border-b select-none cursor-pointer h-14 hover:bg-slate-50",
+                            "transition-colors border-b select-none cursor-pointer h-14 hover:bg-slate-50 touch-none",
                             status === "peligro" ? "bg-red-50/70" : status === "precaución" ? "bg-amber-50/70" : "bg-green-50/30"
                           )}
                         >
@@ -327,7 +340,6 @@ function InventoryContent() {
         </TabsContent>
       </Tabs>
 
-      {/* Diálogo de Carga Rápida */}
       <Dialog open={!!quickStockProduct} onOpenChange={(open) => !open && setQuickStockProduct(null)}>
         <DialogContent className="rounded-3xl border-none shadow-2xl max-w-[90vw] sm:max-w-sm p-6" onOpenAutoFocus={(e) => e.preventDefault()}>
           <DialogHeader>
@@ -397,7 +409,6 @@ function InventoryContent() {
         </DialogContent>
       </Dialog>
 
-      {/* BORRADO DE PRODUCTO CON CLAVE */}
       <Dialog open={!!productToDelete} onOpenChange={(open) => !open && setProductToDelete(null)}>
         <DialogContent className="rounded-3xl p-6 border-none shadow-2xl max-w-[90vw] sm:max-w-md">
           <DialogHeader className="text-center">
