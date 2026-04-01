@@ -216,18 +216,17 @@ export default function ReportsPage() {
       if (tomorrowWeather === "Sol") base *= 1.05;
     }
 
-    // Redondeo inteligente a Kg enteros
     let sugerencia = base;
     let explanationSuffix = "Sugerencia redondeada a kg entero.";
 
     if (recentQuiebres > 0) {
-      sugerencia = Math.ceil(sugerencia); // Si faltó pan, redondeamos hacia arriba
+      sugerencia = Math.ceil(sugerencia); 
       explanationSuffix = "Redondeado hacia arriba por faltantes recientes.";
     } else if (recentLeftovers > 2) {
-      sugerencia = Math.floor(sugerencia); // Si sobró mucho, redondeamos hacia abajo
+      sugerencia = Math.floor(sugerencia); 
       explanationSuffix = "Redondeado hacia abajo por sobrante alto reciente.";
     } else {
-      sugerencia = Math.round(sugerencia); // Caso estándar
+      sugerencia = Math.round(sugerencia); 
     }
 
     const sugerenciaFinal = Math.max(1, sugerencia);
@@ -489,25 +488,25 @@ export default function ReportsPage() {
             </Card>
           </section>
 
-          <section className="space-y-4" ref={breadFormRef}>
+          <section className="space-y-3" ref={breadFormRef}>
             <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 px-2">
               <Edit3 className="w-4 h-4 text-primary" /> {editingBreadLog ? 'Editando Registro' : 'Registro Diario'}
             </h3>
-            <Card className="border-none shadow-sm rounded-3xl bg-white p-6 space-y-6">
-              <div className="flex justify-between items-center pb-2 border-b">
-                 <Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest bg-slate-50 text-primary border-slate-200">
-                    Fecha Registro: {editingBreadLog ? editingBreadLog.date : (dateFilter === 'today' ? 'Hoy' : dateFilter === 'yesterday' ? 'Ayer' : customDate || 'Seleccionada')}
+            <Card className="border-none shadow-sm rounded-3xl bg-white p-4 space-y-4">
+              <div className="flex justify-between items-center pb-1 border-b">
+                 <Badge variant="outline" className="text-[8px] font-black uppercase tracking-widest bg-slate-50 text-primary border-slate-200">
+                    Fecha: {editingBreadLog ? editingBreadLog.date : (dateFilter === 'today' ? 'Hoy' : dateFilter === 'yesterday' ? 'Ayer' : customDate || 'Seleccionada')}
                  </Badge>
                  <div className="flex items-center gap-2">
-                   <div className="flex items-center gap-1.5">
+                   <div className="flex items-center gap-1">
                      <Label className="text-[9px] font-black uppercase text-slate-400">Pidieron más?</Label>
                      <TooltipProvider>
                        <Tooltip>
                          <TooltipTrigger asChild>
-                           <HelpCircle className="w-3.5 h-3.5 text-slate-300 cursor-help" />
+                           <HelpCircle className="w-3 h-3 text-slate-300 cursor-help" />
                          </TooltipTrigger>
                          <TooltipContent className="max-w-[200px] text-[10px] font-bold p-3">
-                           Marca "SÍ" si el pan se terminó antes del cierre y hubo que pedir un refuerzo o se perdió venta. Ayuda a la IA a pedir más mañana.
+                           Marca "SÍ" si el pan se terminó antes del cierre.
                          </TooltipContent>
                        </Tooltip>
                      </TooltipProvider>
@@ -516,45 +515,40 @@ export default function ReportsPage() {
                  </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase text-slate-400">Pan Comprado (kg)</Label>
-                  <Input type="number" step="0.1" className="h-12 rounded-2xl bg-slate-50 border-none font-black text-lg text-center" placeholder="0.0" value={breadBought} onChange={(e) => setBreadBought(e.target.value)} />
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="space-y-1">
+                  <Label className="text-[9px] font-black uppercase text-slate-400">Comprado (kg)</Label>
+                  <Input type="number" step="0.1" className="h-10 rounded-xl bg-slate-50 border-none font-black text-lg text-center" placeholder="0.0" value={breadBought} onChange={(e) => setBreadBought(e.target.value)} />
                 </div>
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase text-slate-400">Pan Sobrante (kg)</Label>
-                  <Input type="number" step="0.1" className="h-12 rounded-2xl bg-slate-50 border-none font-black text-lg text-center" placeholder="0.0" value={breadRemaining} onChange={(e) => setBreadRemaining(e.target.value)} />
+                <div className="space-y-1">
+                  <Label className="text-[9px] font-black uppercase text-slate-400">Sobrante (kg)</Label>
+                  <Input type="number" step="0.1" className="h-10 rounded-xl bg-slate-50 border-none font-black text-lg text-center" placeholder="0.0" value={breadRemaining} onChange={(e) => setBreadRemaining(e.target.value)} />
                 </div>
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase text-slate-400">Clima del Día</Label>
+                <div className="space-y-1">
+                  <Label className="text-[9px] font-black uppercase text-slate-400">Clima</Label>
                   <Select value={breadClima} onValueChange={(v: ClimaType) => setBreadClima(v)}>
-                    <SelectTrigger className="h-12 rounded-2xl bg-slate-50 border-none font-bold">
+                    <SelectTrigger className="h-10 rounded-xl bg-slate-50 border-none font-bold">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="rounded-2xl">
+                    <SelectContent className="rounded-xl">
                       <SelectItem value="Sol">Soleado</SelectItem>
                       <SelectItem value="Nubes">Nublado</SelectItem>
                       <SelectItem value="Lluvia">Lluvia</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2 flex flex-col justify-end gap-2">
-                  <Button className="h-12 rounded-2xl bg-primary font-black uppercase tracking-widest text-[10px]" onClick={handleSaveBreadLog}>
-                    {editingBreadLog ? 'Actualizar' : 'Guardar Registro'}
+                <div className="space-y-1 flex flex-col justify-end">
+                  <Button className="h-10 rounded-xl bg-primary font-black uppercase tracking-widest text-[10px]" onClick={handleSaveBreadLog}>
+                    {editingBreadLog ? 'Actualizar' : 'Guardar'}
                   </Button>
-                  {editingBreadLog && (
-                    <Button variant="ghost" className="h-10 rounded-xl text-slate-400 font-bold uppercase text-[9px]" onClick={cancelEdit}>
-                      Cancelar Edición
-                    </Button>
-                  )}
                 </div>
               </div>
 
-              <div className="space-y-2">
-                 <Label className="text-[10px] font-black uppercase text-slate-400">Observaciones (Opcional)</Label>
+              <div className="space-y-1.5">
+                 <Label className="text-[9px] font-black uppercase text-slate-400">Observaciones (Opcional)</Label>
                  <Textarea 
-                    className="rounded-2xl bg-slate-50 border-none font-bold text-xs" 
-                    placeholder="Eje: Día festivo, evento especial..." 
+                    className="min-h-[50px] rounded-xl bg-slate-50 border-none font-bold text-[11px] p-2" 
+                    placeholder="Eje: Día festivo..." 
                     value={breadObservation} 
                     onChange={e => setBreadObservation(e.target.value)} 
                  />
