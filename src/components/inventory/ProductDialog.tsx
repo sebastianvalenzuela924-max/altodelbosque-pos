@@ -188,6 +188,7 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
                   <Label htmlFor="idealStock" className="font-bold text-slate-500 text-[9px] uppercase tracking-widest flex items-center gap-1">
                     <Target className="w-3 h-3" /> Ideal (Meta)
                   </Label>
+                  <p className="text-[7px] text-slate-400 font-bold leading-tight">Cantidad deseada. El sistema sugerirá pedir lo necesario para llegar a este número.</p>
                   <Input 
                     id="idealStock" 
                     type="number" 
@@ -201,6 +202,7 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
                   <Label htmlFor="warningStock" className="font-bold text-slate-500 text-[9px] uppercase tracking-widest flex items-center gap-1">
                     <AlertTriangle className="w-3 h-3" /> Aviso (Gatillo)
                   </Label>
+                  <p className="text-[7px] text-slate-400 font-bold leading-tight">Punto crítico. Si el stock baja de aquí, aparecerá en sugerencias de compra.</p>
                   <Input 
                     id="warningStock" 
                     type="number" 

@@ -142,6 +142,7 @@ export function QuickAddDialog({
             <div className="grid grid-cols-2 gap-4 pt-2 border-t">
                 <div className="grid gap-2">
                   <Label className="font-bold text-[9px] uppercase text-slate-400 flex items-center gap-1"><Target className="w-3 h-3"/> Ideal</Label>
+                  <p className="text-[7px] text-slate-400 font-bold leading-tight">Meta de stock para sugerir compras.</p>
                   <Input 
                     type="number" 
                     className="h-12 rounded-xl bg-primary/5 border-none font-black text-primary text-center" 
@@ -151,6 +152,7 @@ export function QuickAddDialog({
                 </div>
                 <div className="grid gap-2">
                   <Label className="font-bold text-[9px] uppercase text-slate-400 flex items-center gap-1"><AlertTriangle className="w-3 h-3"/> Aviso</Label>
+                  <p className="text-[7px] text-slate-400 font-bold leading-tight">Gatillo crítico para mostrar alerta.</p>
                   <Input 
                     type="number" 
                     className="h-12 rounded-xl bg-destructive/5 border-none font-black text-destructive text-center" 
