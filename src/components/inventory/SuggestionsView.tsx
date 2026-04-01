@@ -80,7 +80,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
       .map(p => {
         let priority: Priority = 'OK';
         let suggestedQty = 0;
-        let reason = "Meta: Nivel Ideal";
+        let reason = "Stock OK";
         let rotation: RotationType = 'Ninguna';
 
         const stock = p.stock || 0;
@@ -90,6 +90,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
         const hasIdeal = p.idealStock !== undefined && p.idealStock !== null && p.idealStock > 0;
         const hasWarning = p.warningStock !== undefined && p.warningStock !== null && p.warningStock > 0;
 
+        // Excluir productos sin alertas de stock de las sugerencias y rotación
         if (!hasIdeal && !hasWarning) {
           return {
             ...p,
@@ -101,30 +102,38 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
           };
         }
 
-        if (totalSold >= 15) rotation = 'Alta';
-        else if (totalSold >= 3) rotation = 'Media';
-        else if (totalSold > 0) rotation = 'Baja';
-
+        // Calcular prioridad primero
         if (stock <= 0 || (hasWarning && stock <= p.warningStock!)) {
           priority = 'Crítico';
         } else if (hasWarning && stock <= p.warningStock! + 2) {
           priority = 'Por reponer';
         }
 
-        if (hasIdeal) {
-          suggestedQty = Math.max(0, p.idealStock! - stock);
-          reason = "Meta: Nivel Ideal";
-        } else {
-          if (rotation === 'Alta') {
-            suggestedQty = Math.ceil(dailyAvg * 14);
-            reason = "Urgente: Alta Demanda";
-          } else if (rotation === 'Media') {
-            suggestedQty = Math.max(3, Math.ceil(dailyAvg * 7));
-            reason = "Reponer: Venta Normal";
+        // Solo calcular rotación si tiene ventas
+        if (totalSold >= 15) rotation = 'Alta';
+        else if (totalSold >= 3) rotation = 'Media';
+        else if (totalSold > 0) rotation = 'Baja';
+
+        // Solo sugerir cantidades si NO está OK
+        if (priority !== 'OK') {
+          if (hasIdeal) {
+            suggestedQty = Math.max(0, p.idealStock! - stock);
+            reason = "Meta: Nivel Ideal";
           } else {
-            suggestedQty = 2;
-            reason = "Mínimo: Baja Rotación";
+            if (rotation === 'Alta') {
+              suggestedQty = Math.ceil(dailyAvg * 14);
+              reason = "Urgente: Alta Demanda";
+            } else if (rotation === 'Media') {
+              suggestedQty = Math.max(3, Math.ceil(dailyAvg * 7));
+              reason = "Reponer: Venta Normal";
+            } else {
+              suggestedQty = 2;
+              reason = "Mínimo: Baja Rotación";
+            }
           }
+        } else {
+          suggestedQty = 0;
+          reason = "Stock OK";
         }
 
         return {
