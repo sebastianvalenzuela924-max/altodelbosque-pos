@@ -204,7 +204,7 @@ export default function ReportsPage() {
 
     const weatherLogs = allBreadLogs.filter(l => l.clima === tomorrowWeather);
     const avgConsumoWeather = weatherLogs.length > 0 
-      ? weatherLogs.reduce((sum, l) => sum + (l.bought - l.remaining), 0) / weatherLogs.length 
+      ? weatherLogs.reduce((sum, l) => sum + (avgConsumoSameDay > 0 ? (l.bought - l.remaining) : 0), 0) / weatherLogs.length 
       : 0;
 
     let base = avgConsumoSameDay > 0 ? (avgConsumoSameDay * 0.7 + avgConsumoRecent * 0.3) : avgConsumoRecent;
@@ -217,14 +217,14 @@ export default function ReportsPage() {
     }
 
     let sugerencia = base;
-    let explanationSuffix = "Sugerencia redondeada a kg entero.";
+    let explanationSuffix = "Sugerencia redondeada.";
 
     if (recentQuiebres > 0) {
       sugerencia = Math.ceil(sugerencia); 
-      explanationSuffix = "Redondeado hacia arriba por faltantes recientes.";
+      explanationSuffix = "Redondeado por faltantes recientes.";
     } else if (recentLeftovers > 2) {
       sugerencia = Math.floor(sugerencia); 
-      explanationSuffix = "Redondeado hacia abajo por sobrante alto reciente.";
+      explanationSuffix = "Redondeado por sobrante alto.";
     } else {
       sugerencia = Math.round(sugerencia); 
     }
@@ -232,12 +232,11 @@ export default function ReportsPage() {
     const sugerenciaFinal = Math.max(1, sugerencia);
 
     const insights = [];
-    if (recentLeftovers > 3) insights.push("Llevas varios días con sobrante alto, sugerimos bajar el pedido.");
-    if (recentQuiebres > 0) insights.push("Recientemente faltó pan (marcado como Pidieron más), se aumenta la sugerencia.");
-    if (tomorrowWeather === "Lluvia") insights.push("Con lluvia normalmente se vende menos pan.");
-    if (sameDayLogs.length > 0 && avgConsumoSameDay < avgConsumoRecent) insights.push(`Los ${["Domingos","Lunes","Martes","Miércoles","Jueves","Viernes","Sábados"][tomorrowDay]} suele sobrar más pan.`);
+    if (recentLeftovers > 3) insights.push("Sobrante alto, baja el pedido.");
+    if (recentQuiebres > 0) insights.push("Faltó pan recientemente.");
+    if (tomorrowWeather === "Lluvia") insights.push("Con lluvia se vende menos.");
 
-    let razon = `Basado en el promedio histórico del día (${avgConsumoSameDay.toFixed(1)}kg) y tendencia reciente. ${explanationSuffix}`;
+    let razon = `Promedio histórico y tendencia reciente. ${explanationSuffix}`;
 
     return { sugerencia: sugerenciaFinal, insights, razon };
   }, [allBreadLogs, tomorrowWeather]);
@@ -429,59 +428,56 @@ export default function ReportsPage() {
           <TabsTrigger value="sales" className="rounded-xl font-bold uppercase text-[9px] tracking-widest">Ventas</TabsTrigger>
           <TabsTrigger value="no-sales" className="rounded-xl font-bold uppercase text-[9px] tracking-widest">Sin Ventas</TabsTrigger>
           <TabsTrigger value="bread" className="rounded-xl font-bold uppercase text-[9px] tracking-widest">Control Pan</TabsTrigger>
-          <TabsTrigger value="top" className="rounded-xl font-bold uppercase text-[9px] tracking-widest">Top</TabsTrigger>
+          <TabsTrigger value="top" className="rounded-xl font-bold uppercase text-[9px] tracking-widest">Ranking</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="bread" className="mt-6 space-y-8">
-          <section className="space-y-4">
-            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 px-2">
-              <Sparkles className="w-4 h-4 text-accent" /> Análisis y Recomendación
+        <TabsContent value="bread" className="mt-6 space-y-6">
+          <section className="space-y-3">
+            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 px-2">
+              <Sparkles className="w-3 h-3 text-accent" /> Recomendación Inteligente
             </h3>
-            <Card className="border-none shadow-xl rounded-3xl bg-white overflow-hidden">
-              <div className="grid grid-cols-1 md:grid-cols-2">
-                <div className="p-8 bg-slate-900 text-white flex flex-col justify-center items-center text-center space-y-4">
-                   <div className="w-16 h-16 rounded-3xl bg-primary flex items-center justify-center shadow-2xl shadow-primary/20">
-                     <UtensilsCrossed className="w-8 h-8" />
-                   </div>
-                   <div>
-                     <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">Sugerencia para Mañana</p>
-                     <h2 className="text-6xl font-black font-mono tracking-tighter">
-                       {breadAnalysis?.sugerencia || "---"} <span className="text-xl">kg</span>
+            <Card className="border-none shadow-lg rounded-2xl bg-white overflow-hidden">
+              <div className="flex flex-col md:flex-row">
+                <div className="p-6 bg-slate-900 text-white flex flex-row md:flex-col items-center justify-between md:justify-center md:text-center md:w-1/3 border-b md:border-b-0 md:border-r border-slate-800">
+                   <div className="flex flex-col md:items-center">
+                     <p className="text-[8px] font-black uppercase tracking-widest text-primary mb-1">Pedido sugerido</p>
+                     <h2 className="text-4xl font-black font-mono tracking-tighter leading-none">
+                       {breadAnalysis?.sugerencia || "--"} <span className="text-sm">kg</span>
                      </h2>
                    </div>
-                   <div className="flex gap-2">
-                      <Badge variant="outline" className="border-white/20 text-white font-black text-[9px] uppercase">
-                        {["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"][(new Date().getDay() + 1) % 7]}
+                   <div className="flex gap-1.5 md:mt-4">
+                      <Badge variant="outline" className="border-white/20 text-white font-black text-[7px] uppercase px-1.5 py-0.5">
+                        {["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"][(new Date().getDay() + 1) % 7]}
                       </Badge>
-                      <Badge className="bg-accent text-white font-black text-[9px] uppercase">Clima: {tomorrowWeather}</Badge>
+                      <Badge className="bg-accent text-white font-black text-[7px] uppercase px-1.5 py-0.5">
+                        {tomorrowWeather}
+                      </Badge>
                    </div>
                 </div>
-                <div className="p-8 space-y-6 flex flex-col justify-center">
+                <div className="p-5 flex-1 space-y-4">
                    <div className="space-y-2">
-                     <Label className="text-[10px] font-black uppercase text-slate-400">¿Cómo estará el clima mañana?</Label>
-                     <div className="grid grid-cols-3 gap-2">
+                     <p className="text-[9px] font-black uppercase text-slate-400">¿Clima mañana?</p>
+                     <div className="flex gap-2">
                        {(["Sol", "Nubes", "Lluvia"] as ClimaType[]).map(c => {
                          const Icon = ClimaIcons[c];
                          return (
                            <Button 
                              key={c} 
                              variant={tomorrowWeather === c ? 'default' : 'outline'}
-                             className={cn("rounded-xl h-12 gap-2 font-bold", tomorrowWeather === c && "bg-accent hover:bg-accent/90")}
+                             className={cn("rounded-xl h-10 px-3 gap-2 font-bold flex-1", tomorrowWeather === c && "bg-accent hover:bg-accent/90 border-accent")}
                              onClick={() => setTomorrowWeather(c)}
                            >
-                             <Icon className="w-4 h-4" /> <span className="text-[10px] uppercase">{c}</span>
+                             <Icon className="w-3 h-3" /> <span className="text-[9px] uppercase">{c}</span>
                            </Button>
                          );
                        })}
                      </div>
                    </div>
-                   <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-3">
-                     <div className="flex items-start gap-3">
-                       <Info className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-                       <p className="text-xs font-bold text-slate-600 leading-relaxed italic">
-                         {breadAnalysis?.razon || "Aún no hay suficientes datos para una recomendación precisa."}
-                       </p>
-                     </div>
+                   <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-start gap-2.5">
+                     <Info className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                     <p className="text-[10px] font-bold text-slate-600 leading-tight italic">
+                       {breadAnalysis?.razon || "Aún no hay suficientes datos."}
+                     </p>
                    </div>
                 </div>
               </div>
@@ -489,45 +485,33 @@ export default function ReportsPage() {
           </section>
 
           <section className="space-y-3" ref={breadFormRef}>
-            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 px-2">
-              <Edit3 className="w-4 h-4 text-primary" /> {editingBreadLog ? 'Editando Registro' : 'Registro Diario'}
+            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 px-2">
+              <Edit3 className="w-3 h-3 text-primary" /> {editingBreadLog ? 'Editar Registro' : 'Nuevo Registro'}
             </h3>
-            <Card className="border-none shadow-sm rounded-3xl bg-white p-4 space-y-4">
-              <div className="flex justify-between items-center pb-1 border-b">
-                 <Badge variant="outline" className="text-[8px] font-black uppercase tracking-widest bg-slate-50 text-primary border-slate-200">
-                    Fecha: {editingBreadLog ? editingBreadLog.date : (dateFilter === 'today' ? 'Hoy' : dateFilter === 'yesterday' ? 'Ayer' : customDate || 'Seleccionada')}
+            <Card className="border-none shadow-sm rounded-2xl bg-white p-4 space-y-4">
+              <div className="flex justify-between items-center pb-2 border-b">
+                 <Badge variant="outline" className="text-[7px] font-black uppercase bg-slate-50 text-primary border-slate-200">
+                    {editingBreadLog ? editingBreadLog.date : (dateFilter === 'today' ? 'Hoy' : dateFilter === 'yesterday' ? 'Ayer' : customDate || 'Hoy')}
                  </Badge>
-                 <div className="flex items-center gap-2">
-                   <div className="flex items-center gap-1">
-                     <Label className="text-[9px] font-black uppercase text-slate-400">Pidieron más?</Label>
-                     <TooltipProvider>
-                       <Tooltip>
-                         <TooltipTrigger asChild>
-                           <HelpCircle className="w-3 h-3 text-slate-300 cursor-help" />
-                         </TooltipTrigger>
-                         <TooltipContent className="max-w-[200px] text-[10px] font-bold p-3">
-                           Marca "SÍ" si el pan se terminó antes del cierre.
-                         </TooltipContent>
-                       </Tooltip>
-                     </TooltipProvider>
-                   </div>
+                 <div className="flex items-center gap-3">
+                   <Label className="text-[8px] font-black uppercase text-slate-400">¿Faltó?</Label>
                    <Switch checked={breadQuiebre} onCheckedChange={setBreadQuiebre} />
                  </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div className="space-y-1">
-                  <Label className="text-[9px] font-black uppercase text-slate-400">Comprado (kg)</Label>
-                  <Input type="number" step="0.1" className="h-10 rounded-xl bg-slate-50 border-none font-black text-lg text-center" placeholder="0.0" value={breadBought} onChange={(e) => setBreadBought(e.target.value)} />
+                  <Label className="text-[8px] font-black uppercase text-slate-400">Comprado</Label>
+                  <Input type="number" step="0.1" className="h-9 rounded-xl bg-slate-50 border-none font-black text-center" value={breadBought} onChange={(e) => setBreadBought(e.target.value)} />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-[9px] font-black uppercase text-slate-400">Sobrante (kg)</Label>
-                  <Input type="number" step="0.1" className="h-10 rounded-xl bg-slate-50 border-none font-black text-lg text-center" placeholder="0.0" value={breadRemaining} onChange={(e) => setBreadRemaining(e.target.value)} />
+                  <Label className="text-[8px] font-black uppercase text-slate-400">Sobrante</Label>
+                  <Input type="number" step="0.1" className="h-9 rounded-xl bg-slate-50 border-none font-black text-center" value={breadRemaining} onChange={(e) => setBreadRemaining(e.target.value)} />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-[9px] font-black uppercase text-slate-400">Clima</Label>
+                  <Label className="text-[8px] font-black uppercase text-slate-400">Clima</Label>
                   <Select value={breadClima} onValueChange={(v: ClimaType) => setBreadClima(v)}>
-                    <SelectTrigger className="h-10 rounded-xl bg-slate-50 border-none font-bold">
+                    <SelectTrigger className="h-9 rounded-xl bg-slate-50 border-none font-bold text-[10px]">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="rounded-xl">
@@ -537,18 +521,18 @@ export default function ReportsPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-1 flex flex-col justify-end">
-                  <Button className="h-10 rounded-xl bg-primary font-black uppercase tracking-widest text-[10px]" onClick={handleSaveBreadLog}>
-                    {editingBreadLog ? 'Actualizar' : 'Guardar'}
+                <div className="flex flex-col justify-end">
+                  <Button className="h-9 rounded-xl bg-primary font-black uppercase tracking-widest text-[9px] w-full" onClick={handleSaveBreadLog}>
+                    {editingBreadLog ? 'OK' : 'Guardar'}
                   </Button>
                 </div>
               </div>
 
               <div className="space-y-1">
-                 <Label className="text-[9px] font-black uppercase text-slate-400">Observaciones (Opcional)</Label>
-                 <Textarea 
-                    className="min-h-[40px] rounded-xl bg-slate-50 border-none font-bold text-[11px] p-2" 
-                    placeholder="Eje: Día festivo..." 
+                 <Label className="text-[8px] font-black uppercase text-slate-400">Observaciones</Label>
+                 <Input 
+                    className="h-9 rounded-xl bg-slate-50 border-none font-bold text-[10px] px-3" 
+                    placeholder="Ejem: Día festivo..." 
                     value={breadObservation} 
                     onChange={e => setBreadObservation(e.target.value)} 
                  />
@@ -556,63 +540,38 @@ export default function ReportsPage() {
             </Card>
           </section>
 
-          {breadAnalysis && breadAnalysis.insights.length > 0 && (
-            <section className="space-y-4">
-              <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 px-2">
-                <HelpCircle className="w-4 h-4 text-amber-500" /> Insights y Alertas
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {breadAnalysis.insights.map((insight, idx) => (
-                  <Card key={idx} className="border-none shadow-sm bg-amber-50 text-amber-700 rounded-2xl p-4 flex items-center gap-3">
-                    <AlertCircle className="w-5 h-5 shrink-0" />
-                    <span className="text-xs font-bold leading-tight">{insight}</span>
-                  </Card>
-                ))}
-              </div>
-            </section>
-          )}
-
-          <section className="space-y-4">
-            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 px-2">
-              <Clock className="w-4 h-4" /> Historial de Control
+          <section className="space-y-3">
+            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 px-2">
+              <Clock className="w-3 h-3" /> Historial
             </h3>
             <div className="space-y-2">
-              {allBreadLogs?.map((log) => {
+              {allBreadLogs?.slice(0, 5).map((log) => {
                 const date = new Date(log.date + 'T12:00:00');
                 const ClimaIcon = ClimaIcons[log.clima as ClimaType] || Sun;
                 
                 return (
-                  <Card key={log.id} className="border-none shadow-sm rounded-2xl bg-white p-3 md:p-4 flex items-center justify-between group">
-                    <div className="flex items-center gap-3 md:gap-4 min-w-0">
-                      <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-slate-50 border flex flex-col items-center justify-center text-slate-800 shrink-0">
-                        <span className="text-[6px] md:text-[7px] font-black uppercase text-slate-400 leading-none">{date.toLocaleDateString('es-CL', { month: 'short' })}</span>
-                        <span className="text-lg md:text-xl font-black leading-none">{date.getDate()}</span>
+                  <Card key={log.id} className="border-none shadow-sm rounded-xl bg-white p-3 flex items-center justify-between">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-xl bg-slate-50 border flex flex-col items-center justify-center text-slate-800 shrink-0">
+                        <span className="text-[6px] font-black uppercase text-slate-400 leading-none">{date.toLocaleDateString('es-CL', { month: 'short' })}</span>
+                        <span className="text-lg font-black leading-none">{date.getDate()}</span>
                       </div>
                       <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-1.5 md:gap-2">
-                          <p className="text-[9px] md:text-[10px] font-black text-slate-800 uppercase truncate">{date.toLocaleDateString('es-CL', { weekday: 'long' })}</p>
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-[9px] font-black text-slate-800 uppercase truncate">{date.toLocaleDateString('es-CL', { weekday: 'short' })}</p>
                           <ClimaIcon className="w-3 h-3 text-slate-400" />
-                          {log.quiebre && <Badge className="bg-destructive text-white text-[6px] md:text-[7px] font-black uppercase py-0 px-1 rounded whitespace-nowrap">Pidieron más?</Badge>}
+                          {log.quiebre && <Badge className="bg-destructive text-white text-[6px] font-black uppercase py-0 px-1 rounded">Faltó</Badge>}
                         </div>
-                        {log.observation && <p className="text-[8px] text-slate-400 italic mt-0.5 truncate max-w-[120px] md:max-w-[200px]">"{log.observation}"</p>}
                       </div>
                     </div>
                     
-                    <div className="flex items-center gap-3 md:gap-6 shrink-0">
-                      <div className="flex flex-col text-right">
-                        <div className="flex items-center justify-end gap-1 whitespace-nowrap">
-                           <span className="text-[7px] font-bold text-slate-400 uppercase hidden sm:inline">Comprado:</span>
-                           <span className="text-[7px] font-bold text-slate-400 uppercase sm:hidden">C:</span>
-                           <span className="text-[11px] md:text-sm font-black text-primary">{log.bought}kg</span>
-                        </div>
-                        <div className="flex items-center justify-end gap-1 whitespace-nowrap">
-                           <span className="text-[7px] font-bold text-slate-400 uppercase hidden sm:inline">Quedó:</span>
-                           <span className="text-[7px] font-bold text-slate-400 uppercase sm:hidden">Q:</span>
-                           <span className="text-[11px] md:text-sm font-black text-destructive">{log.remaining}kg</span>
-                        </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <div className="text-right flex flex-col">
+                        <span className="text-[11px] font-black text-primary leading-tight">{log.bought}kg</span>
+                        <span className="text-[9px] font-bold text-destructive/70 leading-tight">Quedó {log.remaining}</span>
                       </div>
-                      <div className="flex gap-0.5 md:gap-1">
-                        <Button variant="ghost" size="icon" className="h-7 w-7 md:h-8 md:w-8 rounded-full" onClick={() => { 
+                      <div className="flex gap-0.5">
+                        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full" onClick={() => { 
                           setEditingBreadLog(log); 
                           setBreadBought(log.bought.toString()); 
                           setBreadRemaining(log.remaining.toString()); 
@@ -621,10 +580,10 @@ export default function ReportsPage() {
                           setBreadObservation(log.observation || "");
                           breadFormRef.current?.scrollIntoView({ behavior: 'smooth' });
                         }}>
-                          <Edit3 className="w-3 h-3 md:w-3.5 md:h-3.5" />
+                          <Edit3 className="w-3 h-3" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 md:h-8 md:w-8 rounded-full text-destructive" onClick={() => { setSecurityKey(""); setBreadToDelete(log); }}>
-                          <Trash2 className="w-3 h-3 md:w-3.5 md:h-3.5" />
+                        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full text-destructive" onClick={() => { setSecurityKey(""); setBreadToDelete(log); }}>
+                          <Trash2 className="w-3 h-3" />
                         </Button>
                       </div>
                     </div>

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useMemo, useState } from "react";
@@ -456,7 +457,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
                            </Button>
                          </div>
                       </div>
-                      <AccordionContent className="p-2 space-y-1">
+                      <AccordionContent className="p-2 space-y-1 text-left">
                         {items.map(renderProductItem)}
                       </AccordionContent>
                     </Card>
