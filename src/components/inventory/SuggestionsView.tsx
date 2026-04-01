@@ -87,12 +87,24 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
         const totalSold = salesMap.get(String(p.id).trim()) || 0;
         const dailyAvg = totalSold / 30;
 
+        const hasIdeal = p.idealStock !== undefined && p.idealStock !== null && p.idealStock > 0;
+        const hasWarning = p.warningStock !== undefined && p.warningStock !== null && p.warningStock > 0;
+
+        // Si no tiene alertas, ignorar para sugerencias y rotación
+        if (!hasIdeal && !hasWarning) {
+          return {
+            ...p,
+            priority: 'OK' as Priority,
+            rotation: 'Ninguna' as RotationType,
+            totalSold: 0,
+            suggestedQty: 0,
+            reason: "Sin alertas"
+          };
+        }
+
         if (totalSold >= 15) rotation = 'Alta';
         else if (totalSold >= 3) rotation = 'Media';
         else if (totalSold > 0) rotation = 'Baja';
-
-        const hasIdeal = p.idealStock !== undefined && p.idealStock !== null && p.idealStock > 0;
-        const hasWarning = p.warningStock !== undefined && p.warningStock !== null && p.warningStock > 0;
 
         if (stock <= 0 || (hasWarning && stock <= p.warningStock!)) {
           priority = 'Crítico';
@@ -197,6 +209,26 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
     window.open(`https://wa.me/?text=${text}`, '_blank');
   };
 
+  const toggleFilter = (type: 'priority' | 'rotation', value: string) => {
+    if (type === 'priority') {
+      if (priorityFilter === value) {
+        setPriorityFilter("suggestions");
+      } else {
+        setPriorityFilter(value);
+        setRotationFilter("all");
+      }
+    } else {
+      if (rotationFilter === value) {
+        setRotationFilter("all");
+        setPriorityFilter("suggestions");
+      } else {
+        setRotationFilter(value);
+        setPriorityFilter("all");
+      }
+    }
+    setSelectedIds([]);
+  };
+
   const renderProductItem = (p: any) => (
     <Card key={p.id} className={cn("border-none shadow-sm rounded-2xl mb-2 bg-white")}>
       <div className="p-3 flex items-center gap-3">
@@ -250,26 +282,6 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
       </div>
     </Card>
   );
-
-  const toggleFilter = (type: 'priority' | 'rotation', value: string) => {
-    if (type === 'priority') {
-      if (priorityFilter === value) {
-        setPriorityFilter("suggestions");
-      } else {
-        setPriorityFilter(value);
-        setRotationFilter("all");
-      }
-    } else {
-      if (rotationFilter === value) {
-        setRotationFilter("all");
-        setPriorityFilter("suggestions");
-      } else {
-        setRotationFilter(value);
-        setPriorityFilter("all");
-      }
-    }
-    setSelectedIds([]);
-  };
 
   return (
     <div className="space-y-6">
