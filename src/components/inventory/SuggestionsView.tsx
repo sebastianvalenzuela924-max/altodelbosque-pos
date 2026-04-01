@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useMemo, useState } from "react";
@@ -101,7 +100,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
           };
         }
 
-        if (stock <= 0 || (hasWarning && stock <= p.warningStock!)) {
+        if (stock <= (p.warningStock || 0) || (hasWarning && stock <= p.warningStock!)) {
           priority = 'Crítico';
         } else if (hasWarning && stock <= p.warningStock! + 2) {
           priority = 'Por reponer';
@@ -347,7 +346,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
               <Sparkles className="w-4 h-4 text-accent" /> Sugerencias de Compra
             </h3>
             <Button className="bg-green-600 text-white font-black h-9 rounded-xl text-[10px] uppercase gap-2 shadow-md shadow-green-100" onClick={() => handleWhatsApp()}>
-              <Send className="w-4 h-4" /> Enviar WhatsApp
+              <Send className="w-4 h-4" /> Enviar WSP
             </Button>
           </div>
 
@@ -453,7 +452,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
                          <div className="flex items-center gap-2 shrink-0 ml-4">
                            <Badge variant="outline" className="text-[8px] bg-white font-bold">{items.length}</Badge>
                            <Button variant="ghost" size="sm" className="h-7 text-[8px] font-black uppercase text-green-600 gap-1" onClick={() => handleWhatsApp(items, groupName)}>
-                             <Send className="w-3 h-3" /> WhatsApp
+                             <Send className="w-3 h-3" /> WSP
                            </Button>
                          </div>
                       </div>
