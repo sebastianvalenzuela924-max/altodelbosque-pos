@@ -6,8 +6,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useFirestore, setDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase";
-import { doc } from "firebase/firestore";
+import { useFirestore, setDocumentNonBlocking, deleteDocumentNonBlocking, addDocumentNonBlocking } from "@/firebase";
+import { doc, collection, serverTimestamp } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Package, Tag, Target, HelpCircle, AlertTriangle, Truck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -70,6 +70,19 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
 
     setLoading(true);
     const finalId = formData.id.trim() || `INT-${Date.now().toString().slice(-6)}-${Math.random().toString(36).substring(2, 5).toUpperCase()}`;
+    const newPriceValue = Math.round(parseFloat(formData.price)) || 0;
+
+    // Registrar cambio de precio si el producto ya existía y el precio cambió
+    if (product?.id && product.price !== undefined && Math.round(product.price) !== newPriceValue) {
+      addDocumentNonBlocking(collection(firestore, "priceChangeLogs"), {
+        id: crypto.randomUUID(),
+        productId: product.id,
+        productName: formData.name,
+        oldPrice: Math.round(product.price),
+        newPrice: newPriceValue,
+        timestamp: serverTimestamp()
+      });
+    }
     
     if (product?.id && product.id !== finalId) {
       const oldDocRef = doc(firestore, "products", product.id);
@@ -85,7 +98,7 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
     const data = {
       id: finalId,
       name: formData.name,
-      price: Math.round(parseFloat(formData.price)) || 0,
+      price: newPriceValue,
       stock: parseInt(formData.stock) || 0,
       idealStock: formData.idealStock !== "" ? parseInt(formData.idealStock) : null,
       warningStock: formData.warningStock !== "" ? parseInt(formData.warningStock) : null,

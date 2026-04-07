@@ -99,6 +99,21 @@
       },
       "required": ["id", "productId", "productName", "quantity", "timestamp"]
     },
+    "PriceChangeLog": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "PriceChangeLog",
+      "type": "object",
+      "description": "Represents a log of a price change for a product.",
+      "properties": {
+        "id": { "type": "string" },
+        "productId": { "type": "string" },
+        "productName": { "type": "string" },
+        "oldPrice": { "type": "number" },
+        "newPrice": { "type": "number" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "productId", "productName", "oldPrice", "newPrice", "timestamp"]
+    },
     "Note": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Note",
@@ -146,6 +161,13 @@
         "definition": {
           "entityName": "InventoryLog",
           "description": "Logs for stock additions and adjustments."
+        }
+      },
+      {
+        "path": "/priceChangeLogs/{logId}",
+        "definition": {
+          "entityName": "PriceChangeLog",
+          "description": "Logs for product price changes."
         }
       },
       {

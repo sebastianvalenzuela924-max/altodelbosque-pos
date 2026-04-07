@@ -4,7 +4,7 @@
 import { useCollection, useFirestore, useMemoFirebase, deleteDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase";
 import { collection, query, orderBy, doc, increment, Timestamp } from "firebase/firestore";
 import { Card } from "@/components/ui/card";
-import { FileSpreadsheet, Calendar, History, ShoppingBag, Loader2, ChevronRight, Trash2, Eraser, AlertCircle, X, ChevronLeft, Check, Banknote, CreditCard, PackagePlus, ArrowDownToLine, FileText, Edit3, Search, PackageMinus, Box, Clock, Lock } from "lucide-react";
+import { FileSpreadsheet, Calendar, History, ShoppingBag, Loader2, ChevronRight, Trash2, Eraser, AlertCircle, X, ChevronLeft, Check, Banknote, CreditCard, PackagePlus, ArrowDownToLine, FileText, Edit3, Search, PackageMinus, Box, Clock, Lock, Tag, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { exportSheetsToExcel } from "@/lib/export";
@@ -35,7 +35,7 @@ export default function HistoryPage() {
   const [cleanStep, setCleanStep] = useState<CleanStep>('idle');
   const [bulkType, setBulkType] = useState<BulkDeleteType | null>(null);
   const [itemToDelete, setItemToDelete] = useState<any | null>(null);
-  const [deleteContext, setDeleteContext] = useState<'sales' | 'inventoryLogs'>('sales');
+  const [deleteContext, setDeleteContext] = useState<'sales' | 'inventoryLogs' | 'priceChangeLogs'>('sales');
   const [securityKey, setSecurityKey] = useState("");
 
   const [editingLog, setEditingLog] = useState<any | null>(null);
@@ -55,12 +55,17 @@ export default function HistoryPage() {
     return query(collection(firestore, "inventoryLogs"), orderBy("timestamp", "desc"));
   }, [firestore]);
 
+  const priceLogsQuery = useMemoFirebase(() => {
+    return query(collection(firestore, "priceChangeLogs"), orderBy("timestamp", "desc"));
+  }, [firestore]);
+
   const productsQuery = useMemoFirebase(() => {
     return query(collection(firestore, "products"));
   }, [firestore]);
 
   const { data: allSales, isLoading: isSalesLoading } = useCollection(salesQuery);
   const { data: allLogs, isLoading: isLogsLoading } = useCollection(logsQuery);
+  const { data: allPriceLogs, isLoading: isPriceLogsLoading } = useCollection(priceLogsQuery);
   const { data: allProducts } = useCollection(productsQuery);
 
   const productMap = useMemo(() => {
@@ -111,6 +116,13 @@ export default function HistoryPage() {
     );
   }, [allLogs, dateFilter, customDate, isMounted, logSearchTerm]);
 
+  const filteredPriceLogs = useMemo(() => {
+    const dateFiltered = applyDateFilter(allPriceLogs || [], "timestamp");
+    if (!logSearchTerm.trim()) return dateFiltered;
+    const term = logSearchTerm.toLowerCase().trim();
+    return dateFiltered.filter(l => l.productName?.toLowerCase().includes(term));
+  }, [allPriceLogs, dateFilter, customDate, isMounted, logSearchTerm]);
+
   const groupedLogsByInvoice = useMemo(() => {
     const groups: Record<string, any[]> = {};
     filteredLogs.forEach(log => {
@@ -120,7 +132,7 @@ export default function HistoryPage() {
     });
     
     return Object.entries(groups).map(([invoice, logs]) => {
-      const minTimestamp = Math.min(...logs.map(l => l.timestamp?.toDate?.()?.getTime() || 0));
+      const minTimestamp = Math.min(...logs.map(l => l.timestamp?.toDate?.() || 0));
       return { invoice, logs, minTime: minTimestamp };
     }).sort((a, b) => b.minTime - a.minTime);
   }, [filteredLogs]);
@@ -163,11 +175,27 @@ export default function HistoryPage() {
       sheets.push({ name: "Ingresos de Stock", data: flattenedLogs });
     }
 
+    if (filteredPriceLogs.length > 0) {
+      const flattenedPriceLogs = filteredPriceLogs.map(l => {
+        const date = l.timestamp?.toDate?.() || (l.timestamp ? new Date(l.timestamp) : new Date());
+        return {
+          ID_Cambio: l.id,
+          Fecha: date.toLocaleDateString(),
+          Hora: date.toLocaleTimeString(),
+          Producto: l.productName,
+          Precio_Anterior: Math.round(l.oldPrice),
+          Precio_Nuevo: Math.round(l.newPrice),
+          Diferencia: Math.round(l.newPrice - l.oldPrice)
+        };
+      });
+      sheets.push({ name: "Cambios de Precios", data: flattenedPriceLogs });
+    }
+
     if (sheets.length > 0) {
       exportSheetsToExcel(`Historial_AltodelBosque_${dateFilter}`, sheets);
       toast({ 
         title: "Exportación exitosa", 
-        description: `Se han exportado ${filteredSales.length} ventas y ${filteredLogs.length} ingresos.` 
+        description: `Se han exportado los registros del periodo.` 
       });
     } else {
       toast({ 
@@ -186,7 +214,7 @@ export default function HistoryPage() {
     }
     
     const now = new Date();
-    const targets = (deleteContext === 'sales' ? allSales : allLogs)?.filter(s => {
+    const targets = (deleteContext === 'sales' ? allSales : deleteContext === 'inventoryLogs' ? allLogs : allPriceLogs)?.filter(s => {
       const dField = deleteContext === 'sales' ? 'saleDateTime' : 'timestamp';
       const d = s[dField]?.toDate?.() || (s[dField] ? new Date(s[dField]) : null);
       if (!d) return false;
@@ -261,7 +289,7 @@ export default function HistoryPage() {
             <History className="w-6 h-6" />
             Historial
           </h1>
-          <p className="text-muted-foreground text-xs font-bold">Registro de transacciones e ingresos de mercadería.</p>
+          <p className="text-muted-foreground text-xs font-bold">Registro de transacciones, stock y cambios de precios.</p>
         </div>
         
         <div className="flex flex-wrap gap-2 w-full md:w-auto">
@@ -292,7 +320,7 @@ export default function HistoryPage() {
             <Button 
               variant="outline" 
               onClick={handleExport} 
-              disabled={!filteredSales.length && !filteredLogs.length} 
+              disabled={!filteredSales.length && !filteredLogs.length && !filteredPriceLogs.length} 
               className="h-11 rounded-2xl border-slate-200 px-4 font-bold gap-2 text-xs"
             >
               <FileSpreadsheet className="w-4 h-4 text-green-600" />
@@ -311,12 +339,15 @@ export default function HistoryPage() {
       </header>
 
       <Tabs defaultValue="ventas" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 bg-white rounded-2xl p-1 border shadow-sm h-14">
-          <TabsTrigger value="ventas" className="rounded-xl font-bold uppercase text-[10px] tracking-widest data-[state=active]:bg-primary data-[state=active]:text-white">
-            <ShoppingBag className="w-4 h-4 mr-2" /> Ventas Realizadas
+        <TabsList className="grid w-full grid-cols-3 bg-white rounded-2xl p-1 border shadow-sm h-14">
+          <TabsTrigger value="ventas" className="rounded-xl font-bold uppercase text-[8px] sm:text-[10px] tracking-widest data-[state=active]:bg-primary data-[state=active]:text-white">
+            <ShoppingBag className="w-4 h-4 mr-1 sm:mr-2" /> Ventas
           </TabsTrigger>
-          <TabsTrigger value="stock" className="rounded-xl font-bold uppercase text-[10px] tracking-widest data-[state=active]:bg-accent data-[state=active]:text-white">
-            <PackagePlus className="w-4 h-4 mr-2" /> Ingresos de Stock
+          <TabsTrigger value="stock" className="rounded-xl font-bold uppercase text-[8px] sm:text-[10px] tracking-widest data-[state=active]:bg-accent data-[state=active]:text-white">
+            <PackagePlus className="w-4 h-4 mr-1 sm:mr-2" /> Stock
+          </TabsTrigger>
+          <TabsTrigger value="prices" className="rounded-xl font-bold uppercase text-[8px] sm:text-[10px] tracking-widest data-[state=active]:bg-amber-500 data-[state=active]:text-white">
+            <Tag className="w-4 h-4 mr-1 sm:mr-2" /> Precios
           </TabsTrigger>
         </TabsList>
 
@@ -537,6 +568,82 @@ export default function HistoryPage() {
             </div>
           )}
         </TabsContent>
+
+        <TabsContent value="prices" className="mt-6 space-y-4">
+           <div className="relative mb-4">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Input 
+              className="pl-11 h-12 bg-white rounded-2xl border-none shadow-sm font-bold" 
+              placeholder="Buscar por nombre de producto..." 
+              value={logSearchTerm}
+              onChange={(e) => setLogSearchTerm(e.target.value)}
+            />
+          </div>
+
+          {isPriceLogsLoading ? (
+            <div className="flex flex-col items-center justify-center py-20 opacity-30">
+               <Loader2 className="w-8 h-8 animate-spin mb-2 text-amber-500" />
+               <p className="text-[10px] font-black uppercase tracking-widest">Cargando cambios...</p>
+             </div>
+          ) : filteredPriceLogs.length === 0 ? (
+            <div className="text-center py-20 bg-white rounded-3xl border-2 border-dashed border-slate-100">
+              <Tag className="w-12 h-12 mx-auto mb-3 text-slate-100" />
+              <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest">Sin cambios de precios</h3>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {filteredPriceLogs.map((log) => {
+                const date = log.timestamp?.toDate?.() || new Date();
+                const isIncrease = log.newPrice > log.oldPrice;
+                const diff = log.newPrice - log.oldPrice;
+                
+                return (
+                  <Card key={log.id} className="p-4 border-none shadow-sm rounded-2xl bg-white flex items-center gap-4 group">
+                    <div className={cn(
+                      "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
+                      isIncrease ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600"
+                    )}>
+                      {isIncrease ? <ArrowUpRight className="w-5 h-5" /> : <ArrowDownRight className="w-5 h-5" />}
+                    </div>
+                    
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-black text-xs sm:text-sm text-slate-800 uppercase truncate">{log.productName}</h4>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-[9px] font-black text-slate-400 uppercase">
+                          {date.toLocaleDateString()} • {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                        <Badge variant="outline" className="text-[8px] font-mono border-slate-100">#{log.productId?.slice(-5)}</Badge>
+                      </div>
+                    </div>
+
+                    <div className="text-right shrink-0">
+                      <div className="flex flex-col">
+                        <span className="text-xs font-bold text-slate-400 line-through">${Math.round(log.oldPrice).toLocaleString('es-CL')}</span>
+                        <span className="text-base font-black text-primary">${Math.round(log.newPrice).toLocaleString('es-CL')}</span>
+                      </div>
+                      <p className={cn("text-[9px] font-black uppercase mt-0.5", isIncrease ? "text-green-600" : "text-red-600")}>
+                        {isIncrease ? "+" : ""}{Math.round(diff).toLocaleString('es-CL')} (DIF)
+                      </p>
+                    </div>
+
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100 transition-opacity rounded-full"
+                      onClick={() => {
+                        setDeleteContext('priceChangeLogs');
+                        setSecurityKey("");
+                        setItemToDelete(log);
+                      }}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </TabsContent>
       </Tabs>
 
       {/* DIÁLOGOS DE LIMPIEZA CON CLAVE */}
@@ -553,17 +660,22 @@ export default function HistoryPage() {
                 </DialogDescription>
               </DialogHeader>
               
-              <div className="bg-slate-50 p-1 rounded-xl grid grid-cols-2 gap-1 mb-4">
+              <div className="bg-slate-50 p-1 rounded-xl grid grid-cols-3 gap-1 mb-4">
                 <Button 
                   variant={deleteContext === 'sales' ? 'default' : 'ghost'} 
-                  className="h-8 rounded-lg text-[9px] font-black uppercase"
+                  className="h-8 rounded-lg text-[8px] sm:text-[9px] font-black uppercase"
                   onClick={() => setDeleteContext('sales')}
                 >Ventas</Button>
                 <Button 
                   variant={deleteContext === 'inventoryLogs' ? 'default' : 'ghost'} 
-                  className="h-8 rounded-lg text-[9px] font-black uppercase"
+                  className="h-8 rounded-lg text-[8px] sm:text-[9px] font-black uppercase"
                   onClick={() => setDeleteContext('inventoryLogs')}
                 >Stock</Button>
+                <Button 
+                  variant={deleteContext === 'priceChangeLogs' ? 'default' : 'ghost'} 
+                  className="h-8 rounded-lg text-[8px] sm:text-[9px] font-black uppercase"
+                  onClick={() => setDeleteContext('priceChangeLogs')}
+                >Precios</Button>
               </div>
 
               <div className="grid gap-2">
@@ -659,7 +771,9 @@ export default function HistoryPage() {
              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-[10px] space-y-1">
                 <p className="font-black text-slate-400 uppercase">Registro a eliminar:</p>
                 <p className="font-bold text-slate-700">
-                  {deleteContext === 'sales' ? `Venta #${itemToDelete?.id?.slice(-5)} - $${Math.round(itemToDelete?.totalAmount || 0).toLocaleString('es-CL')}` : `Carga: ${itemToDelete?.productName} (+${itemToDelete?.quantity})`}
+                  {deleteContext === 'sales' ? `Venta #${itemToDelete?.id?.slice(-5)} - $${Math.round(itemToDelete?.totalAmount || 0).toLocaleString('es-CL')}` : 
+                   deleteContext === 'inventoryLogs' ? `Carga: ${itemToDelete?.productName} (+${itemToDelete?.quantity})` :
+                   `Cambio Precio: ${itemToDelete?.productName} ($${Math.round(itemToDelete?.newPrice)})`}
                 </p>
              </div>
              <Input 

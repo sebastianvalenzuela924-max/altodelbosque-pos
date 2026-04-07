@@ -5,7 +5,7 @@ service cloud.firestore {
 
     /**
      * ALTODELBOSQUE POS SECURITY RULES
-     * Version: 3.3 - Eliminada sección de BreadLogs
+     * Version: 3.4 - Añadido PriceChangeLogs
      */
 
     function isSignedIn() {
@@ -26,6 +26,10 @@ service cloud.firestore {
     }
 
     match /inventoryLogs/{logId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /priceChangeLogs/{logId} {
       allow read, write: if isSignedIn();
     }
 
