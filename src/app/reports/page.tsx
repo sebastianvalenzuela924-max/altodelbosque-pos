@@ -1,11 +1,11 @@
 
 "use client";
 
-import { useCollection, useFirestore, useMemoFirebase, setDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase";
-import { collection, query, orderBy, doc, serverTimestamp } from "firebase/firestore";
+import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { collection, query, orderBy } from "firebase/firestore";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { DollarSign, TrendingUp, Calendar, ShoppingBag, Loader2, Trophy, Banknote, CreditCard, Wallet, UtensilsCrossed, Plus, Edit3, Trash2, Check, PackageX, PackageSearch, Clock, ChevronRight, Send, Copy, X, FileText, Share2, Sun, Cloud, CloudRain, AlertCircle, Sparkles, HelpCircle, Info, Lock } from "lucide-react";
-import { useMemo, useState, useEffect, useRef } from "react";
+import { TrendingUp, Calendar, Loader2, Trophy, Share2, DollarSign, Calculator, Info, CheckCircle2, RotateCcw, AlertTriangle, ChevronDown } from "lucide-react";
+import { useMemo, useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -15,48 +15,298 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
 type DateFilter = "today" | "yesterday" | "month" | "all" | "custom";
-type ClimaType = "Sol" | "Nubes" | "Lluvia";
 
-const DELETE_PASSWORD = "Miler";
+// --- CALCULADORA DE PRECIOS COMPONENT ---
+function PriceCalculator() {
+  const [productName, setProductName] = useState("");
+  const [hasVat, setHasVat] = useState(true);
+  const [totalPrice, setTotalPrice] = useState("");
+  const [units, setUnits] = useState("1");
+  const [profitPercent, setProfitPercent] = useState(30);
+  const [customProfit, setCustomProfit] = useState("");
+  const [showResults, setShowResults] = useState(false);
 
-function getLocalDateString(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  const IVA = 1.19;
+
+  const calculations = useMemo(() => {
+    const price = parseFloat(totalPrice) || 0;
+    const qty = Math.max(1, parseInt(units) || 1);
+    const profit = customProfit !== "" ? (parseFloat(customProfit) || 0) : profitPercent;
+
+    const totalNeto = hasVat ? price / IVA : price;
+    const costoNeto = totalNeto / qty;
+    const precioVentaSinIVA = costoNeto * (1 + profit / 100);
+    const precioFinal = precioVentaSinIVA * IVA;
+    const gananciaPesos = precioVentaSinIVA - costoNeto;
+    const margenReal = precioVentaSinIVA > 0 ? (gananciaPesos / precioVentaSinIVA) * 100 : 0;
+    const precioMinimo = costoNeto * IVA;
+    const precioRedondeado = Math.ceil(precioFinal / 10) * 10;
+
+    return {
+      costoNeto,
+      precioVentaSinIVA,
+      precioFinal,
+      gananciaPesos,
+      margenReal,
+      precioMinimo,
+      precioRedondeado,
+      totalNeto,
+      profit
+    };
+  }, [totalPrice, units, profitPercent, customProfit, hasVat]);
+
+  const reset = () => {
+    setProductName("");
+    setHasVat(true);
+    setTotalPrice("");
+    setUnits("1");
+    setProfitPercent(30);
+    setCustomProfit("");
+    setShowResults(false);
+  };
+
+  const getMargenColor = (m: number) => {
+    if (m >= 30) return "bg-green-100 text-green-700 border-green-200";
+    if (m >= 20) return "bg-amber-100 text-amber-700 border-amber-200";
+    return "bg-red-100 text-red-700 border-red-200";
+  };
+
+  return (
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Card 1: Producto */}
+        <Card className="border-none shadow-sm rounded-2xl bg-white overflow-hidden">
+          <CardHeader className="pb-2">
+            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Card 1 — Producto</Label>
+          </CardHeader>
+          <CardContent>
+            <Input 
+              placeholder="Nombre del producto (opcional)" 
+              className="h-12 rounded-xl bg-slate-50 border-none font-bold"
+              value={productName}
+              onChange={(e) => setProductName(e.target.value)}
+            />
+          </CardContent>
+        </Card>
+
+        {/* Card 2: Tipo de Precio */}
+        <Card className="border-none shadow-sm rounded-2xl bg-white overflow-hidden">
+          <CardHeader className="pb-2">
+            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Card 2 — Tipo de precio</Label>
+          </CardHeader>
+          <CardContent className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => setHasVat(true)}
+              className={cn(
+                "p-3 rounded-xl border-2 transition-all text-left flex flex-col gap-1",
+                hasVat ? "border-[#3d5afe] bg-[#e8eaf6]" : "border-slate-100 bg-white"
+              )}
+            >
+              <span className="font-black text-xs flex items-center gap-2">💰 Con IVA</span>
+              <span className="text-[8px] font-bold opacity-60">Precio total con impuesto</span>
+            </button>
+            <button
+              onClick={() => setHasVat(false)}
+              className={cn(
+                "p-3 rounded-xl border-2 transition-all text-left flex flex-col gap-1",
+                !hasVat ? "border-[#3d5afe] bg-[#e8eaf6]" : "border-slate-100 bg-white"
+              )}
+            >
+              <span className="font-black text-xs flex items-center gap-2">📄 Sin IVA</span>
+              <span className="text-[8px] font-bold opacity-60">Valor neto de factura</span>
+            </button>
+          </CardContent>
+        </Card>
+
+        {/* Card 3: Precio y Unidades */}
+        <Card className="border-none shadow-sm rounded-2xl bg-white overflow-hidden">
+          <CardHeader className="pb-2">
+            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Card 3 — Precio y unidades</Label>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-xl text-slate-400">$</span>
+              <Input 
+                type="number" 
+                placeholder="Precio total factura" 
+                className="pl-10 h-14 rounded-xl bg-slate-50 border-none font-black text-2xl focus-visible:ring-[#3d5afe]"
+                value={totalPrice}
+                onChange={(e) => setTotalPrice(e.target.value)}
+              />
+            </div>
+            
+            <div className="flex justify-between items-center px-2">
+              <div className="flex flex-col">
+                <span className="text-[9px] font-black uppercase text-slate-400">Costo neto/u</span>
+                <span className="text-xs font-bold text-slate-700">${Math.round(calculations.costoNeto).toLocaleString("es-CL")}</span>
+              </div>
+              <div className="w-px h-6 bg-slate-200" />
+              <div className="flex flex-col text-right">
+                <span className="text-[9px] font-black uppercase text-slate-400">Precio mín</span>
+                <span className="text-xs font-bold text-amber-600">${Math.round(calculations.precioMinimo).toLocaleString("es-CL")}</span>
+              </div>
+            </div>
+
+            <Separator className="bg-slate-100" />
+
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-xl text-slate-400">#</span>
+              <Input 
+                type="number" 
+                placeholder="Cantidad de unidades" 
+                className="pl-10 h-12 rounded-xl bg-slate-50 border-none font-black text-xl"
+                value={units}
+                onChange={(e) => setUnits(e.target.value)}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Card 4: % Ganancia */}
+        <Card className="border-none shadow-sm rounded-2xl bg-white overflow-hidden">
+          <CardHeader className="pb-2">
+            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Card 4 — % de ganancia</Label>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-4 gap-2">
+              {[10, 15, 20, 25, 30, 35, 40, 50].map(pct => (
+                <Button
+                  key={pct}
+                  variant="outline"
+                  onClick={() => { setProfitPercent(pct); setCustomProfit(""); }}
+                  className={cn(
+                    "h-10 rounded-xl font-black text-[10px] transition-all",
+                    profitPercent === pct && customProfit === "" ? "bg-[#3d5afe] text-white border-[#3d5afe]" : "bg-white border-slate-100"
+                  )}
+                >
+                  {pct}%
+                </Button>
+              ))}
+            </div>
+            <div className="relative">
+              <Input 
+                type="number" 
+                placeholder="Otro porcentaje personalizado" 
+                className="h-11 rounded-xl bg-slate-50 border-none font-bold text-sm text-center"
+                value={customProfit}
+                onChange={(e) => setCustomProfit(e.target.value)}
+              />
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 font-black text-slate-400">%</span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="flex flex-col sm:flex-row gap-3">
+        <Button 
+          onClick={() => setShowResults(true)}
+          className="flex-1 h-16 rounded-3xl bg-gradient-to-r from-[#3d5afe] to-[#5c7cfa] text-white font-black uppercase tracking-widest shadow-xl shadow-[#3d5afe]/20 active:scale-95 transition-all text-sm"
+        >
+          <Calculator className="w-5 h-5 mr-2" />
+          Calcular precio de venta
+        </Button>
+        <Button 
+          variant="outline"
+          onClick={reset}
+          className="h-16 px-6 rounded-3xl border-slate-200 text-slate-400 font-bold hover:bg-slate-50 active:scale-95 transition-all"
+        >
+          <RotateCcw className="w-5 h-5 mr-2" />
+          Nueva consulta
+        </Button>
+      </div>
+
+      {showResults && (
+        <Card className="border-none shadow-2xl rounded-[2.5rem] bg-[#3d5afe] text-white p-6 md:p-8 animate-in slide-in-from-bottom-8 duration-700 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
+          <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
+          
+          <div className="flex justify-between items-start mb-4 relative z-10">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/60">Precio de Venta Final</p>
+              {productName && <h4 className="text-lg font-bold text-white/90 truncate max-w-[200px]">{productName}</h4>}
+            </div>
+            <Badge className={cn("rounded-full px-4 py-1 font-black text-[10px] uppercase border", getMargenColor(calculations.margenReal))}>
+              Margen: {Math.round(calculations.margenReal)}%
+            </Badge>
+          </div>
+
+          <div className="flex flex-col md:flex-row md:items-end gap-2 md:gap-6 mb-8 relative z-10">
+            <h2 className="text-[44px] md:text-6xl font-black font-mono tracking-tighter leading-none">
+              ${Math.round(calculations.precioFinal).toLocaleString("es-CL")}
+            </h2>
+            <div className="flex flex-col mb-1">
+              <span className="text-[10px] font-black uppercase text-white/50 tracking-widest">Sugerido (Redondeado)</span>
+              <span className="text-xl md:text-2xl font-black text-white/80">${Math.round(calculations.precioRedondeado).toLocaleString("es-CL")}</span>
+            </div>
+          </div>
+
+          <div className="space-y-3 bg-white/10 p-5 rounded-3xl border border-white/10 relative z-10">
+            <div className="flex justify-between items-center">
+              <span className="text-xs font-bold text-white/70 flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-green-400" /> Ganancia por unidad
+              </span>
+              <span className="text-base font-black text-green-400">+${Math.round(calculations.gananciaPesos).toLocaleString("es-CL")}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-xs font-bold text-white/70 flex items-center gap-2">
+                <Share2 className="w-4 h-4 text-green-400" /> Margen real %
+              </span>
+              <span className="text-base font-black text-green-400">{Math.round(calculations.margenReal)}%</span>
+            </div>
+            <Separator className="bg-white/10" />
+            <div className="flex justify-between items-center">
+              <span className="text-xs font-bold text-white/70 flex items-center gap-2">
+                <DollarSign className="w-4 h-4 text-white/40" /> Costo neto por unidad
+              </span>
+              <span className="text-base font-black text-white">${Math.round(calculations.costoNeto).toLocaleString("es-CL")}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-xs font-bold text-white/70 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-orange-400" /> Precio mínimo sin pérdida
+              </span>
+              <span className="text-base font-black text-orange-400">${Math.round(calculations.precioMinimo).toLocaleString("es-CL")}</span>
+            </div>
+          </div>
+
+          {calculations.margenReal < 20 && (
+            <div className="mt-6 p-4 bg-red-500/20 border border-red-500/50 rounded-2xl flex items-center gap-3 animate-pulse">
+              <AlertTriangle className="w-6 h-6 text-red-400" />
+              <p className="text-xs font-black uppercase tracking-widest text-red-100">⚠️ Margen bajo — sube el % de ganancia</p>
+            </div>
+          )}
+
+          <div className="mt-8 pt-6 border-t border-white/10">
+            <details className="group">
+              <summary className="flex items-center justify-between cursor-pointer list-none text-[10px] font-black uppercase tracking-widest text-white/40 hover:text-white/80 transition-colors">
+                Ver detalle del cálculo paso a paso
+                <ChevronDown className="w-4 h-4 transition-transform group-open:rotate-180" />
+              </summary>
+              <div className="mt-4 space-y-2 text-[10px] font-mono text-white/60 leading-relaxed bg-black/20 p-4 rounded-2xl">
+                <p>1. Precio factura: ${parseFloat(totalPrice).toLocaleString("es-CL")}</p>
+                <p>2. {hasVat ? `Neto calculado (Total/1.19): $${Math.round(calculations.totalNeto).toLocaleString("es-CL")}` : `Precio ingresado como Neto`}</p>
+                <p>3. Costo Neto unitario ($/{units}): ${Math.round(calculations.costoNeto).toLocaleString("es-CL")}</p>
+                <p>4. Ganancia aplicada: {calculations.profit}% (+${Math.round(calculations.gananciaPesos).toLocaleString("es-CL")})</p>
+                <p>5. Precio Venta Neto: ${Math.round(calculations.precioVentaSinIVA).toLocaleString("es-CL")}</p>
+                <p>6. IVA 19% aplicado: +${Math.round(calculations.precioVentaSinIVA * 0.19).toLocaleString("es-CL")}</p>
+                <p>7. Precio Final: ${Math.round(calculations.precioFinal).toLocaleString("es-CL")}</p>
+              </div>
+            </details>
+          </div>
+        </Card>
+      )}
+    </div>
+  );
 }
 
-const ClimaIcons: Record<ClimaType, any> = {
-  "Sol": Sun,
-  "Nubes": Cloud,
-  "Lluvia": CloudRain
-};
-
+// --- MAIN PAGE COMPONENT ---
 export default function ReportsPage() {
   const [mounted, setMounted] = useState(false);
   const [dateFilter, setDateFilter] = useState<DateFilter>("today");
   const [customDate, setCustomDate] = useState<string>("");
   
-  // Bread states
-  const [breadBought, setBreadBought] = useState("");
-  const [breadRemaining, setBreadRemaining] = useState("");
-  const [breadClima, setBreadClima] = useState<ClimaType>("Sol");
-  const [breadQuiebre, setBreadQuiebre] = useState(false);
-  const [breadObservation, setBreadObservation] = useState("");
-  const [tomorrowWeather, setTomorrowWeather] = useState<ClimaType>("Sol");
-  
-  const [editingBreadLog, setEditingBreadLog] = useState<any | null>(null);
-  const [breadToDelete, setBreadToDelete] = useState<any | null>(null);
-  const [securityKey, setSecurityKey] = useState("");
-  
-  const breadFormRef = useRef<HTMLDivElement>(null);
-
   const [isSummaryOpen, setIsSummaryOpen] = useState(false);
   const [summaryText, setSummaryText] = useState("");
   
@@ -75,13 +325,8 @@ export default function ReportsPage() {
     return query(collection(firestore, "products"));
   }, [firestore]);
 
-  const breadLogsQuery = useMemoFirebase(() => {
-    return query(collection(firestore, "breadLogs"), orderBy("date", "desc"));
-  }, [firestore]);
-
   const { data: allSales, isLoading: isLoadingSales } = useCollection(salesQuery);
   const { data: allProducts, isLoading: isLoadingProducts } = useCollection(productsQuery);
-  const { data: allBreadLogs, isLoading: isLoadingBread } = useCollection(breadLogsQuery);
 
   const filteredSales = useMemo(() => {
     if (!allSales || !mounted) return [];
@@ -183,132 +428,6 @@ export default function ReportsPage() {
     };
   }, [filteredSales, allProducts, mounted]);
 
-  const breadAnalysis = useMemo(() => {
-    if (!allBreadLogs || allBreadLogs.length === 0) return null;
-
-    const now = new Date();
-    const tomorrow = new Date(now);
-    tomorrow.setDate(now.getDate() + 1);
-    const tomorrowDay = tomorrow.getDay();
-
-    const sameDayLogs = allBreadLogs.filter(l => new Date(l.date + 'T12:00:00').getDay() === tomorrowDay);
-    const avgConsumoSameDay = sameDayLogs.length > 0 
-      ? sameDayLogs.reduce((sum, l) => sum + (l.bought - l.remaining), 0) / sameDayLogs.length 
-      : 0;
-
-    const recentLogs = allBreadLogs.slice(0, 7);
-    const avgConsumoRecent = recentLogs.reduce((sum, l) => sum + (l.bought - l.remaining), 0) / recentLogs.length;
-
-    const recentLeftovers = allBreadLogs.slice(0, 3).reduce((sum, l) => sum + l.remaining, 0) / 3;
-    const recentQuiebres = allBreadLogs.slice(0, 5).filter(l => l.quiebre).length;
-
-    const weatherLogs = allBreadLogs.filter(l => l.clima === tomorrowWeather);
-    const avgConsumoWeather = weatherLogs.length > 0 
-      ? weatherLogs.reduce((sum, l) => sum + (avgConsumoSameDay > 0 ? (l.bought - l.remaining) : 0), 0) / weatherLogs.length 
-      : 0;
-
-    let base = avgConsumoSameDay > 0 ? (avgConsumoSameDay * 0.7 + avgConsumoRecent * 0.3) : avgConsumoRecent;
-    
-    if (avgConsumoWeather > 0) {
-      base = (base * 0.6) + (avgConsumoWeather * 0.4);
-    } else {
-      if (tomorrowWeather === "Lluvia") base *= 0.85;
-      if (tomorrowWeather === "Sol") base *= 1.05;
-    }
-
-    let sugerencia = base;
-    let explanationSuffix = "Sugerencia redondeada.";
-
-    if (recentQuiebres > 0) {
-      sugerencia = Math.ceil(sugerencia); 
-      explanationSuffix = "Redondeado por faltantes recientes.";
-    } else if (recentLeftovers > 2) {
-      sugerencia = Math.floor(sugerencia); 
-      explanationSuffix = "Redondeado por sobrante alto.";
-    } else {
-      sugerencia = Math.round(sugerencia); 
-    }
-
-    const sugerenciaFinal = Math.max(1, sugerencia);
-
-    const insights = [];
-    if (recentLeftovers > 3) insights.push("Sobrante alto, baja el pedido.");
-    if (recentQuiebres > 0) insights.push("Faltó pan recientemente.");
-    if (tomorrowWeather === "Lluvia") insights.push("Con lluvia se vende menos.");
-
-    let razon = `Promedio histórico y tendencia reciente. ${explanationSuffix}`;
-
-    return { sugerencia: sugerenciaFinal, insights, razon };
-  }, [allBreadLogs, tomorrowWeather]);
-
-  const handleSaveBreadLog = () => {
-    if (!breadBought || !breadRemaining) {
-      toast({ title: "Faltan datos", variant: "destructive" });
-      return;
-    }
-
-    let targetDateStr = "";
-    if (editingBreadLog) {
-      targetDateStr = editingBreadLog.date;
-    } else {
-      const now = new Date();
-      if (dateFilter === "today") targetDateStr = getLocalDateString(now);
-      else if (dateFilter === "yesterday") {
-        const yesterday = new Date(now);
-        yesterday.setDate(now.getDate() - 1);
-        targetDateStr = getLocalDateString(yesterday);
-      } else if (dateFilter === "custom" && customDate) {
-        targetDateStr = customDate;
-      } else {
-        targetDateStr = getLocalDateString(now);
-      }
-    }
-
-    const docRef = doc(firestore, "breadLogs", targetDateStr);
-
-    setDocumentNonBlocking(docRef, {
-      id: targetDateStr,
-      date: targetDateStr,
-      bought: parseFloat(breadBought) || 0,
-      remaining: parseFloat(breadRemaining) || 0,
-      clima: breadClima || "Sol",
-      quiebre: !!breadQuiebre,
-      observation: (breadObservation || "").trim(),
-      timestamp: serverTimestamp()
-    }, { merge: true });
-    
-    toast({ title: editingBreadLog ? "Registro actualizado" : "Registro guardado", description: `Fecha: ${targetDateStr}` });
-    
-    setBreadBought(""); 
-    setBreadRemaining(""); 
-    setBreadObservation(""); 
-    setBreadQuiebre(false); 
-    setBreadClima("Sol");
-    setEditingBreadLog(null);
-  };
-
-  const cancelEdit = () => {
-    setEditingBreadLog(null);
-    setBreadBought("");
-    setBreadRemaining("");
-    setBreadClima("Sol");
-    setBreadQuiebre(false);
-    setBreadObservation("");
-  };
-
-  const handleDeleteBreadLog = () => {
-    if (!breadToDelete) return;
-    if (securityKey !== DELETE_PASSWORD) {
-      toast({ title: "Clave incorrecta", variant: "destructive" });
-      return;
-    }
-
-    deleteDocumentNonBlocking(doc(firestore, "breadLogs", breadToDelete.id));
-    toast({ title: "Registro eliminado" });
-    setBreadToDelete(null);
-    setSecurityKey("");
-  };
-
   const generateDailySummary = () => {
     const today = new Date();
     let dateLabel = "";
@@ -409,175 +528,18 @@ export default function ReportsPage() {
         </Card>
       </section>
 
-      <Tabs defaultValue="sales" className="w-full">
+      <Tabs defaultValue="calculator" className="w-full">
         <TabsList className="bg-white p-1 rounded-2xl shadow-sm border h-14 w-full grid grid-cols-4">
+          <TabsTrigger value="calculator" className="rounded-xl font-bold uppercase text-[9px] tracking-widest flex items-center gap-1">
+            <Calculator className="w-3 h-3" /> Precios
+          </TabsTrigger>
           <TabsTrigger value="sales" className="rounded-xl font-bold uppercase text-[9px] tracking-widest">Ventas</TabsTrigger>
           <TabsTrigger value="no-sales" className="rounded-xl font-bold uppercase text-[9px] tracking-widest">Sin Ventas</TabsTrigger>
-          <TabsTrigger value="bread" className="rounded-xl font-bold uppercase text-[9px] tracking-widest">Control Pan</TabsTrigger>
           <TabsTrigger value="top" className="rounded-xl font-bold uppercase text-[9px] tracking-widest">Ranking</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="bread" className="mt-6 space-y-6">
-          <section className="space-y-3">
-            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 px-2">
-              <Sparkles className="w-3 h-3 text-accent" /> Recomendación Inteligente
-            </h3>
-            <Card className="border-none shadow-lg rounded-2xl bg-white overflow-hidden">
-              <div className="flex flex-col md:flex-row">
-                <div className="p-6 bg-slate-900 text-white flex flex-row md:flex-col items-center justify-between md:justify-center md:text-center md:w-1/3 border-b md:border-b-0 md:border-r border-slate-800">
-                   <div className="flex flex-col md:items-center">
-                     <p className="text-[8px] font-black uppercase tracking-widest text-primary mb-1">Pedido sugerido</p>
-                     <h2 className="text-4xl font-black font-mono tracking-tighter leading-none">
-                       {breadAnalysis?.sugerencia || "--"} <span className="text-sm">kg</span>
-                     </h2>
-                   </div>
-                   <div className="flex gap-1.5 md:mt-4">
-                      <Badge variant="outline" className="border-white/20 text-white font-black text-[7px] uppercase px-1.5 py-0.5">
-                        {["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"][(new Date().getDay() + 1) % 7]}
-                      </Badge>
-                      <Badge className="bg-accent text-white font-black text-[7px] uppercase px-1.5 py-0.5">
-                        {tomorrowWeather}
-                      </Badge>
-                   </div>
-                </div>
-                <div className="p-5 flex-1 space-y-4">
-                   <div className="space-y-2">
-                     <p className="text-[9px] font-black uppercase text-slate-400">¿Clima mañana?</p>
-                     <div className="flex gap-2">
-                       {(["Sol", "Nubes", "Lluvia"] as ClimaType[]).map(c => {
-                         const Icon = ClimaIcons[c];
-                         return (
-                           <Button 
-                             key={c} 
-                             variant={tomorrowWeather === c ? 'default' : 'outline'}
-                             className={cn("rounded-xl h-10 px-3 gap-2 font-bold flex-1", tomorrowWeather === c && "bg-accent hover:bg-accent/90 border-accent")}
-                             onClick={() => setTomorrowWeather(c)}
-                           >
-                             <Icon className="w-3 h-3" /> <span className="text-[9px] uppercase">{c}</span>
-                           </Button>
-                         );
-                       })}
-                     </div>
-                   </div>
-                   <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-start gap-2.5">
-                     <Info className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                     <p className="text-[10px] font-bold text-slate-600 leading-tight italic">
-                       {breadAnalysis?.razon || "Aún no hay suficientes datos."}
-                     </p>
-                   </div>
-                </div>
-              </div>
-            </Card>
-          </section>
-
-          <section className="space-y-3" ref={breadFormRef}>
-            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 px-2">
-              <Edit3 className="w-3 h-3 text-primary" /> {editingBreadLog ? 'Editar Registro' : 'Nuevo Registro'}
-            </h3>
-            <Card className="border-none shadow-sm rounded-2xl bg-white p-4 space-y-4">
-              <div className="flex justify-between items-center pb-2 border-b">
-                 <Badge variant="outline" className="text-[7px] font-black uppercase bg-slate-50 text-primary border-slate-200">
-                    {editingBreadLog ? editingBreadLog.date : (dateFilter === 'today' ? 'Hoy' : dateFilter === 'yesterday' ? 'Ayer' : customDate || 'Hoy')}
-                 </Badge>
-                 <div className="flex items-center gap-3">
-                   <Label className="text-[8px] font-black uppercase text-slate-400">¿Faltó?</Label>
-                   <Switch checked={breadQuiebre} onCheckedChange={setBreadQuiebre} />
-                 </div>
-              </div>
-
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-[8px] font-black uppercase text-slate-400">Comprado</Label>
-                  <Input type="number" step="0.1" className="h-9 rounded-xl bg-slate-50 border-none font-black text-center" value={breadBought} onChange={(e) => setBreadBought(e.target.value)} />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-[8px] font-black uppercase text-slate-400">Sobrante</Label>
-                  <Input type="number" step="0.1" className="h-9 rounded-xl bg-slate-50 border-none font-black text-center" value={breadRemaining} onChange={(e) => setBreadRemaining(e.target.value)} />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-[8px] font-black uppercase text-slate-400">Clima</Label>
-                  <Select value={breadClima} onValueChange={(v: ClimaType) => setBreadClima(v)}>
-                    <SelectTrigger className="h-9 rounded-xl bg-slate-50 border-none font-bold text-[10px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-xl">
-                      <SelectItem value="Sol">Soleado</SelectItem>
-                      <SelectItem value="Nubes">Nublado</SelectItem>
-                      <SelectItem value="Lluvia">Lluvia</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex flex-col justify-end">
-                  <Button className="h-9 rounded-xl bg-primary font-black uppercase tracking-widest text-[9px] w-full" onClick={handleSaveBreadLog}>
-                    {editingBreadLog ? 'OK' : 'Guardar'}
-                  </Button>
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                 <Label className="text-[8px] font-black uppercase text-slate-400">Observaciones</Label>
-                 <Input 
-                    className="h-9 rounded-xl bg-slate-50 border-none font-bold text-[10px] px-3" 
-                    placeholder="Ejem: Día festivo..." 
-                    value={breadObservation} 
-                    onChange={e => setBreadObservation(e.target.value)} 
-                 />
-              </div>
-            </Card>
-          </section>
-
-          <section className="space-y-3">
-            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 px-2">
-              <Clock className="w-3 h-3" /> Historial
-            </h3>
-            <div className="space-y-2">
-              {allBreadLogs?.slice(0, 5).map((log) => {
-                const date = new Date(log.date + 'T12:00:00');
-                const ClimaIcon = ClimaIcons[log.clima as ClimaType] || Sun;
-                
-                return (
-                  <Card key={log.id} className="border-none shadow-sm rounded-xl bg-white p-3 flex items-center justify-between">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-10 h-10 rounded-xl bg-slate-50 border flex flex-col items-center justify-center text-slate-800 shrink-0">
-                        <span className="text-[6px] font-black uppercase text-slate-400 leading-none">{date.toLocaleDateString('es-CL', { month: 'short' })}</span>
-                        <span className="text-lg font-black leading-none">{date.getDate()}</span>
-                      </div>
-                      <div className="min-w-0 text-left">
-                        <div className="flex items-center gap-1.5">
-                          <p className="text-[9px] font-black text-slate-800 uppercase truncate">{date.toLocaleDateString('es-CL', { weekday: 'short' })}</p>
-                          <ClimaIcon className="w-3 h-3 text-slate-400" />
-                          {log.quiebre && <Badge className="bg-destructive text-white text-[6px] font-black uppercase py-0 px-1 rounded">Faltó</Badge>}
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center gap-3 shrink-0">
-                      <div className="text-right flex flex-col">
-                        <span className="text-[11px] font-black text-primary leading-tight">{log.bought}kg</span>
-                        <span className="text-[9px] font-bold text-destructive/70 leading-tight">Quedó {log.remaining}</span>
-                      </div>
-                      <div className="flex gap-0.5">
-                        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full" onClick={() => { 
-                          setEditingBreadLog(log); 
-                          setBreadBought(log.bought.toString()); 
-                          setBreadRemaining(log.remaining.toString()); 
-                          setBreadClima((log.clima as ClimaType) || "Sol");
-                          setBreadQuiebre(!!log.quiebre);
-                          setBreadObservation(log.observation || "");
-                          breadFormRef.current?.scrollIntoView({ behavior: 'smooth' });
-                        }}>
-                          <Edit3 className="w-3 h-3" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full text-destructive" onClick={() => { setSecurityKey(""); setBreadToDelete(log); }}>
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
-                      </div>
-                    </div>
-                  </Card>
-                );
-              })}
-            </div>
-          </section>
+        <TabsContent value="calculator" className="mt-6">
+          <PriceCalculator />
         </TabsContent>
 
         <TabsContent value="sales" className="mt-6 space-y-3">
@@ -635,7 +597,7 @@ export default function ReportsPage() {
                           <h3 className="font-black text-sm uppercase text-slate-800 truncate">{cat.name}</h3>
                           <Badge variant="outline" className="text-[8px] bg-slate-50 text-slate-400 border-slate-200">{cat.products.length} productos</Badge>
                         </div>
-                        <ChevronRight className="w-4 h-4 text-slate-300" />
+                        <ChevronDown className="w-4 h-4 text-slate-300" />
                       </div>
                     </AccordionTrigger>
                     <AccordionContent className="p-4 pt-0 bg-slate-50/50">
@@ -683,41 +645,6 @@ export default function ReportsPage() {
         </TabsContent>
       </Tabs>
 
-      {/* DIÁLOGOS DE SEGURIDAD PARA PAN */}
-      <Dialog open={!!breadToDelete} onOpenChange={(open) => !open && setBreadToDelete(null)}>
-        <DialogContent className="rounded-3xl p-6 border-none shadow-2xl max-w-[90vw] sm:max-w-md">
-          <DialogHeader className="text-center">
-            <div className="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center mx-auto mb-4">
-               <Lock className="w-6 h-6 text-destructive" />
-            </div>
-            <DialogTitle className="text-xl font-black text-destructive uppercase">Confirmar Borrado</DialogTitle>
-            <DialogDescription className="text-slate-500 text-xs font-bold py-2">
-              Ingresa la clave para eliminar el registro de pan del día {breadToDelete?.date}.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4 space-y-4">
-             <Input 
-                type="password"
-                placeholder="Clave"
-                className="h-12 rounded-xl text-center font-black text-lg border-2 border-destructive/20 focus-visible:ring-destructive"
-                value={securityKey}
-                onChange={(e) => setSecurityKey(e.target.value)}
-              />
-          </div>
-          <DialogFooter className="grid grid-cols-2 gap-2 mt-4">
-            <Button variant="ghost" className="rounded-xl h-12 font-bold" onClick={() => setBreadToDelete(null)}>Cancelar</Button>
-            <Button 
-              variant="destructive" 
-              className="rounded-xl h-12 font-black uppercase"
-              disabled={securityKey !== DELETE_PASSWORD}
-              onClick={handleDeleteBreadLog}
-            >
-              ELIMINAR
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       <Dialog open={isSummaryOpen} onOpenChange={setIsSummaryOpen}>
         <DialogContent className="rounded-3xl border-none shadow-2xl max-w-[90vw] sm:max-w-md p-6">
           <DialogHeader>
@@ -730,10 +657,10 @@ export default function ReportsPage() {
           </div>
           <DialogFooter className="grid grid-cols-2 gap-2 mt-6">
             <Button variant="outline" className="rounded-xl h-12 font-bold gap-2" onClick={() => { navigator.clipboard.writeText(summaryText); toast({ title: "Copiado" }); }}>
-              <Copy className="w-4 h-4" /> Copiar
+              <Calculator className="w-4 h-4" /> Copiar
             </Button>
             <Button className="rounded-xl h-12 font-black uppercase text-[10px] bg-green-600 hover:bg-green-700" onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(summaryText)}`, '_blank')}>
-              <Send className="w-4 h-4" /> WhatsApp
+              <CheckCircle2 className="w-4 h-4" /> WhatsApp
             </Button>
           </DialogFooter>
         </DialogContent>
