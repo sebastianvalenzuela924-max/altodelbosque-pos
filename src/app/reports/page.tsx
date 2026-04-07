@@ -94,7 +94,7 @@ function PriceCalculator({ products = [] }: { products?: any[] }) {
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Card 1: Producto con Buscador - SIN overflow-hidden para ver resultados */}
+        {/* Card 1: Producto con Buscador */}
         <Card className="border-none shadow-sm rounded-2xl bg-white relative z-30">
           <CardHeader className="pb-2">
             <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Buscar Producto en Inventario</Label>
@@ -122,7 +122,6 @@ function PriceCalculator({ products = [] }: { products?: any[] }) {
               )}
             </div>
 
-            {/* Lista de Resultados Flotante */}
             {isSearching && searchQuery.length > 0 && (
               <div className="absolute top-[calc(100%-8px)] left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl border border-slate-200 p-2 z-[100] animate-in zoom-in-95 duration-200 max-h-[300px] overflow-y-auto">
                 <div className="flex justify-between items-center px-2 py-1 mb-1 border-b">
@@ -604,19 +603,15 @@ export default function ReportsPage() {
         </Card>
       </section>
 
-      <Tabs defaultValue="calculator" className="w-full">
+      <Tabs defaultValue="sales" className="w-full">
         <TabsList className="bg-white p-1 rounded-2xl shadow-sm border h-14 w-full grid grid-cols-4">
-          <TabsTrigger value="calculator" className="rounded-xl font-bold uppercase text-[9px] tracking-widest flex items-center gap-1">
-            <Calculator className="w-3 h-3" /> Precios
-          </TabsTrigger>
           <TabsTrigger value="sales" className="rounded-xl font-bold uppercase text-[9px] tracking-widest">Ventas</TabsTrigger>
           <TabsTrigger value="no-sales" className="rounded-xl font-bold uppercase text-[9px] tracking-widest">Sin Ventas</TabsTrigger>
           <TabsTrigger value="top" className="rounded-xl font-bold uppercase text-[9px] tracking-widest">Ranking</TabsTrigger>
+          <TabsTrigger value="calculator" className="rounded-xl font-bold uppercase text-[9px] tracking-widest flex items-center gap-1">
+            <Calculator className="w-3 h-3" /> Precios
+          </TabsTrigger>
         </TabsList>
-
-        <TabsContent value="calculator" className="mt-6">
-          <PriceCalculator products={allProducts || []} />
-        </TabsContent>
 
         <TabsContent value="sales" className="mt-6 space-y-3">
           {salesAnalysis.categoriesWithSales.length === 0 ? (
@@ -718,6 +713,10 @@ export default function ReportsPage() {
               ))}
             </div>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="calculator" className="mt-6">
+          <PriceCalculator products={allProducts || []} />
         </TabsContent>
       </Tabs>
 
