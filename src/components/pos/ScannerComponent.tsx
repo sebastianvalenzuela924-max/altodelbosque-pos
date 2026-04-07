@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useRef, useState } from "react";
@@ -13,7 +14,6 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const isInitializingRef = useRef(false);
   
-  // Referencia para el callback de escaneo para evitar clausuras obsoletas
   const onScanRef = useRef(onScan);
   useEffect(() => {
     onScanRef.current = onScan;
@@ -25,7 +25,7 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
         await scannerRef.current.stop();
         scannerRef.current.clear();
       } catch (err) {
-        // Ignorar errores al detener manualmente
+        // Ignorar errores al detener
       }
     }
     setIsEnabled(false);
@@ -61,7 +61,6 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
     async function initScanner() {
       if (!isEnabled || !isMounted || isInitializingRef.current) return;
 
-      // Esperar a que el elemento DOM esté listo
       checkInterval = setInterval(async () => {
         const element = document.getElementById("qr-reader");
         if (element && isMounted && !isInitializingRef.current) {
@@ -84,9 +83,8 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
             }
 
             const config = {
-              fps: 30, // Aumentado para mayor fluidez
+              fps: 30,
               qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
-                // Modificado a un área más cuadrada para permitir escaneo vertical y horizontal
                 const minDim = Math.min(viewfinderWidth, viewfinderHeight);
                 const size = Math.floor(minDim * 0.7);
                 return { width: size, height: size };
@@ -101,10 +99,9 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
                 (decodedText) => {
                   onScanRef.current(decodedText);
                 },
-                () => {} // Ignorar errores de frame no detectado
+                () => {}
               );
 
-              // Intentar mejorar el enfoque y zoom en dispositivos compatibles
               const videoElement = document.querySelector("#qr-reader video") as HTMLVideoElement;
               if (videoElement && videoElement.srcObject) {
                 const stream = videoElement.srcObject as MediaStream;
@@ -137,6 +134,12 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
     return () => {
       isMounted = false;
       if (checkInterval) clearInterval(checkInterval);
+      // Asegurar que el escáner se detenga al desmontar
+      if (scannerRef.current && scannerRef.current.isScanning) {
+        scannerRef.current.stop().catch(() => {}).then(() => {
+          if (scannerRef.current) scannerRef.current.clear();
+        });
+      }
     };
   }, [isEnabled]);
 
@@ -193,7 +196,6 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
 
       {isEnabled && !isLoading && (
         <>
-          {/* Overlay de visor cuadrado para lectura en cualquier sentido */}
           <div className="absolute inset-0 pointer-events-none z-20 flex items-center justify-center">
              <div className="w-[70%] aspect-square max-w-[300px] relative border-2 border-primary/30 rounded-3xl bg-primary/5">
                 <div className="absolute top-0 left-0 w-10 h-10 border-t-4 border-l-4 border-primary rounded-tl-2xl"></div>
@@ -201,11 +203,9 @@ export function ScannerComponent({ onScan }: { onScan: (decodedText: string) => 
                 <div className="absolute bottom-0 left-0 w-10 h-10 border-b-4 border-l-4 border-primary rounded-bl-2xl"></div>
                 <div className="absolute bottom-0 right-0 w-10 h-10 border-b-4 border-r-4 border-primary rounded-br-2xl"></div>
                 
-                {/* Cruz central para precisión */}
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-0.5 bg-primary/30"></div>
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-0.5 h-4 bg-primary/30"></div>
 
-                {/* Línea de escaneo animada */}
                 <div className="absolute top-0 left-0 right-0 h-1 bg-primary/80 shadow-[0_0_15px_rgba(var(--primary),0.8)] animate-[scan_2.5s_ease-in-out_infinite]"></div>
              </div>
           </div>

@@ -399,7 +399,11 @@ function InventoryContent() {
       <ProductDialog open={isDialogOpen} onClose={() => setIsDialogOpen(false)} product={selectedProduct} categories={categories} onSaved={() => {}} />
 
       <Dialog open={isScannerOpen} onOpenChange={setIsScannerOpen}>
-        <DialogContent className="p-0 overflow-hidden rounded-3xl max-w-[90vw] sm:max-w-2xl border-none shadow-2xl">
+        <DialogContent className="p-0 overflow-hidden rounded-3xl max-w-[90vw] sm:max-w-2xl border-none shadow-2xl" onOpenAutoFocus={(e) => e.preventDefault()}>
+          <DialogHeader className="sr-only">
+            <DialogTitle>Escanear Producto</DialogTitle>
+            <DialogDescription>Apunta con la cámara al código de barras del producto para identificarlo en el inventario.</DialogDescription>
+          </DialogHeader>
           <ScannerComponent onScan={(code) => {
             setIsScannerOpen(false);
             // Delay para evitar conflictos de puntero/foco entre diálogos
@@ -407,7 +411,7 @@ function InventoryContent() {
               const existing = products?.find(p => p.id === code);
               setSelectedProduct(existing || { id: code });
               setIsDialogOpen(true);
-            }, 200);
+            }, 300);
           }} />
         </DialogContent>
       </Dialog>
