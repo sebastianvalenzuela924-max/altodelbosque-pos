@@ -402,9 +402,12 @@ function InventoryContent() {
         <DialogContent className="p-0 overflow-hidden rounded-3xl max-w-[90vw] sm:max-w-2xl border-none shadow-2xl">
           <ScannerComponent onScan={(code) => {
             setIsScannerOpen(false);
-            const existing = products?.find(p => p.id === code);
-            setSelectedProduct(existing || { id: code });
-            setIsDialogOpen(true);
+            // Delay para evitar conflictos de puntero/foco entre diálogos
+            setTimeout(() => {
+              const existing = products?.find(p => p.id === code);
+              setSelectedProduct(existing || { id: code });
+              setIsDialogOpen(true);
+            }, 200);
           }} />
         </DialogContent>
       </Dialog>

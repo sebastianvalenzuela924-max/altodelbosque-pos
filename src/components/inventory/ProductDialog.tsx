@@ -108,7 +108,6 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent 
         className="max-w-[95vw] sm:max-w-lg border-none shadow-2xl rounded-3xl p-0 overflow-hidden max-h-[90vh] flex flex-col gap-0"
-        onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <DialogHeader className="p-6 pb-2 shrink-0 bg-white border-b z-10">
           <DialogTitle className="flex items-center gap-2 text-2xl font-black text-primary">
@@ -188,7 +187,7 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
                   <Label htmlFor="idealStock" className="font-bold text-slate-500 text-[9px] uppercase tracking-widest flex items-center gap-1">
                     <Target className="w-3 h-3" /> Ideal (Meta)
                   </Label>
-                  <p className="text-[7px] text-slate-400 font-bold leading-tight">Cantidad deseada. El sistema sugerirá pedir lo necesario para llegar a este número.</p>
+                  <p className="text-[7px] text-slate-400 font-bold leading-tight">Meta de stock para sugerir compras.</p>
                   <Input 
                     id="idealStock" 
                     type="number" 
@@ -202,7 +201,7 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
                   <Label htmlFor="warningStock" className="font-bold text-slate-500 text-[9px] uppercase tracking-widest flex items-center gap-1">
                     <AlertTriangle className="w-3 h-3" /> Aviso (Gatillo)
                   </Label>
-                  <p className="text-[7px] text-slate-400 font-bold leading-tight">Punto crítico. Si el stock baja de aquí, aparecerá en sugerencias de compra.</p>
+                  <p className="text-[7px] text-slate-400 font-bold leading-tight">Gatillo crítico para mostrar alerta.</p>
                   <Input 
                     id="warningStock" 
                     type="number" 
