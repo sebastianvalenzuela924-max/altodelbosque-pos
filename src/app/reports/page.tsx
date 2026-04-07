@@ -4,7 +4,7 @@
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import { collection, query, orderBy } from "firebase/firestore";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { TrendingUp, Calendar, Loader2, Trophy, Share2, DollarSign, Calculator, Info, CheckCircle2, RotateCcw, AlertTriangle, ChevronDown } from "lucide-react";
+import { TrendingUp, Calendar, Loader2, Trophy, Share2, DollarSign, Calculator, Info, CheckCircle2, RotateCcw, AlertTriangle, ChevronDown, Search, Plus } from "lucide-react";
 import { useMemo, useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -18,19 +18,27 @@ import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 
-type DateFilter = "today" | "yesterday" | "month" | "all" | "custom";
-
 // --- CALCULADORA DE PRECIOS COMPONENT ---
-function PriceCalculator() {
+function PriceCalculator({ products = [] }: { products?: any[] }) {
   const [productName, setProductName] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [hasVat, setHasVat] = useState(true);
   const [totalPrice, setTotalPrice] = useState("");
   const [units, setUnits] = useState("1");
   const [profitPercent, setProfitPercent] = useState(30);
   const [customProfit, setCustomProfit] = useState("");
   const [showResults, setShowResults] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
 
   const IVA = 1.19;
+
+  const searchResults = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    const q = searchQuery.toLowerCase().trim();
+    return products
+      .filter(p => p.name.toLowerCase().includes(q) || String(p.id).includes(q))
+      .slice(0, 5);
+  }, [products, searchQuery]);
 
   const calculations = useMemo(() => {
     const price = parseFloat(totalPrice) || 0;
@@ -59,8 +67,16 @@ function PriceCalculator() {
     };
   }, [totalPrice, units, profitPercent, customProfit, hasVat]);
 
+  const handleSelectProduct = (p: any) => {
+    setProductName(p.name);
+    setTotalPrice(Math.round(p.price).toString());
+    setSearchQuery("");
+    setIsSearching(false);
+  };
+
   const reset = () => {
     setProductName("");
+    setSearchQuery("");
     setHasVat(true);
     setTotalPrice("");
     setUnits("1");
@@ -78,18 +94,69 @@ function PriceCalculator() {
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Card 1: Producto */}
-        <Card className="border-none shadow-sm rounded-2xl bg-white overflow-hidden">
+        {/* Card 1: Producto con Buscador */}
+        <Card className="border-none shadow-sm rounded-2xl bg-white overflow-hidden relative z-20">
           <CardHeader className="pb-2">
-            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Card 1 — Producto</Label>
+            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Card 1 — Buscar Producto</Label>
           </CardHeader>
-          <CardContent>
-            <Input 
-              placeholder="Nombre del producto (opcional)" 
-              className="h-12 rounded-xl bg-slate-50 border-none font-bold"
-              value={productName}
-              onChange={(e) => setProductName(e.target.value)}
-            />
+          <CardContent className="space-y-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Input 
+                placeholder="Nombre o código del producto..." 
+                className="pl-10 h-12 rounded-xl bg-slate-50 border-none font-bold"
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setIsSearching(true);
+                }}
+                onFocus={() => setIsSearching(true)}
+              />
+            </div>
+
+            {isSearching && searchQuery.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl border border-slate-100 p-2 z-50 animate-in zoom-in-95 duration-200">
+                {searchResults.length > 0 ? (
+                  searchResults.map((p) => (
+                    <button
+                      key={p.id}
+                      onClick={() => handleSelectProduct(p)}
+                      className="w-full flex items-center justify-between p-3 hover:bg-primary/5 rounded-xl transition-colors group text-left"
+                    >
+                      <div>
+                        <p className="font-bold text-sm text-slate-700 group-hover:text-primary">{p.name}</p>
+                        <p className="text-[9px] font-mono text-slate-400 uppercase">#{p.id}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-black text-xs text-primary">${Math.round(p.price).toLocaleString('es-CL')}</p>
+                        <p className="text-[8px] font-bold text-slate-400">STOCK: {p.stock}</p>
+                      </div>
+                    </button>
+                  ))
+                ) : (
+                  <div className="p-4 text-center">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Sin resultados</p>
+                  </div>
+                )}
+                <Button 
+                  variant="ghost" 
+                  className="w-full mt-2 h-8 text-[9px] font-black uppercase text-slate-400"
+                  onClick={() => setIsSearching(false)}
+                >
+                  Cerrar
+                </Button>
+              </div>
+            )}
+
+            {productName && (
+              <div className="flex items-center gap-2 p-2 bg-primary/5 rounded-xl border border-primary/10">
+                <Badge className="bg-primary text-white text-[9px] font-black uppercase">Fijado</Badge>
+                <span className="text-xs font-bold text-primary truncate">{productName}</span>
+                <button onClick={() => setProductName("")} className="ml-auto text-slate-400 hover:text-destructive">
+                  <RotateCcw className="w-3 h-3" />
+                </button>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -540,7 +607,7 @@ export default function ReportsPage() {
         </TabsList>
 
         <TabsContent value="calculator" className="mt-6">
-          <PriceCalculator />
+          <PriceCalculator products={allProducts || []} />
         </TabsContent>
 
         <TabsContent value="sales" className="mt-6 space-y-3">
