@@ -284,7 +284,7 @@ function PriceCalculator({ products = [] }: { products?: any[] }) {
         <Button 
           variant="outline"
           onClick={reset}
-          className="h-16 px-6 rounded-3xl border-slate-200 text-slate-400 font-bold hover:bg-slate-50 active:scale-95 transition-all"
+          className="h-16 px-6 rounded-3xl border-slate-400 text-slate-700 font-bold hover:bg-slate-100 active:scale-95 transition-all shadow-sm"
         >
           <RotateCcw className="w-5 h-5 mr-2" />
           Limpiar
