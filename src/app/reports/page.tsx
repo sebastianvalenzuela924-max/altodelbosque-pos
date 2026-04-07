@@ -4,7 +4,7 @@
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import { collection, query, orderBy } from "firebase/firestore";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { TrendingUp, Calendar, Loader2, Trophy, Share2, DollarSign, Calculator, Info, CheckCircle2, RotateCcw, AlertTriangle, ChevronDown, Search, Plus } from "lucide-react";
+import { TrendingUp, Calendar, Loader2, Trophy, Share2, DollarSign, Calculator, Info, CheckCircle2, RotateCcw, AlertTriangle, ChevronDown, Search, Plus, X } from "lucide-react";
 import { useMemo, useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -94,10 +94,10 @@ function PriceCalculator({ products = [] }: { products?: any[] }) {
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Card 1: Producto con Buscador */}
-        <Card className="border-none shadow-sm rounded-2xl bg-white overflow-hidden relative z-20">
+        {/* Card 1: Producto con Buscador - SIN overflow-hidden para ver resultados */}
+        <Card className="border-none shadow-sm rounded-2xl bg-white relative z-30">
           <CardHeader className="pb-2">
-            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Card 1 — Buscar Producto</Label>
+            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Buscar Producto en Inventario</Label>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="relative">
@@ -112,47 +112,53 @@ function PriceCalculator({ products = [] }: { products?: any[] }) {
                 }}
                 onFocus={() => setIsSearching(true)}
               />
+              {searchQuery && (
+                <button 
+                  onClick={() => { setSearchQuery(""); setIsSearching(false); }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
             </div>
 
+            {/* Lista de Resultados Flotante */}
             {isSearching && searchQuery.length > 0 && (
-              <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl border border-slate-100 p-2 z-50 animate-in zoom-in-95 duration-200">
+              <div className="absolute top-[calc(100%-8px)] left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl border border-slate-200 p-2 z-[100] animate-in zoom-in-95 duration-200 max-h-[300px] overflow-y-auto">
+                <div className="flex justify-between items-center px-2 py-1 mb-1 border-b">
+                  <span className="text-[9px] font-black text-slate-400 uppercase">Resultados ({searchResults.length})</span>
+                  <button onClick={() => setIsSearching(false)} className="text-[9px] font-black text-primary uppercase">Cerrar</button>
+                </div>
                 {searchResults.length > 0 ? (
                   searchResults.map((p) => (
                     <button
                       key={p.id}
                       onClick={() => handleSelectProduct(p)}
-                      className="w-full flex items-center justify-between p-3 hover:bg-primary/5 rounded-xl transition-colors group text-left"
+                      className="w-full flex items-center justify-between p-3 hover:bg-primary/5 rounded-xl transition-colors group text-left mb-1"
                     >
-                      <div>
-                        <p className="font-bold text-sm text-slate-700 group-hover:text-primary">{p.name}</p>
+                      <div className="min-w-0 flex-1 pr-4">
+                        <p className="font-bold text-sm text-slate-700 group-hover:text-primary truncate">{p.name}</p>
                         <p className="text-[9px] font-mono text-slate-400 uppercase">#{p.id}</p>
                       </div>
-                      <div className="text-right">
+                      <div className="text-right shrink-0">
                         <p className="font-black text-xs text-primary">${Math.round(p.price).toLocaleString('es-CL')}</p>
-                        <p className="text-[8px] font-bold text-slate-400">STOCK: {p.stock}</p>
+                        <p className="text-[8px] font-bold text-slate-400 uppercase">Stk: {p.stock}</p>
                       </div>
                     </button>
                   ))
                 ) : (
-                  <div className="p-4 text-center">
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Sin resultados</p>
+                  <div className="p-6 text-center">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Sin coincidencias</p>
                   </div>
                 )}
-                <Button 
-                  variant="ghost" 
-                  className="w-full mt-2 h-8 text-[9px] font-black uppercase text-slate-400"
-                  onClick={() => setIsSearching(false)}
-                >
-                  Cerrar
-                </Button>
               </div>
             )}
 
             {productName && (
-              <div className="flex items-center gap-2 p-2 bg-primary/5 rounded-xl border border-primary/10">
+              <div className="flex items-center gap-2 p-2 bg-primary/5 rounded-xl border border-primary/10 animate-in slide-in-from-left-2 duration-300">
                 <Badge className="bg-primary text-white text-[9px] font-black uppercase">Fijado</Badge>
-                <span className="text-xs font-bold text-primary truncate">{productName}</span>
-                <button onClick={() => setProductName("")} className="ml-auto text-slate-400 hover:text-destructive">
+                <span className="text-xs font-bold text-primary truncate flex-1">{productName}</span>
+                <button onClick={() => setProductName("")} className="text-slate-400 hover:text-destructive p-1">
                   <RotateCcw className="w-3 h-3" />
                 </button>
               </div>
@@ -161,46 +167,46 @@ function PriceCalculator({ products = [] }: { products?: any[] }) {
         </Card>
 
         {/* Card 2: Tipo de Precio */}
-        <Card className="border-none shadow-sm rounded-2xl bg-white overflow-hidden">
+        <Card className="border-none shadow-sm rounded-2xl bg-white overflow-hidden z-20">
           <CardHeader className="pb-2">
-            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Card 2 — Tipo de precio</Label>
+            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Tipo de precio de compra</Label>
           </CardHeader>
           <CardContent className="grid grid-cols-2 gap-3">
             <button
               onClick={() => setHasVat(true)}
               className={cn(
                 "p-3 rounded-xl border-2 transition-all text-left flex flex-col gap-1",
-                hasVat ? "border-[#3d5afe] bg-[#e8eaf6]" : "border-slate-100 bg-white"
+                hasVat ? "border-primary bg-primary/5" : "border-slate-100 bg-white"
               )}
             >
               <span className="font-black text-xs flex items-center gap-2">💰 Con IVA</span>
-              <span className="text-[8px] font-bold opacity-60">Precio total con impuesto</span>
+              <span className="text-[8px] font-bold opacity-60">Total con impuesto</span>
             </button>
             <button
               onClick={() => setHasVat(false)}
               className={cn(
                 "p-3 rounded-xl border-2 transition-all text-left flex flex-col gap-1",
-                !hasVat ? "border-[#3d5afe] bg-[#e8eaf6]" : "border-slate-100 bg-white"
+                !hasVat ? "border-primary bg-primary/5" : "border-slate-100 bg-white"
               )}
             >
               <span className="font-black text-xs flex items-center gap-2">📄 Sin IVA</span>
-              <span className="text-[8px] font-bold opacity-60">Valor neto de factura</span>
+              <span className="text-[8px] font-bold opacity-60">Valor neto factura</span>
             </button>
           </CardContent>
         </Card>
 
         {/* Card 3: Precio y Unidades */}
-        <Card className="border-none shadow-sm rounded-2xl bg-white overflow-hidden">
+        <Card className="border-none shadow-sm rounded-2xl bg-white overflow-hidden z-10">
           <CardHeader className="pb-2">
-            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Card 3 — Precio y unidades</Label>
+            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Valores de Factura / Costo</Label>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="relative">
               <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-xl text-slate-400">$</span>
               <Input 
                 type="number" 
-                placeholder="Precio total factura" 
-                className="pl-10 h-14 rounded-xl bg-slate-50 border-none font-black text-2xl focus-visible:ring-[#3d5afe]"
+                placeholder="Precio total" 
+                className="pl-10 h-14 rounded-xl bg-slate-50 border-none font-black text-2xl focus-visible:ring-primary"
                 value={totalPrice}
                 onChange={(e) => setTotalPrice(e.target.value)}
               />
@@ -236,7 +242,7 @@ function PriceCalculator({ products = [] }: { products?: any[] }) {
         {/* Card 4: % Ganancia */}
         <Card className="border-none shadow-sm rounded-2xl bg-white overflow-hidden">
           <CardHeader className="pb-2">
-            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Card 4 — % de ganancia</Label>
+            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">% de ganancia deseada</Label>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-4 gap-2">
@@ -247,7 +253,7 @@ function PriceCalculator({ products = [] }: { products?: any[] }) {
                   onClick={() => { setProfitPercent(pct); setCustomProfit(""); }}
                   className={cn(
                     "h-10 rounded-xl font-black text-[10px] transition-all",
-                    profitPercent === pct && customProfit === "" ? "bg-[#3d5afe] text-white border-[#3d5afe]" : "bg-white border-slate-100"
+                    profitPercent === pct && customProfit === "" ? "bg-primary text-white border-primary" : "bg-white border-slate-100"
                   )}
                 >
                   {pct}%
@@ -257,7 +263,7 @@ function PriceCalculator({ products = [] }: { products?: any[] }) {
             <div className="relative">
               <Input 
                 type="number" 
-                placeholder="Otro porcentaje personalizado" 
+                placeholder="Otro %" 
                 className="h-11 rounded-xl bg-slate-50 border-none font-bold text-sm text-center"
                 value={customProfit}
                 onChange={(e) => setCustomProfit(e.target.value)}
@@ -271,7 +277,7 @@ function PriceCalculator({ products = [] }: { products?: any[] }) {
       <div className="flex flex-col sm:flex-row gap-3">
         <Button 
           onClick={() => setShowResults(true)}
-          className="flex-1 h-16 rounded-3xl bg-gradient-to-r from-[#3d5afe] to-[#5c7cfa] text-white font-black uppercase tracking-widest shadow-xl shadow-[#3d5afe]/20 active:scale-95 transition-all text-sm"
+          className="flex-1 h-16 rounded-3xl bg-gradient-to-r from-primary to-accent text-white font-black uppercase tracking-widest shadow-xl shadow-primary/20 active:scale-95 transition-all text-sm"
         >
           <Calculator className="w-5 h-5 mr-2" />
           Calcular precio de venta
@@ -282,12 +288,12 @@ function PriceCalculator({ products = [] }: { products?: any[] }) {
           className="h-16 px-6 rounded-3xl border-slate-200 text-slate-400 font-bold hover:bg-slate-50 active:scale-95 transition-all"
         >
           <RotateCcw className="w-5 h-5 mr-2" />
-          Nueva consulta
+          Limpiar
         </Button>
       </div>
 
       {showResults && (
-        <Card className="border-none shadow-2xl rounded-[2.5rem] bg-[#3d5afe] text-white p-6 md:p-8 animate-in slide-in-from-bottom-8 duration-700 relative overflow-hidden">
+        <Card className="border-none shadow-2xl rounded-[2.5rem] bg-primary text-white p-6 md:p-8 animate-in slide-in-from-bottom-8 duration-700 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
           <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
           
@@ -370,6 +376,8 @@ function PriceCalculator({ products = [] }: { products?: any[] }) {
 }
 
 // --- MAIN PAGE COMPONENT ---
+export type DateFilter = "today" | "yesterday" | "month" | "all" | "custom";
+
 export default function ReportsPage() {
   const [mounted, setMounted] = useState(false);
   const [dateFilter, setDateFilter] = useState<DateFilter>("today");
