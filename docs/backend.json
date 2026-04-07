@@ -125,6 +125,16 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "content", "createdAt"]
+    },
+    "User": {
+      "title": "User",
+      "description": "Authorized terminal user.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "lastSession": { "type": "string", "format": "date-time" },
+        "status": { "type": "string" }
+      }
     }
   },
   "auth": {
@@ -134,49 +144,29 @@
     ]
   },
   "firestore": {
-    "structure": [
-      {
-        "path": "/authorizedUsers/{userId}",
-        "definition": {
-          "entityName": "User",
-          "description": "Authorized users of the POS system."
-        }
-      },
-      {
-        "path": "/products/{productId}",
-        "definition": {
-          "entityName": "Product",
-          "description": "Main inventory collection."
-        }
-      },
-      {
-        "path": "/sales/{saleId}",
-        "definition": {
-          "entityName": "Sale",
-          "description": "Completed sales transactions."
-        }
-      },
-      {
-        "path": "/inventoryLogs/{logId}",
-        "definition": {
-          "entityName": "InventoryLog",
-          "description": "Logs for stock additions and adjustments."
-        }
-      },
-      {
-        "path": "/priceChangeLogs/{logId}",
-        "definition": {
-          "entityName": "PriceChangeLog",
-          "description": "Logs for product price changes."
-        }
-      },
-      {
-        "path": "/notes/{noteId}",
-        "definition": {
-          "entityName": "Note",
-          "description": "System reminders and notes."
-        }
-      }
-    ]
+    "/authorizedUsers/{userId}": {
+      "schema": { "$ref": "#/backend/entities/User" },
+      "description": "Authorized users of the POS system."
+    },
+    "/products/{productId}": {
+      "schema": { "$ref": "#/backend/entities/Product" },
+      "description": "Main inventory collection."
+    },
+    "/sales/{saleId}": {
+      "schema": { "$ref": "#/backend/entities/Sale" },
+      "description": "Completed sales transactions."
+    },
+    "/inventoryLogs/{logId}": {
+      "schema": { "$ref": "#/backend/entities/InventoryLog" },
+      "description": "Logs for stock additions and adjustments."
+    },
+    "/priceChangeLogs/{logId}": {
+      "schema": { "$ref": "#/backend/entities/PriceChangeLog" },
+      "description": "Logs for product price changes."
+    },
+    "/notes/{noteId}": {
+      "schema": { "$ref": "#/backend/entities/Note" },
+      "description": "System reminders and notes."
+    }
   }
 }
