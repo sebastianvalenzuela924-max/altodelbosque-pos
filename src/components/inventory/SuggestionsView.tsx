@@ -45,7 +45,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [distributorFilter, setDistributorFilter] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
-  const [viewMode, setViewMode] = useState<ViewMode>("general");
+  const [viewMode, setViewMode] = useState<ViewMode>("category");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const salesQuery = useMemoFirebase(() => {
