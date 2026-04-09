@@ -193,9 +193,14 @@ function InventoryContent() {
               <h1 className="text-2xl font-black text-primary flex items-center gap-2 uppercase tracking-tighter">
                 <Package className="w-6 h-6" /> Inventario
               </h1>
-              <p className="text-muted-foreground text-[10px] font-bold flex items-center gap-2 mt-1">
-                <MousePointer2 className="w-3 h-3 text-accent" /> Clic: Editar • Mantener: Carga Rápida
-              </p>
+              <div className="flex items-center gap-3 mt-1">
+                <p className="text-muted-foreground text-[10px] font-bold flex items-center gap-2">
+                  <MousePointer2 className="w-3 h-3 text-accent" /> Clic: Editar • Mantener: Carga Rápida
+                </p>
+                <Badge variant="outline" className="h-4 px-1.5 text-[8px] font-black border-slate-200 bg-slate-50 text-slate-500 uppercase">
+                  {processedProducts.length} {processedProducts.length === 1 ? 'Producto' : 'Productos'}
+                </Badge>
+              </div>
             </div>
             <div className="flex flex-wrap gap-2 w-full md:w-auto">
               <Button variant="outline" className="flex-1 md:flex-none h-10 rounded-xl text-xs font-bold" onClick={handleExport} disabled={!products?.length}>
