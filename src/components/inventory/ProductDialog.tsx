@@ -9,19 +9,20 @@ import { Label } from "@/components/ui/label";
 import { useFirestore, setDocumentNonBlocking, deleteDocumentNonBlocking, addDocumentNonBlocking } from "@/firebase";
 import { doc, collection, serverTimestamp } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Package, Tag, Target, HelpCircle, AlertTriangle, Truck } from "lucide-react";
+import { Loader2, Package, Tag, Target, AlertTriangle, Truck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
 interface ProductDialogProps {
   product?: any | null;
   categories?: string[];
+  distributors?: string[];
   open: boolean;
   onClose: () => void;
   onSaved: () => void;
 }
 
-export function ProductDialog({ product, categories = [], open, onClose, onSaved }: ProductDialogProps) {
+export function ProductDialog({ product, categories = [], distributors = [], open, onClose, onSaved }: ProductDialogProps) {
   const firestore = useFirestore();
   const [formData, setFormData] = useState({
     id: "",
@@ -92,8 +93,12 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
     const docRef = doc(firestore, "products", finalId);
     
     const enteredCat = formData.category.trim();
-    const existingMatch = categories.find(c => c.toLowerCase() === enteredCat.toLowerCase());
-    const finalCategory = existingMatch || (enteredCat ? (enteredCat.charAt(0).toUpperCase() + enteredCat.slice(1)) : "General");
+    const existingCatMatch = categories.find(c => c.toLowerCase() === enteredCat.toLowerCase());
+    const finalCategory = existingCatMatch || (enteredCat ? (enteredCat.charAt(0).toUpperCase() + enteredCat.slice(1)) : "General");
+
+    const enteredDist = formData.distributor.trim();
+    const existingDistMatch = distributors.find(d => d.toLowerCase() === enteredDist.toLowerCase());
+    const finalDistributor = existingDistMatch || enteredDist;
 
     const data = {
       id: finalId,
@@ -103,7 +108,7 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
       idealStock: formData.idealStock !== "" ? parseInt(formData.idealStock) : null,
       warningStock: formData.warningStock !== "" ? parseInt(formData.warningStock) : null,
       category: finalCategory,
-      distributor: formData.distributor.trim()
+      distributor: finalDistributor
     };
 
     setDocumentNonBlocking(docRef, data, { merge: true });
@@ -184,6 +189,26 @@ export function ProductDialog({ product, categories = [], open, onClose, onSaved
                 <Truck className="w-3 h-3" /> Distribuidora
               </Label>
               <Input id="distributor" value={formData.distributor} className="h-12 rounded-xl bg-slate-50 border-none font-bold" onChange={e => setFormData({ ...formData, distributor: e.target.value })} placeholder="Ej: Coca Cola" />
+              
+              {distributors.length > 0 && (
+                <div className="grid gap-2 mt-1">
+                  <ScrollArea className="w-full whitespace-nowrap pb-2">
+                    <div className="flex gap-1.5">
+                      {distributors.map((dist) => (
+                        <Badge 
+                          key={dist} 
+                          variant={formData.distributor.toLowerCase() === dist.toLowerCase() ? "default" : "secondary"} 
+                          className="cursor-pointer rounded-lg px-2.5 py-0.5 font-bold text-[8px] uppercase" 
+                          onClick={() => setFormData({ ...formData, distributor: dist })}
+                        >
+                          {dist}
+                        </Badge>
+                      ))}
+                    </div>
+                    <ScrollBar orientation="horizontal" className="h-1" />
+                  </ScrollArea>
+                </div>
+              )}
             </div>
           </div>
 

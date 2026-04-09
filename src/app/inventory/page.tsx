@@ -396,7 +396,7 @@ function InventoryContent() {
         </DialogContent>
       </Dialog>
 
-      <ProductDialog open={isDialogOpen} onClose={() => setIsDialogOpen(false)} product={selectedProduct} categories={categories} onSaved={() => {}} />
+      <ProductDialog open={isDialogOpen} onClose={() => setIsDialogOpen(false)} product={selectedProduct} categories={categories} distributors={distributors} onSaved={() => {}} />
 
       <Dialog open={isScannerOpen} onOpenChange={setIsScannerOpen}>
         <DialogContent className="p-0 overflow-hidden rounded-3xl max-w-[90vw] sm:max-w-2xl border-none shadow-2xl" onOpenAutoFocus={(e) => e.preventDefault()}>
