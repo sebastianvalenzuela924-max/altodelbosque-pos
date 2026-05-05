@@ -21,6 +21,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useSearchParams, useRouter } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SuggestionsView } from "@/components/inventory/SuggestionsView";
+import { VoiceSearchInput } from "@/components/ui/voice-search-input";
+
+const normalizeText = (text: string) => {
+  if (!text) return "";
+  return text
+    .toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Remove accents
+    .replace(/-/g, " ") // Replace hyphens with spaces
+    .trim();
+};
 
 type SortOption = "name" | "stock-asc" | "stock-desc" | "status-critical" | "price-asc" | "price-desc" | "category-asc" | "category-desc" | "distributor-asc";
 
@@ -110,8 +120,8 @@ function InventoryContent() {
     if (!products) return [];
 
     let filtered = products.filter(p => {
-      const q = searchTerm.toLowerCase().trim();
-      const matchesSearch = q === "" || p.name.toLowerCase().includes(q) || String(p.id).includes(q);
+      const q = normalizeText(searchTerm);
+      const matchesSearch = q === "" || normalizeText(p.name).includes(q) || String(p.id).includes(q);
       const matchesCategory = categoryFilter === "all" || (p.category || "General") === categoryFilter;
       const matchesDistributor = distributorFilter === "all" || (p.distributor || "") === distributorFilter;
       const status = getProductStatus(p.stock, p.idealStock, p.warningStock);
@@ -217,15 +227,12 @@ function InventoryContent() {
 
           <Card className="border-none shadow-xl rounded-3xl overflow-hidden bg-white">
             <CardHeader className="bg-slate-50/50 p-4 border-b space-y-4">
-              <div className="relative w-full">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <input 
-                  className="w-full pl-11 pr-4 h-11 bg-white rounded-2xl font-bold border-none shadow-sm text-sm" 
-                  placeholder="Buscar por nombre o código..." 
-                  value={searchTerm} 
-                  onChange={e => setSearchTerm(e.target.value)} 
-                />
-              </div>
+              <VoiceSearchInput 
+                value={searchTerm} 
+                onChange={setSearchTerm} 
+                placeholder="Buscar por nombre o código..." 
+                className="w-full"
+              />
               <div className="flex flex-wrap gap-2 items-center">
                 <Select value={sortBy} onValueChange={(v: SortOption) => setSortBy(v)}>
                   <SelectTrigger className="w-fit bg-white border-none h-9 font-bold text-[10px] rounded-xl shadow-sm px-4">

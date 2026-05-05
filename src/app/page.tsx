@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { VoiceSearchInput } from "@/components/ui/voice-search-input";
 
 // Función para emitir un "beep" de confirmación fuerte usando Web Audio API
 const playSuccessSound = () => {
@@ -52,96 +53,15 @@ function ProductSearchBox({
   results: any[]; 
   onAdd: (p: any) => void 
 }) {
-  const [isListening, setIsListening] = useState(false);
-  const recognitionRef = useRef<any>(null);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-      if (SpeechRecognition) {
-        recognitionRef.current = new SpeechRecognition();
-        recognitionRef.current.continuous = true; // Use continuous so it doesn't stop randomly
-        recognitionRef.current.interimResults = true;
-        recognitionRef.current.lang = "es-CL";
-
-        recognitionRef.current.onresult = (event: any) => {
-          let interimTranscript = '';
-          let finalTranscript = '';
-
-          for (let i = event.resultIndex; i < event.results.length; ++i) {
-            if (event.results[i].isFinal) {
-              finalTranscript += event.results[i][0].transcript;
-            } else {
-              interimTranscript += event.results[i][0].transcript;
-            }
-          }
-          
-          const text = finalTranscript || interimTranscript;
-          if (text) {
-             setQuery(text);
-          }
-        };
-
-        recognitionRef.current.onend = () => {
-          setIsListening(false);
-        };
-        
-        recognitionRef.current.onerror = (event: any) => {
-          console.error("Speech recognition error", event.error);
-          setIsListening(false);
-        };
-      }
-    }
-  }, [setQuery]);
-
-  const startListening = (e: React.PointerEvent) => {
-    e.preventDefault();
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.start();
-        setIsListening(true);
-      } catch (e) {
-        // Ignore if already started
-      }
-    }
-  };
-
-  const stopListening = (e: React.PointerEvent) => {
-    e.preventDefault();
-    if (recognitionRef.current && isListening) {
-      recognitionRef.current.stop();
-      setIsListening(false);
-    }
-  };
-
   return (
     <Card className="border-none shadow-xl bg-white rounded-3xl overflow-hidden">
       <CardContent className="p-4 space-y-3">
-        <div className="relative flex items-center">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <Input 
-            className="pl-10 pr-14 h-12 bg-slate-50 border-none rounded-2xl focus-visible:ring-primary shadow-inner font-bold w-full" 
-            placeholder="Buscar por nombre..." 
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-          <button
-            type="button"
-            className={cn(
-              "absolute right-2 p-2 rounded-full transition-all duration-300 flex items-center justify-center select-none touch-none",
-              isListening 
-                ? "bg-red-500 text-white shadow-[0_0_25px_rgba(239,68,68,0.8)] animate-pulse scale-125 z-10 border-2 border-white" 
-                : "bg-slate-200 text-slate-500 hover:bg-slate-300 hover:text-slate-700"
-            )}
-            onPointerDown={startListening}
-            onPointerUp={stopListening}
-            onPointerLeave={stopListening}
-            onContextMenu={(e) => e.preventDefault()} // Prevent context menu on long press
-            title="Mantén presionado para buscar por voz"
-          >
-            <Mic className={cn("transition-all duration-300", isListening ? "w-6 h-6" : "w-5 h-5")} />
-          </button>
-        </div>
+        <VoiceSearchInput 
+          value={query}
+          onChange={setQuery}
+          placeholder="Buscar por nombre..."
+          inputClassName="bg-slate-50 focus-visible:ring-primary shadow-inner pl-10"
+        />
 
         {query.length > 0 && (
           <div className="space-y-2 animate-in slide-in-from-top-2 duration-300">

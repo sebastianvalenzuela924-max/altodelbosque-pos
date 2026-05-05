@@ -17,6 +17,16 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { VoiceSearchInput } from "@/components/ui/voice-search-input";
+
+const normalizeText = (text: string) => {
+  if (!text) return "";
+  return text
+    .toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Remove accents
+    .replace(/-/g, " ") // Replace hyphens with spaces
+    .trim();
+};
 
 type DateFilter = "today" | "yesterday" | "month" | "all" | "custom";
 type BulkDeleteType = 'day' | 'month' | 'all';
@@ -109,9 +119,9 @@ export default function HistoryPage() {
     const dateFiltered = applyDateFilter(allLogs || [], "timestamp");
     if (!logSearchTerm.trim()) return dateFiltered;
     
-    const term = logSearchTerm.toLowerCase().trim();
+    const term = normalizeText(logSearchTerm);
     return dateFiltered.filter(l => 
-      l.productName?.toLowerCase().includes(term) || 
+      normalizeText(l.productName).includes(term) || 
       l.invoiceNumber?.toLowerCase().includes(term)
     );
   }, [allLogs, dateFilter, customDate, isMounted, logSearchTerm]);
@@ -119,8 +129,8 @@ export default function HistoryPage() {
   const filteredPriceLogs = useMemo(() => {
     const dateFiltered = applyDateFilter(allPriceLogs || [], "timestamp");
     if (!logSearchTerm.trim()) return dateFiltered;
-    const term = logSearchTerm.toLowerCase().trim();
-    return dateFiltered.filter(l => l.productName?.toLowerCase().includes(term));
+    const term = normalizeText(logSearchTerm);
+    return dateFiltered.filter(l => normalizeText(l.productName).includes(term));
   }, [allPriceLogs, dateFilter, customDate, isMounted, logSearchTerm]);
 
   const groupedLogsByInvoice = useMemo(() => {
@@ -461,13 +471,11 @@ export default function HistoryPage() {
         </TabsContent>
 
         <TabsContent value="stock" className="mt-6 space-y-4">
-          <div className="relative mb-4">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <Input 
-              className="pl-11 h-12 bg-white rounded-2xl border-none shadow-sm font-bold" 
-              placeholder="Buscar por producto o factura..." 
+          <div className="mb-4">
+            <VoiceSearchInput 
               value={logSearchTerm}
-              onChange={(e) => setLogSearchTerm(e.target.value)}
+              onChange={setLogSearchTerm}
+              placeholder="Buscar por producto o factura..."
             />
           </div>
 
@@ -570,13 +578,11 @@ export default function HistoryPage() {
         </TabsContent>
 
         <TabsContent value="prices" className="mt-6 space-y-4">
-           <div className="relative mb-4">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <Input 
-              className="pl-11 h-12 bg-white rounded-2xl border-none shadow-sm font-bold" 
-              placeholder="Buscar por nombre de producto..." 
+           <div className="mb-4">
+            <VoiceSearchInput 
               value={logSearchTerm}
-              onChange={(e) => setLogSearchTerm(e.target.value)}
+              onChange={setLogSearchTerm}
+              placeholder="Buscar por nombre de producto..."
             />
           </div>
 
