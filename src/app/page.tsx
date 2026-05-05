@@ -130,7 +130,7 @@ function ProductSearchBox({
             className={cn(
               "absolute right-2 p-2 rounded-full transition-all duration-300 flex items-center justify-center select-none touch-none",
               isListening 
-                ? "bg-primary text-white shadow-[0_0_15px_rgba(5,150,105,0.6)] animate-pulse scale-110" 
+                ? "bg-red-500 text-white shadow-[0_0_25px_rgba(239,68,68,0.8)] animate-pulse scale-125 z-10 border-2 border-white" 
                 : "bg-slate-200 text-slate-500 hover:bg-slate-300 hover:text-slate-700"
             )}
             onPointerDown={startListening}
@@ -139,7 +139,7 @@ function ProductSearchBox({
             onContextMenu={(e) => e.preventDefault()} // Prevent context menu on long press
             title="Mantén presionado para buscar por voz"
           >
-            <Mic className="w-5 h-5" />
+            <Mic className={cn("transition-all duration-300", isListening ? "w-6 h-6" : "w-5 h-5")} />
           </button>
         </div>
 
@@ -217,11 +217,21 @@ export default function POSPage() {
     return map;
   }, [allProducts]);
 
+  // Normalize text to remove accents and hyphens for smarter matching
+  const normalizeText = (text: string) => {
+    if (!text) return "";
+    return text
+      .toLowerCase()
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Remove accents
+      .replace(/-/g, " ") // Replace hyphens with spaces
+      .trim();
+  };
+
   const searchResults = useMemo(() => {
     if (!searchQuery || !allProducts) return [];
-    const q = searchQuery.toLowerCase().trim();
+    const q = normalizeText(searchQuery);
     return allProducts
-      .filter(p => p.name.toLowerCase().includes(q))
+      .filter(p => normalizeText(p.name).includes(q))
       .slice(0, 5);
   }, [allProducts, searchQuery]);
 
