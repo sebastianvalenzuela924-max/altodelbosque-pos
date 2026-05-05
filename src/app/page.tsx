@@ -8,7 +8,7 @@ import { ScannerComponent } from "@/components/pos/ScannerComponent";
 import { CalculatorComponent } from "@/components/pos/CalculatorComponent";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
-import { Trash2, PlusCircle, MinusCircle, ShoppingCart, Scan, RotateCcw, Search, Plus, PackageSearch, Check, ReceiptText, IceCream, CupSoda, FileText, Loader2, Undo2 } from "lucide-react";
+import { Trash2, PlusCircle, MinusCircle, ShoppingCart, Scan, RotateCcw, Search, Plus, PackageSearch, Check, ReceiptText, IceCream, CupSoda, FileText, Loader2, Undo2, Mic } from "lucide-react";
 import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { doc, collection, serverTimestamp, increment, query, orderBy, limit, getDocs } from "firebase/firestore";
@@ -52,17 +52,95 @@ function ProductSearchBox({
   results: any[]; 
   onAdd: (p: any) => void 
 }) {
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<any>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        recognitionRef.current = new SpeechRecognition();
+        recognitionRef.current.continuous = true; // Use continuous so it doesn't stop randomly
+        recognitionRef.current.interimResults = true;
+        recognitionRef.current.lang = "es-CL";
+
+        recognitionRef.current.onresult = (event: any) => {
+          let interimTranscript = '';
+          let finalTranscript = '';
+
+          for (let i = event.resultIndex; i < event.results.length; ++i) {
+            if (event.results[i].isFinal) {
+              finalTranscript += event.results[i][0].transcript;
+            } else {
+              interimTranscript += event.results[i][0].transcript;
+            }
+          }
+          
+          const text = finalTranscript || interimTranscript;
+          if (text) {
+             setQuery(text);
+          }
+        };
+
+        recognitionRef.current.onend = () => {
+          setIsListening(false);
+        };
+        
+        recognitionRef.current.onerror = (event: any) => {
+          console.error("Speech recognition error", event.error);
+          setIsListening(false);
+        };
+      }
+    }
+  }, [setQuery]);
+
+  const startListening = (e: React.PointerEvent) => {
+    e.preventDefault();
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.start();
+        setIsListening(true);
+      } catch (e) {
+        // Ignore if already started
+      }
+    }
+  };
+
+  const stopListening = (e: React.PointerEvent) => {
+    e.preventDefault();
+    if (recognitionRef.current && isListening) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    }
+  };
+
   return (
     <Card className="border-none shadow-xl bg-white rounded-3xl overflow-hidden">
       <CardContent className="p-4 space-y-3">
-        <div className="relative">
+        <div className="relative flex items-center">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <Input 
-            className="pl-10 h-12 bg-slate-50 border-none rounded-2xl focus-visible:ring-primary shadow-inner font-bold" 
+            className="pl-10 pr-14 h-12 bg-slate-50 border-none rounded-2xl focus-visible:ring-primary shadow-inner font-bold w-full" 
             placeholder="Buscar por nombre..." 
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
+          <button
+            type="button"
+            className={cn(
+              "absolute right-2 p-2 rounded-full transition-all duration-300 flex items-center justify-center select-none touch-none",
+              isListening 
+                ? "bg-primary text-white shadow-[0_0_15px_rgba(5,150,105,0.6)] animate-pulse scale-110" 
+                : "bg-slate-200 text-slate-500 hover:bg-slate-300 hover:text-slate-700"
+            )}
+            onPointerDown={startListening}
+            onPointerUp={stopListening}
+            onPointerLeave={stopListening}
+            onContextMenu={(e) => e.preventDefault()} // Prevent context menu on long press
+            title="Mantén presionado para buscar por voz"
+          >
+            <Mic className="w-5 h-5" />
+          </button>
         </div>
 
         {query.length > 0 && (
