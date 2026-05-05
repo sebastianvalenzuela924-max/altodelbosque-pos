@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { Navbar } from '@/components/layout/Navbar';
 import { Toaster } from '@/components/ui/toaster';
@@ -8,6 +8,10 @@ import { AuthGate } from '@/components/auth/AuthGate';
 export const metadata: Metadata = {
   title: 'AltodelBosque POS - Punto de Venta Inteligente',
   description: 'Sistema de gestión de inventario y punto de venta optimizado para dispositivos móviles.',
+};
+
+export const viewport: Viewport = {
+  themeColor: '#059669',
 };
 
 export default function RootLayout({
