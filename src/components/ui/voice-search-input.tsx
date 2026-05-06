@@ -33,6 +33,11 @@ const normalizeVoiceTranscription = (text: string) => {
     "un litro": "1L",
     "dos litros": "2L",
     "tres litros": "3L",
+    "un kilo": "1kg",
+    "dos kilos": "2kg",
+    "tres kilos": "3kg",
+    "medio kilo": "500gr",
+    "cuarto de kilo": "250gr",
   };
 
   for (const [key, value] of Object.entries(replacements)) {
@@ -43,6 +48,10 @@ const normalizeVoiceTranscription = (text: string) => {
   normalized = normalized.replace(/(\d+)\s*litros?/gi, '$1L');
   normalized = normalized.replace(/(\d+)\s*l\b/gi, '$1L');
   normalized = normalized.replace(/(\d+)\s*ml\b/gi, '$1ml');
+  normalized = normalized.replace(/(\d+)\s*kilos?/gi, '$1kg');
+  normalized = normalized.replace(/(\d+)\s*kg\b/gi, '$1kg');
+  normalized = normalized.replace(/(\d+)\s*gramos?/gi, '$1gr');
+  normalized = normalized.replace(/(\d+)\s*gr\b/gi, '$1gr');
 
   return normalized;
 };

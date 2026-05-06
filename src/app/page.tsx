@@ -149,9 +149,11 @@ export default function POSPage() {
 
   const searchResults = useMemo(() => {
     if (!searchQuery || !allProducts) return [];
-    const q = normalizeText(searchQuery);
-    return allProducts
-      .filter(p => normalizeText(p.name).includes(q));
+    const qWords = normalizeText(searchQuery).split(/\s+/).filter(Boolean);
+    return allProducts.filter(p => {
+      const pName = normalizeText(p.name);
+      return qWords.every(word => pName.includes(word));
+    });
   }, [allProducts, searchQuery]);
 
   const quickAccessProducts = useMemo(() => {

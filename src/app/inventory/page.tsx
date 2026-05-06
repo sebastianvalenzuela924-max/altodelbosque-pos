@@ -120,8 +120,10 @@ function InventoryContent() {
     if (!products) return [];
 
     let filtered = products.filter(p => {
-      const q = normalizeText(searchTerm);
-      const matchesSearch = q === "" || normalizeText(p.name).includes(q) || String(p.id).includes(q);
+      const qWords = normalizeText(searchTerm).split(/\s+/).filter(Boolean);
+      const pName = normalizeText(p.name);
+      const pId = String(p.id);
+      const matchesSearch = qWords.length === 0 || qWords.every(word => pName.includes(word) || pId.includes(word));
       const matchesCategory = categoryFilter === "all" || (p.category || "General") === categoryFilter;
       const matchesDistributor = distributorFilter === "all" || (p.distributor || "") === distributorFilter;
       const status = getProductStatus(p.stock, p.idealStock, p.warningStock);

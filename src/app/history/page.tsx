@@ -119,18 +119,23 @@ export default function HistoryPage() {
     const dateFiltered = applyDateFilter(allLogs || [], "timestamp");
     if (!logSearchTerm.trim()) return dateFiltered;
     
-    const term = normalizeText(logSearchTerm);
-    return dateFiltered.filter(l => 
-      normalizeText(l.productName).includes(term) || 
-      l.invoiceNumber?.toLowerCase().includes(term)
-    );
+    const termWords = normalizeText(logSearchTerm).split(/\s+/).filter(Boolean);
+    return dateFiltered.filter(l => {
+      const pName = normalizeText(l.productName);
+      const invoice = l.invoiceNumber?.toLowerCase() || "";
+      return termWords.every(word => pName.includes(word) || invoice.includes(word));
+    });
   }, [allLogs, dateFilter, customDate, isMounted, logSearchTerm]);
 
   const filteredPriceLogs = useMemo(() => {
     const dateFiltered = applyDateFilter(allPriceLogs || [], "timestamp");
     if (!logSearchTerm.trim()) return dateFiltered;
-    const term = normalizeText(logSearchTerm);
-    return dateFiltered.filter(l => normalizeText(l.productName).includes(term));
+    
+    const termWords = normalizeText(logSearchTerm).split(/\s+/).filter(Boolean);
+    return dateFiltered.filter(l => {
+      const pName = normalizeText(l.productName);
+      return termWords.every(word => pName.includes(word));
+    });
   }, [allPriceLogs, dateFilter, customDate, isMounted, logSearchTerm]);
 
   const groupedLogsByInvoice = useMemo(() => {
