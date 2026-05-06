@@ -64,7 +64,7 @@ function ProductSearchBox({
         />
 
         {query.length > 0 && (
-          <div className="space-y-2 animate-in slide-in-from-top-2 duration-300">
+          <div className="space-y-2 animate-in slide-in-from-top-2 duration-300 max-h-[280px] overflow-y-auto pr-2">
             {results.length > 0 ? (
               results.map((p) => (
                 <button
@@ -151,8 +151,7 @@ export default function POSPage() {
     if (!searchQuery || !allProducts) return [];
     const q = normalizeText(searchQuery);
     return allProducts
-      .filter(p => normalizeText(p.name).includes(q))
-      .slice(0, 5);
+      .filter(p => normalizeText(p.name).includes(q));
   }, [allProducts, searchQuery]);
 
   const quickAccessProducts = useMemo(() => {
