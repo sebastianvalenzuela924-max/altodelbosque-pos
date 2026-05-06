@@ -13,6 +13,38 @@ interface VoiceSearchInputProps {
   inputClassName?: string;
 }
 
+const normalizeVoiceTranscription = (text: string) => {
+  let normalized = text.toLowerCase();
+
+  const replacements: Record<string, string> = {
+    "crispo": "kryzpo",
+    "coca cola 0": "coca cola zero",
+    "coca cola cero": "coca cola zero",
+    "cocacola 0": "coca cola zero",
+    "cocacola cero": "coca cola zero",
+    "coca 0": "coca zero",
+    "coca cero": "coca zero",
+    "eme ele": "ml",
+    "m l": "ml",
+    "cien ml": "100ml",
+    "ciento ml": "100ml",
+    "un litro": "1L",
+    "dos litros": "2L",
+    "tres litros": "3L",
+  };
+
+  for (const [key, value] of Object.entries(replacements)) {
+    const regex = new RegExp(`\\b${key}\\b`, 'gi');
+    normalized = normalized.replace(regex, value);
+  }
+
+  normalized = normalized.replace(/(\d+)\s*litros?/gi, '$1L');
+  normalized = normalized.replace(/(\d+)\s*l\b/gi, '$1L');
+  normalized = normalized.replace(/(\d+)\s*ml\b/gi, '$1ml');
+
+  return normalized;
+};
+
 export function VoiceSearchInput({ value, onChange, placeholder = "Buscar...", className, inputClassName }: VoiceSearchInputProps) {
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef<any>(null);
@@ -40,7 +72,7 @@ export function VoiceSearchInput({ value, onChange, placeholder = "Buscar...", c
           
           const text = finalTranscript || interimTranscript;
           if (text) {
-             onChange(text);
+             onChange(normalizeVoiceTranscription(text));
           }
         };
 
