@@ -50,8 +50,8 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
   const [viewMode, setViewMode] = useState<ViewMode>("category");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
-  const [config, setConfig] = useState({ reponerMargin: 2, bajaMinQty: 2, altaDaysToCover: 14 });
-  const [tempConfig, setTempConfig] = useState({ reponerMargin: 2, bajaMinQty: 2, altaDaysToCover: 14 });
+  const [config, setConfig] = useState({ reponerMargin: "2", bajaMinQty: "2", altaDaysToCover: "14" });
+  const [tempConfig, setTempConfig] = useState({ reponerMargin: "2", bajaMinQty: "2", altaDaysToCover: "14" });
   const [isConfigOpen, setIsConfigOpen] = useState(false);
   const [isSavingConfig, setIsSavingConfig] = useState(false);
   
@@ -60,7 +60,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
   useEffect(() => {
     const loadConfig = async () => {
       try {
-        const configRef = doc(firestore, "settings", "inventory_config");
+        const configRef = doc(firestore, "notes", "inventory_config_settings");
         const snap = await getDoc(configRef);
         if (snap.exists()) {
           setConfig({ ...config, ...snap.data() });
@@ -89,13 +89,13 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
   const saveConfig = async () => {
     setIsSavingConfig(true);
     try {
-      const configRef = doc(firestore, "settings", "inventory_config");
+      const configRef = doc(firestore, "notes", "inventory_config_settings");
       await setDoc(configRef, tempConfig, { merge: true });
       setConfig(tempConfig);
       setIsConfigOpen(false);
       toast({ title: "Configuración guardada", description: "Las reglas de sugerencia han sido actualizadas." });
     } catch (e) {
-      toast({ title: "Error al guardar", variant: "destructive" });
+      toast({ title: "Error al guardar", description: e.message, variant: "destructive" });
     } finally {
       setIsSavingConfig(false);
     }
@@ -141,6 +141,10 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
         const totalSold = salesMap.get(String(p.id).trim()) || 0;
         const dailyAvg = totalSold / 30;
 
+        const margin = parseInt(config.reponerMargin) || 0;
+        const altaDays = parseInt(config.altaDaysToCover) || 14;
+        const bajaMin = parseInt(config.bajaMinQty) || 2;
+
         const hasIdeal = p.idealStock !== undefined && p.idealStock !== null && p.idealStock > 0;
         const hasWarning = p.warningStock !== undefined && p.warningStock !== null && p.warningStock > 0;
 
@@ -150,7 +154,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
 
         if (stock <= (p.warningStock || 0)) {
           priority = 'Crítico';
-        } else if (hasWarning && stock <= p.warningStock! + config.reponerMargin) {
+        } else if (hasWarning && stock <= p.warningStock! + margin) {
           priority = 'Por reponer';
         } else if (hasIdeal && stock < p.idealStock!) {
           priority = 'Por reponer';
@@ -166,14 +170,14 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
             reason = "Meta: Nivel Ideal";
           } else {
             if (rotation === 'Alta') {
-              suggestedQty = Math.ceil(dailyAvg * config.altaDaysToCover);
-              reason = `Urgente: Cubrir ${config.altaDaysToCover} días`;
+              suggestedQty = Math.ceil(dailyAvg * altaDays);
+              reason = `Urgente: Cubrir ${altaDays} días`;
             } else if (rotation === 'Media') {
               suggestedQty = Math.max(3, Math.ceil(dailyAvg * 7));
               reason = "Reponer: Venta Normal";
             } else {
-              suggestedQty = config.bajaMinQty;
-              reason = `Mínimo: Baja Rotación (${config.bajaMinQty}u.)`;
+              suggestedQty = bajaMin;
+              reason = `Mínimo: Baja Rotación (${bajaMin}u.)`;
             }
           }
         }
@@ -447,7 +451,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
                   min={0}
                   className="w-20 h-9 font-black text-center border-none shadow-sm bg-white" 
                   value={tempConfig.reponerMargin} 
-                  onChange={e => setTempConfig({...tempConfig, reponerMargin: parseInt(e.target.value) || 0})}
+                  onChange={e => setTempConfig({...tempConfig, reponerMargin: e.target.value})}
                 />
                 <span className="text-xs font-black text-slate-700">Unidades de la alerta.</span>
               </div>
@@ -463,7 +467,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
                   min={1}
                   className="w-20 h-9 font-black text-center border-none shadow-sm bg-white" 
                   value={tempConfig.altaDaysToCover} 
-                  onChange={e => setTempConfig({...tempConfig, altaDaysToCover: parseInt(e.target.value) || 1})}
+                  onChange={e => setTempConfig({...tempConfig, altaDaysToCover: e.target.value})}
                 />
                 <span className="text-xs font-black text-slate-700">Días.</span>
               </div>
@@ -479,7 +483,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
                   min={1}
                   className="w-20 h-9 font-black text-center border-none shadow-sm bg-white" 
                   value={tempConfig.bajaMinQty} 
-                  onChange={e => setTempConfig({...tempConfig, bajaMinQty: parseInt(e.target.value) || 1})}
+                  onChange={e => setTempConfig({...tempConfig, bajaMinQty: e.target.value})}
                 />
                 <span className="text-xs font-black text-slate-700">Unidades.</span>
               </div>
