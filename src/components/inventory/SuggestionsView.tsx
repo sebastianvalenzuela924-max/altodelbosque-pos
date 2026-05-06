@@ -1,20 +1,22 @@
 
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import { collection, query, where } from "firebase/firestore";
+import { collection, query, where, doc, getDoc, setDoc } from "firebase/firestore";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Package, Send, Sparkles, Truck, Loader2, ListFilter, LayoutGrid, Search, Target, AlertTriangle, Box, Check } from "lucide-react";
+import { Package, Send, Sparkles, Truck, Loader2, ListFilter, LayoutGrid, Search, Target, AlertTriangle, Box, Check, Settings2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 
 interface Product {
   id: string;
@@ -47,6 +49,57 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
   const [searchTerm, setSearchTerm] = useState("");
   const [viewMode, setViewMode] = useState<ViewMode>("category");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+  const [config, setConfig] = useState({ reponerMargin: 2, bajaMinQty: 2, altaDaysToCover: 14 });
+  const [tempConfig, setTempConfig] = useState({ reponerMargin: 2, bajaMinQty: 2, altaDaysToCover: 14 });
+  const [isConfigOpen, setIsConfigOpen] = useState(false);
+  const [isSavingConfig, setIsSavingConfig] = useState(false);
+  
+  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    const loadConfig = async () => {
+      try {
+        const configRef = doc(firestore, "settings", "inventory_config");
+        const snap = await getDoc(configRef);
+        if (snap.exists()) {
+          setConfig({ ...config, ...snap.data() });
+        }
+      } catch (e) {
+        console.error("Error loading config", e);
+      }
+    };
+    loadConfig();
+  }, [firestore]);
+
+  const handlePointerDown = () => {
+    longPressTimer.current = setTimeout(() => {
+      setTempConfig(config);
+      setIsConfigOpen(true);
+    }, 600);
+  };
+
+  const clearTimer = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  };
+
+  const saveConfig = async () => {
+    setIsSavingConfig(true);
+    try {
+      const configRef = doc(firestore, "settings", "inventory_config");
+      await setDoc(configRef, tempConfig, { merge: true });
+      setConfig(tempConfig);
+      setIsConfigOpen(false);
+      toast({ title: "Configuración guardada", description: "Las reglas de sugerencia han sido actualizadas." });
+    } catch (e) {
+      toast({ title: "Error al guardar", variant: "destructive" });
+    } finally {
+      setIsSavingConfig(false);
+    }
+  };
 
   const salesQuery = useMemoFirebase(() => {
     const thirtyDaysAgo = new Date();
@@ -97,7 +150,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
 
         if (stock <= (p.warningStock || 0)) {
           priority = 'Crítico';
-        } else if (hasWarning && stock <= p.warningStock! + 2) {
+        } else if (hasWarning && stock <= p.warningStock! + config.reponerMargin) {
           priority = 'Por reponer';
         } else if (hasIdeal && stock < p.idealStock!) {
           priority = 'Por reponer';
@@ -113,14 +166,14 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
             reason = "Meta: Nivel Ideal";
           } else {
             if (rotation === 'Alta') {
-              suggestedQty = Math.ceil(dailyAvg * 14);
-              reason = "Urgente: Alta Demanda";
+              suggestedQty = Math.ceil(dailyAvg * config.altaDaysToCover);
+              reason = `Urgente: Cubrir ${config.altaDaysToCover} días`;
             } else if (rotation === 'Media') {
               suggestedQty = Math.max(3, Math.ceil(dailyAvg * 7));
               reason = "Reponer: Venta Normal";
             } else {
-              suggestedQty = 2;
-              reason = "Mínimo: Baja Rotación";
+              suggestedQty = config.bajaMinQty;
+              reason = `Mínimo: Baja Rotación (${config.bajaMinQty}u.)`;
             }
           }
         }
@@ -137,7 +190,7 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
         const order = { 'Crítico': 0, 'Por reponer': 1, 'OK': 2 };
         return order[a.priority as Priority] - order[b.priority as Priority];
       });
-  }, [products, salesMap]);
+  }, [products, salesMap, config]);
 
   const summaryStats = useMemo(() => {
     return {
@@ -254,7 +307,11 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
             setPriorityFilter('Crítico');
             setRotationFilter('all');
           }} 
-          className={cn("text-white py-1.5 rounded-xl flex flex-col items-center transition-all", priorityFilter === 'Crítico' ? "bg-red-600 ring-2 ring-red-400" : "bg-red-600/90")}
+          onPointerDown={handlePointerDown}
+          onPointerUp={clearTimer}
+          onPointerLeave={clearTimer}
+          onContextMenu={(e) => e.preventDefault()}
+          className={cn("text-white py-1.5 rounded-xl flex flex-col items-center transition-all touch-none select-none", priorityFilter === 'Crítico' ? "bg-red-600 ring-2 ring-red-400" : "bg-red-600/90")}
         >
           <span className="text-[7px] font-black uppercase tracking-wider opacity-80">Críticos</span>
           <span className="text-sm font-black font-mono mt-0.5">{summaryStats.criticos}</span>
@@ -264,7 +321,11 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
             setPriorityFilter('Por reponer');
             setRotationFilter('all');
           }} 
-          className={cn("text-white py-1.5 rounded-xl flex flex-col items-center transition-all", priorityFilter === 'Por reponer' ? "bg-amber-600 ring-2 ring-amber-400" : "bg-amber-600/90")}
+          onPointerDown={handlePointerDown}
+          onPointerUp={clearTimer}
+          onPointerLeave={clearTimer}
+          onContextMenu={(e) => e.preventDefault()}
+          className={cn("text-white py-1.5 rounded-xl flex flex-col items-center transition-all touch-none select-none", priorityFilter === 'Por reponer' ? "bg-amber-600 ring-2 ring-amber-400" : "bg-amber-600/90")}
         >
           <span className="text-[7px] font-black uppercase tracking-wider opacity-80">Reponer</span>
           <span className="text-sm font-black font-mono mt-0.5">{summaryStats.reponer}</span>
@@ -274,7 +335,11 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
             setRotationFilter('Alta');
             setPriorityFilter('all');
           }} 
-          className={cn("text-white py-1.5 rounded-xl flex flex-col items-center transition-all", rotationFilter === 'Alta' ? "bg-blue-600 ring-2 ring-blue-400" : "bg-blue-600/90")}
+          onPointerDown={handlePointerDown}
+          onPointerUp={clearTimer}
+          onPointerLeave={clearTimer}
+          onContextMenu={(e) => e.preventDefault()}
+          className={cn("text-white py-1.5 rounded-xl flex flex-col items-center transition-all touch-none select-none", rotationFilter === 'Alta' ? "bg-blue-600 ring-2 ring-blue-400" : "bg-blue-600/90")}
         >
           <span className="text-[7px] font-black uppercase tracking-wider opacity-80">Alta Rot.</span>
           <span className="text-sm font-black font-mono mt-0.5">{summaryStats.altaRot}</span>
@@ -284,7 +349,11 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
             setPriorityFilter('OK');
             setRotationFilter('all');
           }} 
-          className={cn("py-1.5 rounded-xl flex flex-col items-center border transition-all", priorityFilter === 'OK' ? "bg-green-100 text-green-700 ring-2 ring-green-400" : "bg-green-100 text-green-700")}
+          onPointerDown={handlePointerDown}
+          onPointerUp={clearTimer}
+          onPointerLeave={clearTimer}
+          onContextMenu={(e) => e.preventDefault()}
+          className={cn("py-1.5 rounded-xl flex flex-col items-center border transition-all touch-none select-none", priorityFilter === 'OK' ? "bg-green-100 text-green-700 ring-2 ring-green-400" : "bg-green-100 text-green-700")}
         >
           <span className="text-[7px] font-black uppercase tracking-wider opacity-80">Estado OK</span>
           <span className="text-sm font-black font-mono mt-0.5">{summaryStats.ok}</span>
@@ -354,6 +423,81 @@ export function SuggestionsView({ products, categories, distributors }: Suggesti
           </ScrollArea>
         </CardContent>
       </Card>
+
+      <Dialog open={isConfigOpen} onOpenChange={setIsConfigOpen}>
+        <DialogContent className="rounded-3xl p-6 border-none shadow-2xl max-w-[90vw] sm:max-w-md">
+          <DialogHeader className="text-left space-y-2">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center mb-2">
+              <Settings2 className="w-5 h-5 text-primary" />
+            </div>
+            <DialogTitle className="text-xl font-black text-slate-800 uppercase tracking-tighter">Ajustes de Sugerencias</DialogTitle>
+            <DialogDescription className="text-xs font-bold text-slate-500">
+              Personaliza las reglas matemáticas que la IA utiliza para recomendar compras.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2 bg-amber-50/50 p-3 rounded-xl border border-amber-100">
+              <Label className="text-[10px] font-black text-amber-600 uppercase">1. Margen de Reposición</Label>
+              <p className="text-[9px] font-bold text-slate-500 leading-tight">Si el stock está a X unidades de llegar a la alerta de aviso, se marca como "Por Reponer".</p>
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-black text-slate-700">A</span>
+                <Input 
+                  type="number" 
+                  min={0}
+                  className="w-20 h-9 font-black text-center border-none shadow-sm bg-white" 
+                  value={tempConfig.reponerMargin} 
+                  onChange={e => setTempConfig({...tempConfig, reponerMargin: parseInt(e.target.value) || 0})}
+                />
+                <span className="text-xs font-black text-slate-700">Unidades de la alerta.</span>
+              </div>
+            </div>
+
+            <div className="space-y-2 bg-blue-50/50 p-3 rounded-xl border border-blue-100">
+              <Label className="text-[10px] font-black text-blue-600 uppercase">2. Sugerencia: Alta Rotación</Label>
+              <p className="text-[9px] font-bold text-slate-500 leading-tight">Para productos que se venden mucho, sugerir comprar suficiente para cubrir X días.</p>
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-black text-slate-700">Cubrir</span>
+                <Input 
+                  type="number" 
+                  min={1}
+                  className="w-20 h-9 font-black text-center border-none shadow-sm bg-white" 
+                  value={tempConfig.altaDaysToCover} 
+                  onChange={e => setTempConfig({...tempConfig, altaDaysToCover: parseInt(e.target.value) || 1})}
+                />
+                <span className="text-xs font-black text-slate-700">Días.</span>
+              </div>
+            </div>
+
+            <div className="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-100">
+              <Label className="text-[10px] font-black text-slate-600 uppercase">3. Sugerencia: Baja Rotación</Label>
+              <p className="text-[9px] font-bold text-slate-500 leading-tight">Para productos que casi no se venden, sugerir un mínimo de X unidades.</p>
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-black text-slate-700">Mínimo</span>
+                <Input 
+                  type="number" 
+                  min={1}
+                  className="w-20 h-9 font-black text-center border-none shadow-sm bg-white" 
+                  value={tempConfig.bajaMinQty} 
+                  onChange={e => setTempConfig({...tempConfig, bajaMinQty: parseInt(e.target.value) || 1})}
+                />
+                <span className="text-xs font-black text-slate-700">Unidades.</span>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="flex gap-2 sm:justify-start">
+            <Button variant="ghost" className="rounded-xl h-12 flex-1 font-bold" onClick={() => setIsConfigOpen(false)}>Cancelar</Button>
+            <Button 
+              className="rounded-xl h-12 flex-1 font-black uppercase tracking-tighter bg-primary hover:bg-primary/90 text-white" 
+              onClick={saveConfig}
+              disabled={isSavingConfig}
+            >
+              {isSavingConfig ? <Loader2 className="w-4 h-4 animate-spin" /> : "Guardar Reglas"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
