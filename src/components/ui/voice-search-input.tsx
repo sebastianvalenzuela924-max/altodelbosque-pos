@@ -16,12 +16,14 @@ interface VoiceSearchInputProps {
 const normalizeVoiceTranscription = (text: string) => {
   let normalized = text.toLowerCase();
 
+  // El motor de voz a veces agrega guiones o junta palabras
+  normalized = normalized.replace(/coca-cola/gi, 'coca cola');
+  normalized = normalized.replace(/cocacola/gi, 'coca cola');
+
   const replacements: Record<string, string> = {
     "crispo": "kryzpo",
     "coca cola 0": "coca cola zero",
     "coca cola cero": "coca cola zero",
-    "cocacola 0": "coca cola zero",
-    "cocacola cero": "coca cola zero",
     "coca 0": "coca zero",
     "coca cero": "coca zero",
     "eme ele": "ml",
