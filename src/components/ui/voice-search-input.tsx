@@ -23,6 +23,7 @@ const normalizeVoiceTranscription = (text: string) => {
   const replacements: Record<string, string> = {
     "crispo": "kryzpo",
     "danqui": "danky",
+    "danki": "danky",
     "coca cola 0": "coca cola zero",
     "coca cola cero": "coca cola zero",
     "coca 0": "coca zero",
