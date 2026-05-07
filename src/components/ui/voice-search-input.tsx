@@ -96,6 +96,7 @@ export function VoiceSearchInput({ value, onChange, placeholder = "Buscar...", c
 
   const startListening = (e: React.PointerEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     if (recognitionRef.current) {
       try {
         recognitionRef.current.start();
@@ -108,6 +109,7 @@ export function VoiceSearchInput({ value, onChange, placeholder = "Buscar...", c
 
   const stopListening = (e: React.PointerEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     if (recognitionRef.current && isListening) {
       recognitionRef.current.stop();
       setIsListening(false);
@@ -125,8 +127,9 @@ export function VoiceSearchInput({ value, onChange, placeholder = "Buscar...", c
       />
       <button
         type="button"
+        draggable="false"
         className={cn(
-          "absolute right-2 p-2 rounded-full transition-all duration-300 flex items-center justify-center select-none touch-none",
+          "absolute right-2 p-2 rounded-full transition-all duration-300 flex items-center justify-center select-none touch-none no-ios-long-press",
           isListening 
             ? "bg-red-500 text-white shadow-[0_0_25px_rgba(239,68,68,0.8)] animate-pulse scale-125 z-20 border-2 border-white" 
             : "bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-slate-600 z-10"
@@ -134,7 +137,10 @@ export function VoiceSearchInput({ value, onChange, placeholder = "Buscar...", c
         onPointerDown={startListening}
         onPointerUp={stopListening}
         onPointerLeave={stopListening}
-        onContextMenu={(e) => e.preventDefault()}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
         title="Mantén presionado para buscar por voz"
       >
         <Mic className={cn("transition-all duration-300", isListening ? "w-6 h-6" : "w-5 h-5")} />

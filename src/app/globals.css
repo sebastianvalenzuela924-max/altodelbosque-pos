@@ -65,3 +65,12 @@
     @apply font-headline font-black tracking-tight;
   }
 }
+
+@layer utilities {
+  .no-ios-long-press {
+    -webkit-touch-callout: none !important;
+    -webkit-user-select: none !important;
+    user-select: none !important;
+    -webkit-tap-highlight-color: transparent !important;
+  }
+}
