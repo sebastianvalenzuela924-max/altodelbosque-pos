@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Input } from "@/components/ui/input";
-import { Search, Mic } from "lucide-react";
+import { Search, Mic, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface VoiceSearchInputProps {
@@ -122,11 +122,22 @@ export function VoiceSearchInput({ value, onChange, placeholder = "Buscar...", c
     <div className={cn("relative flex items-center w-full", className)}>
       <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 z-10" />
       <Input 
-        className={cn("pl-11 pr-14 h-12 bg-white rounded-2xl border-none shadow-sm font-bold w-full", inputClassName)} 
+        className={cn("pl-11 pr-24 h-12 bg-white rounded-2xl border-none shadow-sm font-bold w-full no-ios-long-press select-none", inputClassName)} 
         placeholder={placeholder} 
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onContextMenu={(e) => e.preventDefault()}
       />
+      {value && (
+        <button
+          type="button"
+          onClick={() => onChange("")}
+          className="absolute right-14 p-2 text-slate-400 hover:text-slate-600 transition-colors z-10"
+          title="Borrar búsqueda"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      )}
       <button
         type="button"
         draggable="false"
