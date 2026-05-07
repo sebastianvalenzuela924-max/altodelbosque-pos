@@ -60,6 +60,9 @@
   }
   body {
     @apply bg-background text-foreground font-body antialiased;
+    -webkit-touch-callout: none !important;
+    -webkit-user-select: none !important;
+    user-select: none !important;
   }
   h1, h2, h3, h4, h5, h6 {
     @apply font-headline font-black tracking-tight;
