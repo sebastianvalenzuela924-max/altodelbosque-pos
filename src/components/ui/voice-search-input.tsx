@@ -22,6 +22,7 @@ const normalizeVoiceTranscription = (text: string) => {
 
   const replacements: Record<string, string> = {
     "crispo": "kryzpo",
+    "danqui": "danky",
     "coca cola 0": "coca cola zero",
     "coca cola cero": "coca cola zero",
     "coca 0": "coca zero",
@@ -131,7 +132,7 @@ export function VoiceSearchInput({ value, onChange, placeholder = "Buscar...", c
         className={cn(
           "absolute right-2 p-2 rounded-full transition-all duration-300 flex items-center justify-center select-none touch-none no-ios-long-press",
           isListening 
-            ? "bg-red-500 text-white shadow-[0_0_25px_rgba(239,68,68,0.8)] animate-pulse scale-125 z-20 border-2 border-white" 
+            ? "bg-red-500 text-white shadow-[0_0_40px_rgba(239,68,68,1)] animate-pulse scale-150 -translate-y-2 z-20 border-2 border-white" 
             : "bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-slate-600 z-10"
         )}
         onPointerDown={startListening}
