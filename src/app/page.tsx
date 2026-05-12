@@ -78,7 +78,7 @@ function ProductSearchBox({
                 >
                   <div className="text-left">
                     <p className="font-bold text-slate-700 text-sm group-hover:text-primary transition-colors">{p.name}</p>
-                    <p className="text-[9px] font-mono text-slate-400 uppercase tracking-tighter">Stock: <span className="font-black text-slate-600">{p.stock}</span> • {p.category || 'General'}</p>
+                    <p className="text-[10px] font-mono text-slate-500 uppercase tracking-tighter"><span className="font-black text-slate-900">Stock: {p.stock}</span> • {p.category || 'General'}</p>
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="text-primary font-black text-sm">${Math.round(p.price).toLocaleString('es-CL')}</span>
